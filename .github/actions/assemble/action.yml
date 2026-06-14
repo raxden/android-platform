@@ -1,0 +1,154 @@
+name: 'Assemble artifacts'
+description: 'Assemble artifacts and (optionally) upload outputs to GitHub'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+
+  build-type:
+    description: 'Build type (Debug/Release/...)'
+    required: true
+
+  artifact-type:
+    description: 'Artifact type to build: APK, AAB or AAR. Leave empty to auto-detect (AAB when the bundle task exists, AAR otherwise).'
+    required: false
+    default: ''
+
+  signing-files:
+    description: 'Base64-encoded tar.gz archive containing the keystore and signing config files. Extracted to ./config before the build.'
+    required: false
+    default: ''
+
+  gradle-args:
+    description: 'Extra Gradle args'
+    required: false
+    default: '--configuration-cache'
+
+  upload-files:
+    description: 'Upload build outputs as a workflow artifact (true/false)'
+    required: false
+    default: 'true'
+
+  retention-days:
+    description: 'Number of days before the uploaded build artifact is removed'
+    required: false
+    default: '1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Decode signing files
+      if: inputs.signing-files != ''
+      id: signing
+      uses: timheuer/base64-to-file@v1.2
+      with:
+        fileName: signing.tar.gz
+        fileDir: ./config
+        encodedString: ${{ inputs.signing-files }}
+
+    - name: Extract signing files
+      if: inputs.signing-files != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p ./config
+        tar xf "${{ steps.signing.outputs.filePath }}" -C ./config
+
+    - name: Resolve artifact type
+      id: artifact_type
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        artifact="${{ inputs.artifact-type }}"
+
+        if [[ -z "$artifact" ]]; then
+          bundleTask="bundle${{ inputs.build-type }}"
+          echo "Auto-detecting artifact-type via task: ${bundleTask}"
+
+          if ./gradlew tasks --all --console=plain | grep -Eq "^[[:space:]]*${bundleTask}[[:space:]]"; then
+            artifact="AAB"   # application
+          else
+            artifact="AAR"   # library
+          fi
+        fi
+
+        case "$artifact" in
+          APK|AAB|AAR) ;;
+          *)
+            echo "artifact-type must be APK|AAB|AAR (or empty for auto)"
+            exit 1
+            ;;
+        esac
+
+        echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+    - name: Resolve task + outputs
+      id: plan
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        artifact="${{ steps.artifact_type.outputs.artifact }}"
+
+        case "$artifact" in
+          AAB)
+            task="bundle${{ inputs.build-type }}"
+            paths=$'**/build/outputs/bundle/**/*.aab\n**/build/outputs/mapping/**/mapping.txt'
+            ;;
+          APK)
+            task="assemble${{ inputs.build-type }}"
+            paths=$'**/build/outputs/apk/**/*.apk\n**/build/outputs/mapping/**/mapping.txt'
+            ;;
+          AAR)
+            task="assemble${{ inputs.build-type }}"
+            paths=$'**/build/outputs/aar/**/*.aar\n**/build/outputs/mapping/**/mapping.txt'
+            ;;
+        esac
+
+        echo "task=$task" >> "$GITHUB_OUTPUT"
+        {
+          echo "paths<<EOF"
+          echo "$paths"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Assemble
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Running: ./gradlew ${{ steps.plan.outputs.task }} --stacktrace ${{ inputs.gradle-args }}"
+        ./gradlew "${{ steps.plan.outputs.task }}" --stacktrace ${{ inputs.gradle-args }}
+
+    - name: Upload outputs
+      if: always() && inputs.upload-files == 'true'
+      uses: actions/upload-artifact@v6
+      with:
+        name: build-${{ steps.artifact_type.outputs.artifact }}-${{ inputs.build-type }}-${{ inputs.id }}
+        path: ${{ steps.plan.outputs.paths }}
+        if-no-files-found: warn
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "## Assemble"
+          echo ""
+          echo "- Result: **${{ job.status }}**"
+          echo "- Artifact: \`${{ steps.artifact_type.outputs.artifact }}\`"
+          echo "- Build type: \`${{ inputs.build-type }}\`"
+          echo "- Upload: \`${{ inputs.upload-files }}\`"
+          echo "- Retention days: \`${{ inputs.retention-days }}\`"
+          echo ""
+          echo "<details><summary>Outputs path</summary>"
+          echo ""
+          echo '```'
+          echo "${{ steps.plan.outputs.paths }}"
+          echo '```'
+          echo "</details>"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"

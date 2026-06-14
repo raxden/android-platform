@@ -1,0 +1,107 @@
+name: 'Bump modules version'
+description: 'Increments the version of one or more Gradle modules (patch/minor/major), commits each change individually and optionally pushes the result to origin'
+
+inputs:
+  modules:
+    description: 'JSON array of Gradle module paths to bump (e.g. [":libraries:core", ":bom"])'
+    required: true
+
+  version:
+    description: 'Version component to increment: patch, minor or major'
+    required: false
+    default: 'patch'
+
+  push:
+    description: 'Push commits (and tags) to origin after bumping (true/false)'
+    required: false
+    default: 'true'
+
+  git-user-name:
+    description: 'Git commit author name'
+    required: true
+
+  git-user-email:
+    description: 'Git commit author email'
+    required: true
+
+  git-branch:
+    description: 'Remote branch to rebase against and push to'
+    required: true
+
+  git-create-tag:
+    description: 'Create a Git tag for each bumped version (true/false)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+
+    - name: Git config + sync branch
+      shell: bash
+      run: |
+        set -euo pipefail
+        git config user.name "${{ inputs.git-user-name }}"
+        git config user.email "${{ inputs.git-user-email }}"
+        git pull --rebase origin "${{ inputs.git-branch }}"
+
+    - name: Bump modules and commit one by one
+      id: bump_modules
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        case "${{ inputs.version }}" in
+          patch) task=increasePatchVersion ;;
+          minor) task=increaseMinorVersion ;;
+          major) task=increaseMajorVersion ;;
+          *) echo "version must be patch|minor|major"; exit 1 ;;
+        esac
+
+        committed=false
+        modules_json='${{ inputs.modules }}'
+
+        if [[ -z "$modules_json" || "$modules_json" == "[]" ]]; then
+          echo "No modules received"
+        else
+
+          mapfile -t modules < <(echo "$modules_json" | jq -r '.[]')
+
+          for module in "${modules[@]}"; do
+
+            echo "Bumping $module"
+
+            ./gradlew "$module:$task" --no-configuration-cache
+
+            if git diff --quiet; then
+              echo "No changes detected for $module"
+              continue
+            fi
+
+            version=$(./gradlew -q "$module:getVersion" | tail -n 1)
+
+            git add .
+            git commit -m "Bump $module version to $version [skip ci]"
+
+            if [[ "${{ inputs.git-create-tag }}" == "true" ]]; then
+              git tag "$version"
+            fi
+
+            committed=true
+
+            echo ":rocket: $module bumped to $version" >> "$GITHUB_STEP_SUMMARY"
+
+          done
+
+        fi
+
+        echo "committed=$committed" >> "$GITHUB_OUTPUT"
+
+    - name: Push changes
+      if: inputs.push == 'true' && steps.bump_modules.outputs.committed == 'true'
+      uses: ad-m/github-push-action@master
+      with:
+        branch: ${{ inputs.git-branch }}
+        ssh: true
+        force: false
+        tags: true

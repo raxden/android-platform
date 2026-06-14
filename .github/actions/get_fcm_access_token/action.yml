@@ -1,0 +1,75 @@
+name: Get FCM Access Token
+description: Generates an OAuth2 access token from a Firebase service account for FCM API calls
+
+inputs:
+  service_credentials:
+    description: Base64-encoded Firebase service account JSON
+    required: true
+
+outputs:
+  access_token:
+    description: OAuth2 access token for FCM HTTP v1 API
+    value: ${{ steps.auth.outputs.access_token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate FCM access token
+      id: auth
+      shell: bash
+      env:
+        SERVICE_FIREBASE_CREDENTIALS: ${{ inputs.service_credentials }}
+      run: |
+        set -euo pipefail
+
+        pip install -q --break-system-packages pyjwt cryptography requests
+
+        python3 << 'PYEOF'
+        import base64
+        import json
+        import os
+        import time
+
+        import jwt
+        import requests
+
+        encoded_credentials = os.environ["SERVICE_FIREBASE_CREDENTIALS"]
+
+        decoded = base64.b64decode(encoded_credentials + "==")
+        service_account_json = decoded.decode("utf-8")
+
+        service_account = json.loads(service_account_json)
+
+        now = int(time.time())
+
+        claims = {
+            "iss": service_account["client_email"],
+            "sub": service_account["client_email"],
+            "scope": "https://www.googleapis.com/auth/firebase.messaging",
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": now,
+            "exp": now + 3600,
+        }
+
+        assertion = jwt.encode(
+            claims,
+            service_account["private_key"],
+            algorithm="RS256",
+        )
+
+        response = requests.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": assertion,
+            },
+            timeout=30,
+        )
+
+        response.raise_for_status()
+
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write(f"access_token={response.json()['access_token']}\n")
+
+        print("FCM access token generated successfully")
+        PYEOF

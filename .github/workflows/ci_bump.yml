@@ -1,0 +1,110 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Continuous Integration (Bump version)
+
+# Workflow events: Controls when the action will run.
+# More info: https://docs.github.com/en/actions/reference/events-that-trigger-workflows
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+
+      modules:
+        description: 'JSON array of modules (e.g. [":libraries:core",":libraries:network"]). Required for this workflow.'
+        required: true
+
+      bom-module:
+        description: 'BOM module name (used for version bumping, e.g. ":bom")'
+        required: false
+        default: ':bom'
+
+      version:
+        description: 'Bump module version'
+        required: true
+        default: 'patch'
+
+concurrency:
+  group: build-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Increment this to invalidate the cache.
+  CACHE_VERSION: 1
+  # Increase Gradle heap size to prevent OOM errors in large builds
+  GRADLE_OPTS: >
+    -Dorg.gradle.jvmargs=-Xmx4g
+    -Dkotlin.daemon.jvm.options=-Xmx2g
+  # Enable debug for the `gradle-build-action` cache operations
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: false
+  # Retention days used for output files
+  RETENTION_DAYS: 1
+  # BOM module name (used for version bumping)
+  BOM_MODULE: ${{ github.event.inputs.bom-module || ':bom' }}
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+
+  info:
+    name: Workflow Information
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Print workflow information
+        uses: ./.github/actions/info
+
+  bump:
+    name: Bump modules
+    if: ${{ (github.event.inputs.modules || '') != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Bump versions
+        uses: ./.github/actions/bump_module_version
+        with:
+          version: ${{ github.event.inputs.version }}
+          modules: ${{ github.event.inputs.modules }}
+          git-create-tag: ${{ github.event.inputs.create-tag }}
+          git-branch: ${{ github.ref_name }}
+          git-user-name: ${{ vars.CI_GIT_USER_NAME }}
+          git-user-email: ${{ vars.CI_GIT_USER_EMAIL }}
+
+  bump-bom:
+    name: Bump BOM version
+    needs: [ bump ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Bump version
+        uses: ./.github/actions/bump_module_version
+        with:
+          version: ${{ github.event.inputs.version }}
+          modules: '["${{ env.BOM_MODULE }}"]'
+          git-create-tag: true
+          git-branch: ${{ github.ref_name }}
+          git-user-name: ${{ vars.CI_GIT_USER_NAME }}
+          git-user-email: ${{ vars.CI_GIT_USER_EMAIL }}

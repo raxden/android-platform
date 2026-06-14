@@ -1,0 +1,84 @@
+name: 'Unit tests'
+description: 'Runs unit tests via Gradle and optionally uploads test reports and code-coverage outputs as a workflow artifact'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+
+  build-type:
+    description: 'Build type (Debug/Release/...)'
+    required: false
+    default: 'Debug'
+
+  gradle-args:
+    description: 'Extra Gradle args'
+    required: false
+    default: '--configuration-cache'
+
+  upload:
+    description: 'Upload test reports as a workflow artifact (true/false)'
+    required: false
+    default: 'true'
+
+  reports-path:
+    description: 'Glob patterns matching the test-report files to upload'
+    required: false
+    default: |
+      **/build/reports/tests/**
+      **/build/test-results/test/**
+      **/build/outputs/unit_test_code_coverage/**
+
+  retention-days:
+    description: 'Number of days before the uploaded test artifact is removed'
+    required: false
+    default: '1'
+
+  continue-on-error:
+    description: 'Allow the job to continue even if tests fail (true/false)'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Unit tests
+      shell: bash
+      continue-on-error: ${{ inputs.continue-on-error == 'true' }}
+      run: |
+        set -euo pipefail
+        task="test${{ inputs.build-type }}UnitTest"
+        echo "Running: ./gradlew $task --stacktrace ${{ inputs.gradle-args }}"
+        ./gradlew "$task" --stacktrace ${{ inputs.gradle-args }}
+
+        {
+          echo "## 🧪 Unit tests"
+          echo ""
+          echo "- Task: \`$task\`"
+          echo "- Continue on error: \`${{ inputs.continue-on-error }}\`"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload test outputs
+      if: always() && inputs.upload == 'true'
+      uses: actions/upload-artifact@v6
+      with:
+        name: unit-tests-${{ inputs.build-type }}-${{ inputs.id }}
+        path: ${{ inputs.reports-path }}
+        if-no-files-found: warn
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "### ✅ Result"
+          echo ""
+          echo "- Status: **${{ job.status }}**"
+          echo "- Build type: \`${{ inputs.build-type }}\`"
+          echo "- Upload reports: \`${{ inputs.upload }}\`"
+          echo "- Retention days: \`${{ inputs.retention-days }}\`"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"

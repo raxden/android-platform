@@ -1,0 +1,75 @@
+name: 'Static analysis (detekt)'
+description: 'Runs Detekt static analysis and uploads the reports as a workflow artifact on failure (or always when upload-on-success is true)'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+
+  retention-days:
+    description: 'Remove artifacts after N days'
+    required: false
+    default: '1'
+
+  gradle-args:
+    description: 'Extra Gradle arguments'
+    required: false
+    default: '--configuration-cache'
+
+  upload-on-success:
+    description: 'Upload detekt reports even when the job succeeds (true/false)'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    #    - name: Detekt
+    #      shell: bash
+    #      run: |
+    #        set -euo pipefail
+    #        ./gradlew detekt --stacktrace ${{ inputs.gradle-args }}
+
+    - name: Upload Detekt reports
+      id: upload_reports
+      if: failure() || inputs.upload-on-success == 'true'
+      uses: actions/upload-artifact@v6
+      with:
+        name: detekt-reports-${{ inputs.id }}
+        path: |
+          **/build/reports/detekt/**
+          **/build/reports/**/detekt/**
+          **/build/reports/detekt.sarif
+          **/build/reports/**/detekt.sarif
+        if-no-files-found: warn
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Summary
+      if: always()
+      shell: bash
+      run: |
+        status="${{ job.status }}"
+        show_reports="false"
+
+        if [[ "$status" != "success" || "${{ inputs.upload-on-success }}" == "true" ]]; then
+          show_reports="true"
+        fi
+
+        reports_url="${{ steps.upload_reports.outputs.artifact-url }}"
+        artifacts_fallback="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+
+        {
+          echo "## Detekt"
+          echo ""
+          echo "- Result: **$status**"
+          if [[ "$show_reports" == "true" ]]; then
+            echo "- Reports path: \`**/build/reports/detekt/**\`"
+            if [[ -n "$reports_url" ]]; then
+              echo "- Reports: [detekt-reports-${{ inputs.id }}]($reports_url)"
+            else
+              echo "- Reports: [artifacts]($artifacts_fallback)"
+            fi
+          fi
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"

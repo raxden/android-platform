@@ -1,0 +1,34 @@
+name: 'Create release branch'
+description: 'Creates a new release branch from the current HEAD using the module version, commits an empty release commit and pushes it to origin'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+  module:
+    description: 'Gradle module whose version is used to name the release branch (e.g. app, :libraries:core)'
+    required: false
+    default: "app"
+  git-user-name:
+    description: 'Git commit author name'
+    required: true
+  git-user-email:
+    description: 'Git commit author email'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get version
+      id: get-version
+      uses: ./.github/actions/get_version
+
+    - name: Create release branch
+      run: |
+        git config user.name "${{ inputs.git-user-name }}"
+        git config user.email "${{ inputs.git-user-email }}"
+        git switch -c releases/${{ steps.get-version.outputs.version }}
+        git commit --allow-empty -m "Release ${{ steps.get-version.outputs.version }}"
+        git push -u origin releases/${{ steps.get-version.outputs.version }}
+      shell: bash

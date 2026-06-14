@@ -1,0 +1,148 @@
+name: Continuous Integration (PR)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  # Ensure only one run per PR is active
+  group: build-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  # Increment to invalidate Gradle cache when needed
+  CACHE_VERSION: 1
+  # Increase Gradle heap size to prevent OOM errors in large builds
+  GRADLE_OPTS: >
+    -Dorg.gradle.jvmargs=-Xmx4g
+    -Dkotlin.daemon.jvm.options=-Xmx2g
+  # Enable debug for Gradle cache action
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: false
+  # Artifact retention
+  RETENTION_DAYS: 1
+  # Build configuration
+  BUILD_TYPE: "Debug"
+
+jobs:
+
+  info:
+    name: Workflow Information
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Print workflow information
+        uses: ./.github/actions/info
+
+  computeChangedModules:
+    name: Compute changed modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Compute changed modules
+        id: modules
+        uses: ./.github/actions/compute_changed_modules
+        with:
+          namespace: platform
+
+  checkstyle:
+    name: Check code style
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Run Detekt
+        uses: ./.github/actions/checkstyle
+        with:
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  build:
+    name: Build
+    needs: [checkstyle]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Assemble ${{ env.BUILD_TYPE }}
+        uses: ./.github/actions/assemble
+        with:
+          build-type: ${{ env.BUILD_TYPE }}
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Cancel workflow run if failed
+        if: failure()
+        uses: ./.github/actions/workflow_run
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          operation: cancel
+
+  test:
+    name: Run Unit Tests
+    needs: [checkstyle]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Execute unit tests
+        uses: ./.github/actions/unit_tests
+        with:
+          build-type: ${{ env.BUILD_TYPE }}
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Cancel workflow run if failed
+        if: failure()
+        uses: ./.github/actions/workflow_run
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          operation: cancel
+
+  status:
+    name: Status
+    needs: [ build, test ]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check dependencies status
+        shell: bash
+        run: |
+          echo "Build status: ${{ needs.build.result }}"
+          echo "Test status: ${{ needs.test.result }}"
+          
+          if [[ "${{ needs.build.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
+            echo "❌ One or more jobs failed"
+            exit 1
+          fi
+          
+          echo "✅ All jobs succeeded"
+      
+      - name: Final summary
+        shell: bash
+        run: |
+          echo "Workflow completed successfully"

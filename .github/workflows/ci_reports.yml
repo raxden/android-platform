@@ -1,0 +1,85 @@
+name: Continuous Integration (Generate reports)
+
+on:
+  push:
+    branches: [ master ]
+
+  workflow_dispatch:
+    inputs:
+
+      build-type:
+        description: 'Build type (Debug or Release)'
+        required: false
+        default: 'Debug'
+
+concurrency:
+  # Ensure only one run per PR is active
+  group: build-generate-reports-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Increment to invalidate Gradle cache when needed
+  CACHE_VERSION: 1
+  # Increase Gradle heap size to prevent OOM errors in large builds
+  GRADLE_OPTS: >
+    -Dorg.gradle.jvmargs=-Xmx4g
+    -Dkotlin.daemon.jvm.options=-Xmx2g
+  # Enable debug for Gradle cache action
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
+  # Artifact retention
+  RETENTION_DAYS: 1
+  # Build configuration
+  BUILD_TYPE: ${{ github.event.inputs.build-type || 'Debug' }}
+
+jobs:
+
+  info:
+    name: Workflow Information
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Print workflow information
+        uses: ./.github/actions/info
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Execute unit tests
+        uses: ./.github/actions/unit_tests
+        with:
+          build-type: ${{ env.BUILD_TYPE }}
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  reports:
+    name: Generate reports
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Generate JaCoCo reports and upload to codecov
+        uses: ./.github/actions/reports
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          build-type: ${{ env.BUILD_TYPE }}
+          retention-days: ${{ env.RETENTION_DAYS }}

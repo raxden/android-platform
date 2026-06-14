@@ -1,0 +1,48 @@
+name: Send FCM Notification
+description: Sends a pre-built FCM message payload via the Firebase Cloud Messaging HTTP v1 API
+
+inputs:
+  access_token:
+    description: OAuth2 access token for FCM HTTP v1 API
+    required: true
+  firebase_project_id:
+    description: Firebase project ID
+    required: true
+  message:
+    description: JSON FCM message payload to send
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send notification
+      shell: bash
+      env:
+        ACCESS_TOKEN: ${{ inputs.access_token }}
+        FIREBASE_PROJECT_ID: ${{ inputs.firebase_project_id }}
+        MESSAGE: ${{ inputs.message }}
+      run: |
+        set -euo pipefail
+
+        echo "DEBUG: Using project ID: ${FIREBASE_PROJECT_ID}"
+        echo "DEBUG: Message payload: ${MESSAGE}"
+
+        RESPONSE="$(curl --silent --show-error --write-out "\n%{http_code}" \
+          --request POST \
+          --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+          --header "Content-Type: application/json; charset=utf-8" \
+          --data "$MESSAGE" \
+          "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send")"
+
+        HTTP_CODE="$(echo "$RESPONSE" | tail -n 1)"
+        BODY="$(echo "$RESPONSE" | sed '$d')"
+
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Response: $BODY"
+
+        if [[ "$HTTP_CODE" != "200" ]]; then
+          echo "::error::Failed to send FCM notification"
+          exit 1
+        fi
+
+        echo "Notification sent successfully"
