@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notifications_permission_title">Activer les notifications</string>
+    <string name="notifications_permission_description">Autorisez cette application à vous envoyer des notifications concernant les mises à jour et informations importantes.</string>
+    <string name="notifications_permission_accept">Autoriser</string>
+    <string name="notifications_permission_denied">Pas maintenant</string>
+</resources>

@@ -31,6 +31,10 @@ dependencies {
     // If anyone use these dependencies, then are added
     constraints {
         api(projects.platform.core)
+        api(projects.platform.ui)
+        api(projects.platform.uiComponentRating)
+        api(projects.platform.uiComponentPermission)
         api(projects.platform.device)
+        api(projects.platform.network)
     }
 }

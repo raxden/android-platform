@@ -4,12 +4,12 @@ import extension.implementationBundle
 
 plugins {
     alias(libs.plugins.android.versioning)
-    alias(libs.plugins.android.library.conventions)
+    alias(libs.plugins.android.compose.library.conventions)
     alias(libs.plugins.android.publish.library)
 }
 
 android {
-    namespace = "com.raxdenstudios.platform.core"
+    namespace = "com.raxdenstudios.platform.ui.component.permission"
 }
 
 versioning {
@@ -17,22 +17,27 @@ versioning {
 }
 
 publishLibrary {
-    name = "Android Platform Core"
-    description = "Android Platform Core"
-    url = "https://github.com/raxden/android-platform-core"
+    name = "Android Platform UI Permission Component"
+    description = "Android Platform UI Permission Component"
+    url = "https://github.com/raxden/android-platform-ui-permission"
     developer = Developer(
         id = "raxden",
         name = "Ángel Gómez",
         email = "raxden.dev@gmail.com",
     )
-    coordinates = Coordinates.default.copy(artifactId = "platform-core")
+    coordinates = Coordinates.default.copy(artifactId = "platform-ui-component-permission")
 }
 
 dependencies {
+    implementation(projects.platform.core)
+    implementation(projects.platform.ui)
+    implementation(projects.platform.device)
+
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android.compose)
     implementation(libs.commons.coroutines)
     implementation(libs.commons.threetenabp)
+    implementation(libs.commons.permissions)
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)

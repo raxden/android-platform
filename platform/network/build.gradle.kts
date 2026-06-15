@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.raxdenstudios.platform.core"
+    namespace = "com.raxdenstudios.platform.network"
 }
 
 versioning {
@@ -17,29 +17,33 @@ versioning {
 }
 
 publishLibrary {
-    name = "Android Platform Core"
-    description = "Android Platform Core"
-    url = "https://github.com/raxden/android-platform-core"
+    name = "Android Platform Network"
+    description = "Android Platform Network"
+    url = "https://github.com/raxden/android-platform-network"
     developer = Developer(
         id = "raxden",
         name = "Ángel Gómez",
         email = "raxden.dev@gmail.com",
     )
-    coordinates = Coordinates.default.copy(artifactId = "platform-core")
+    coordinates = Coordinates.default.copy(artifactId = "platform-network")
 }
 
 dependencies {
+    implementation(projects.platform.core)
+
     implementation(platform(libs.commons.bom))
-    implementation(libs.commons.android.compose)
-    implementation(libs.commons.coroutines)
+    implementation(libs.commons.android)
     implementation(libs.commons.threetenabp)
+    implementation(libs.commons.network)
 
     implementation(libs.play.services.location)
-    implementation(libs.play.review.ktx)
-    implementation(libs.coroutines.play.services)
 
     implementationBundle(libs.bundles.android.material)
-    implementationBundle(libs.bundles.android.compose)
-    implementationBundle(libs.bundles.room)
     implementationBundle(libs.bundles.koin)
+
+    // debug libraries
+    debugImplementation(libs.chucker.debug)
+
+    // release libraries
+    releaseImplementation(libs.chucker.release)
 }

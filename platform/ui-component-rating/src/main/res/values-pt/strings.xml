@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- rating -->
+    <string name="rating_dialog_title">Gosta da aplicação?</string>
+    <string name="rating_dialog_message">Se gosta desta aplicação, poderia dedicar um momento para avaliá-la? O seu feedback ajuda-nos a melhorar e a chegar a mais pessoas. Obrigado pelo seu apoio!</string>
+    <string name="rating_dialog_rate">Avaliar agora</string>
+    <string name="rating_dialog_later">Talvez mais tarde</string>
+</resources>
