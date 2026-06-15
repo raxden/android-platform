@@ -32,9 +32,10 @@ dependencies {
     constraints {
         api(projects.platform.core)
         api(projects.platform.ui)
-        api(projects.platform.uiComponentRating)
-        api(projects.platform.uiComponentPermission)
         api(projects.platform.device)
         api(projects.platform.network)
+
+        api(projects.component.rating)
+        api(projects.component.permission)
     }
 }

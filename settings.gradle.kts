@@ -68,11 +68,13 @@ develocity {
 
 //include(":bom")
 include(":bom")
+
 include(":platform:core")
 include(":platform:device")
 include(":platform:network")
 include(":platform:ui")
-include(":platform:ui-component-rating")
-include(":platform:ui-component-permission")
+
+include(":component:rating")
+include(":component:permission")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
