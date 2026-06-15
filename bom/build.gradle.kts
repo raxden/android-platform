@@ -35,7 +35,7 @@ dependencies {
         api(projects.platform.device)
         api(projects.platform.network)
 
-        api(projects.component.rating)
-        api(projects.component.permission)
+//        api(projects.component.rating)
+//        api(projects.component.permission)
     }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="notifications_permission_title">Включить уведомления</string>
-    <string name="notifications_permission_description">Разрешите этому приложению отправлять вам уведомления о важных обновлениях и информации.</string>
-    <string name="notifications_permission_accept">Разрешить</string>
-    <string name="notifications_permission_denied">Не сейчас</string>
+    <string name="component_permission_notifications_title">Включить уведомления</string>
+    <string name="component_permission_notifications_description">Разрешите этому приложению отправлять вам уведомления о важных обновлениях и информации.</string>
+    <string name="component_permission_notifications_accept">Разрешить</string>
+    <string name="component_permission_notifications_denied">Не сейчас</string>
 </resources>

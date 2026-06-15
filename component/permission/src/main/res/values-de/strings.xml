@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="notifications_permission_title">Benachrichtigungen aktivieren</string>
-    <string name="notifications_permission_description">Erlauben Sie dieser App, Ihnen Benachrichtigungen über wichtige Updates und Informationen zu senden.</string>
-    <string name="notifications_permission_accept">Erlauben</string>
-    <string name="notifications_permission_denied">Später</string>
+    <string name="component_permission_notifications_title">Benachrichtigungen aktivieren</string>
+    <string name="component_permission_notifications_description">Erlauben Sie dieser App, Ihnen Benachrichtigungen über wichtige Updates und Informationen zu senden.</string>
+    <string name="component_permission_notifications_accept">Erlauben</string>
+    <string name="component_permission_notifications_denied">Später</string>
 </resources>

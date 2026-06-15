@@ -28,9 +28,8 @@ class RequestPermissionComponentViewModel(
         when (action) {
             RequestPermissionComponentAction.OnRationaleAccepted -> handleRationaleAccepted()
             RequestPermissionComponentAction.OnRationaleDismissed -> handleRationaleDismissed()
-            is RequestPermissionComponentAction.OnPermissionRequested -> handlePermissionRequested(
-                action.permission
-            )
+            is RequestPermissionComponentAction.OnPermissionRequested ->
+                handlePermissionRequested(action.permission)
         }
     }
 
@@ -53,11 +52,19 @@ class RequestPermissionComponentViewModel(
     private fun requestPermission(permission: Permission) = safeLaunch {
         requestPermissionUseCase(RequestPermissionUseCase.Params(permission)).onCoSuccess { permissionResult ->
             when (permissionResult) {
-                is PermissionResult.Denied -> Unit
-                is PermissionResult.Granted -> Unit
+                is PermissionResult.Denied -> handlePermissionDenied(permissionResult.permission)
+                is PermissionResult.Granted -> handlePermissionGranted(permissionResult.permission)
                 is PermissionResult.Rationale -> handlePermissionRationale(permissionResult.permission)
             }
         }
+    }
+
+    private fun handlePermissionDenied(permission: Permission) {
+        emitEvent(RequestPermissionComponentUIEvent.Denied(permission))
+    }
+
+    private fun handlePermissionGranted(permission: Permission) {
+        emitEvent(RequestPermissionComponentUIEvent.Granted(permission))
     }
 
     private fun handlePermissionRationale(permission: Permission) {

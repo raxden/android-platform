@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="notifications_permission_title">Ativar notificações</string>
-    <string name="notifications_permission_description">Permita que este aplicativo envie notificações sobre atualizações e informações importantes.</string>
-    <string name="notifications_permission_accept">Permitir</string>
-    <string name="notifications_permission_denied">Agora não</string>
+    <string name="component_permission_notifications_title">Ativar notificações</string>
+    <string name="component_permission_notifications_description">Permita que este aplicativo envie notificações sobre atualizações e informações importantes.</string>
+    <string name="component_permission_notifications_accept">Permitir</string>
+    <string name="component_permission_notifications_denied">Agora não</string>
 </resources>

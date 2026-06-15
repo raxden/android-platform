@@ -9,6 +9,8 @@ import com.raxdenstudios.platform.ui.UIState
 
 sealed class RequestPermissionComponentUIEvent : UIEvent {
     data object NavigateToSettings : RequestPermissionComponentUIEvent()
+    data class Granted(val permission: Permission) : RequestPermissionComponentUIEvent()
+    data class Denied(val permission: Permission) : RequestPermissionComponentUIEvent()
 }
 
 @Immutable

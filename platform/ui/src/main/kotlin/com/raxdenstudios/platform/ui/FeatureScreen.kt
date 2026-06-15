@@ -8,11 +8,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.raxdenstudios.commons.android.ext.findActivity
 import com.raxdenstudios.platform.ui.composable.ComposableLifecycle
@@ -25,6 +23,8 @@ class FeatureScreen<UIS, UIE>(
     private val paddingValues: PaddingValues = PaddingValues(),
     private val layoutProvider: LayoutProvider<UIS>,
     private val eventHandler: EventHandler<UIE>? = null,
+    private val lifecycleEventObserver: LifecycleEventObserver? = null,
+    private val backStackChangeHandler: BackStackChangeHandler? = null,
     var screenState: ScreenState,
     private val viewModel: ViewModel,
 ) where UIS : UIState,
@@ -50,11 +50,16 @@ class FeatureScreen<UIS, UIE>(
     @Composable
     operator fun invoke() {
         LockScreenOrientation(orientation = screenState.orientation)
-        ComposableLifecycle(onEvent = ::onLifecycleEvent)
 
+        ObserveLifecycle()
         ObserveBackStackEntryState()
         ObserveUIEvent()
         ObserveUIState()
+    }
+
+    @Composable
+    private fun ObserveLifecycle() {
+        lifecycleEventObserver?.let { handler -> ComposableLifecycle(handler) }
     }
 
     @Composable
@@ -80,13 +85,14 @@ class FeatureScreen<UIS, UIE>(
     @Composable
     private fun ObserveBackStackEntryState() {
         val navBackStackEntry by screenState.navController.currentBackStackEntryAsState()
-        navBackStackEntry?.run { onBackStackChange(this) }
+        navBackStackEntry?.run { backStackChangeHandler?.onBackStackChange(this) }
     }
 
     @Composable
     private fun ObserveUIEvent() {
-        LaunchedEffect(Unit) { // Execute only once
-            eventDelegate?.viewEvent?.collect { uiEvent ->
+        LaunchedEffect(Unit) {
+            val eventDelegate = eventDelegate ?: return@LaunchedEffect
+            eventDelegate.viewEvent.collect { uiEvent ->
                 eventHandler?.handle(uiEvent, screenState, navigator)
             }
         }
@@ -99,8 +105,4 @@ class FeatureScreen<UIS, UIE>(
 
         layoutProvider.Apply(paddingValues, screenState, uiState, onAction)
     }
-
-    open fun onBackStackChange(entry: NavBackStackEntry) {}
-
-    open fun onLifecycleEvent(source: LifecycleOwner, event: Lifecycle.Event) {}
 }

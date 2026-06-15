@@ -23,10 +23,10 @@ class RequestPermissionComponentMapperImpl(
         Permission.Camera -> TODO()
         is Permission.Other -> TODO()
         Permission.PostNotifications -> RequestPermissionModel(
-            reason = stringProvider.getString(R.string.notifications_permission_title),
-            reasonDescription = stringProvider.getString(R.string.notifications_permission_description),
-            acceptLabel = stringProvider.getString(R.string.notifications_permission_accept),
-            deniedLabel = stringProvider.getString(R.string.notifications_permission_denied),
+            reason = stringProvider.getString(R.string.component_permission_notifications_title),
+            reasonDescription = stringProvider.getString(R.string.component_permission_notifications_description),
+            acceptLabel = stringProvider.getString(R.string.component_permission_notifications_accept),
+            deniedLabel = stringProvider.getString(R.string.component_permission_notifications_denied),
         )
 
         Permission.ReadContacts -> TODO()
