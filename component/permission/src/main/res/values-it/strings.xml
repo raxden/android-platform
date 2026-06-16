@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="component_permission_notifications_title">Attiva notifiche</string>
-    <string name="component_permission_notifications_description">Consenti a questa app di inviarti notifiche su aggiornamenti e informazioni importanti.</string>
-    <string name="component_permission_notifications_accept">Consenti</string>
-    <string name="component_permission_notifications_denied">Non ora</string>
-</resources>

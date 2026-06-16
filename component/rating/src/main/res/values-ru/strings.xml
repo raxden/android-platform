@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- rating -->
-    <string name="rating_dialog_title">Нравится приложение?</string>
-    <string name="rating_dialog_message">Если вам нравится это приложение, не могли бы вы уделить момент, чтобы оценить его? Ваш отзыв помогает нам улучшаться и охватывать больше людей. Спасибо за вашу поддержку!</string>
-    <string name="rating_dialog_rate">Оценить сейчас</string>
-    <string name="rating_dialog_later">Может быть позже</string>
-</resources>

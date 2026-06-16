@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- rating -->
-    <string name="rating_dialog_title">T\'agrada l\'aplicació?</string>
-    <string name="rating_dialog_message">Si gaudeixes usant aquesta aplicació, t\'importaria dedicar un moment a valorar-la? Els teus comentaris ens ajuden a millorar i arribar a més gent. Gràcies pel teu suport!</string>
-    <string name="rating_dialog_rate">Valorar ara</string>
-    <string name="rating_dialog_later">Potser més tard</string>
-</resources>

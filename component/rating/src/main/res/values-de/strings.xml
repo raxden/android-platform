@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- rating -->
-    <string name="rating_dialog_title">Gefällt dir die App?</string>
-    <string name="rating_dialog_message">Wenn dir diese App gefällt, würdest du dir einen Moment Zeit nehmen, um sie zu bewerten? Dein Feedback hilft uns, die App zu verbessern und mehr Menschen zu erreichen. Danke für deine Unterstützung!</string>
-    <string name="rating_dialog_rate">Jetzt bewerten</string>
-    <string name="rating_dialog_later">Vielleicht später</string>
-</resources>
