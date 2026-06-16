@@ -54,7 +54,7 @@ jobs:
         id: modules
         uses: ./.github/actions/compute_changed_modules
         with:
-          namespace: platform
+          namespace: component
 
   checkstyle:
     name: Check code style

@@ -69,11 +69,6 @@ develocity {
 //include(":bom")
 include(":bom")
 
-include(":platform:core")
-include(":platform:device")
-include(":platform:network")
-include(":platform:ui")
-
 include(":component:rating")
 include(":component:permission")
 
