@@ -29,9 +29,10 @@ publishLibrary {
 }
 
 dependencies {
-    implementation(projects.platform.core)
-    implementation(projects.platform.ui)
-    implementation(projects.platform.device)
+    implementation(platform(libs.platform.bom))
+    implementation(libs.platform.core)
+    implementation(libs.platform.device)
+    implementation(libs.platform.ui)
 
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android.compose)

@@ -12,15 +12,15 @@ versioning {
 }
 
 publishPlatform {
-    name = "Android Platform BOM"
-    description = "Bill of Materials for Android Platform libraries"
-    url = "https://github.com/raxden/android-platform"
+    name = "Android Components BOM"
+    description = "Bill of Materials for Android Components libraries"
+    url = "https://github.com/raxden/android-components"
     developer = Developer(
         id = "raxden",
         name = "Ángel Gómez",
         email = "raxden.dev@gmail.com",
     )
-    coordinates = Coordinates.default.copy(artifactId = "platform-bom")
+    coordinates = Coordinates.default.copy(artifactId = "components-bom")
 }
 
 javaPlatform {
@@ -30,12 +30,7 @@ javaPlatform {
 dependencies {
     // If anyone use these dependencies, then are added
     constraints {
-        api(projects.platform.core)
-        api(projects.platform.ui)
-        api(projects.platform.device)
-        api(projects.platform.network)
-
-//        api(projects.component.rating)
-//        api(projects.component.permission)
+        api(projects.component.permission)
+        api(projects.component.rating)
     }
 }
