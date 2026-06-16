@@ -18,7 +18,7 @@ class RequestPermissionComponent(
     modifier: Modifier = Modifier,
     screenState: ScreenState,
     private val arguments: Arguments,
-    onUIEvent: (RequestPermissionComponentUIEvent) -> Unit,
+    onUIEvent: (RequestPermissionComponentUIEvent) -> Unit = {},
     viewModel: RequestPermissionComponentViewModel,
 ) : Component<RequestPermissionComponentUIState, RequestPermissionComponentUIEvent>(
     modifier = modifier,
