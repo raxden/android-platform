@@ -70,6 +70,7 @@ subprojects {
     configurations.all {
         exclude(group = "com.raxdenstudios", module = "platform-core")
         exclude(group = "com.raxdenstudios", module = "platform-device")
+        exclude(group = "com.raxdenstudios", module = "platform-network")
         exclude(group = "com.raxdenstudios", module = "platform-ui")
     }
 }
