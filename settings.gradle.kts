@@ -74,7 +74,4 @@ include(":platform:device")
 include(":platform:network")
 include(":platform:ui")
 
-include(":component:rating")
-include(":component:permission")
-
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
