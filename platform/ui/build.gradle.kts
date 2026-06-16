@@ -29,7 +29,6 @@ publishLibrary {
 }
 
 dependencies {
-    implementation(libs.androidx.navigation.common.ktx)
     implementation(projects.platform.core)
 
     implementation(platform(libs.commons.bom))
