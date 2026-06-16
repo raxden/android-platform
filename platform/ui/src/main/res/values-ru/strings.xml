@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- time formatting -->
+    <string name="hours_minutes">%1$s часов %2$s минут</string>
+    <string name="hours">%1$s часов</string>
+    <string name="hour_minutes">%1$s час %2$s минут</string>
+    <string name="hour">%1$s час</string>
+    <string name="minutes">%1$s минут</string>
+
+    <!-- errors -->
+    <string name="error_information">Информация</string>
+    <string name="error_lost_connection">Нет подключения к интернету</string>
+    <string name="error_unexpected_error_message">Произошла непредвиденная ошибка, пожалуйста, попробуйте позже.</string>
+    <string name="cancel">Отмена</string>
+</resources>

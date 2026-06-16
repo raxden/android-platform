@@ -90,7 +90,7 @@ jobs:
         id: computed
         uses: ./.github/actions/compute_changed_modules
         with:
-          namespace: component
+          namespace: platform
           modules: ${{ github.event.inputs.modules || '' }}
 
       - name: Add BOM module if needed

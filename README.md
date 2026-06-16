@@ -1,37 +1,29 @@
-# Android Components
+# Android Platform
 
-[![CI](https://github.com/raxden/android-components/actions/workflows/ci.yml/badge.svg)](https://github.com/raxden/android-components/actions/workflows/ci.yml)
-[![Publish](https://github.com/raxden/android-components/actions/workflows/ci_publish.yml/badge.svg)](https://github.com/raxden/android-components/actions/workflows/ci_publish.yml)
-[![codecov](https://codecov.io/gh/raxden/android-components/branch/master/graph/badge.svg)](https://codecov.io/gh/raxden/android-components)
-[![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/components-bom.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.raxdenstudios/components-bom)
+[![CI](https://github.com/raxden/android-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/raxden/android-platform/actions/workflows/ci.yml)
+[![Publish](https://github.com/raxden/android-platform/actions/workflows/ci_publish.yml/badge.svg)](https://github.com/raxden/android-platform/actions/workflows/ci_publish.yml)
+[![codecov](https://codecov.io/gh/raxden/android-platform/branch/master/graph/badge.svg)](https://codecov.io/gh/raxden/android-platform)
+[![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-bom.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-bom)
 [![API](https://img.shields.io/badge/API-24%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=24)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A collection of opinionated Android component libraries providing reusable UI components for modern Android app development.
+A collection of opinionated Android platform libraries providing foundational building blocks for modern Android app development.
 
 ## 📋 Overview
 
-Android Components is a multi-module library that provides a curated set of reusable UI components built on top of Jetpack Compose, Kotlin Coroutines, and Koin. It is designed to be consumed as a BOM so all modules stay version-compatible.
+Android Platform is a multi-module library that provides a curated set of platform-level abstractions and UI components built on top of Jetpack Compose, Kotlin Coroutines, Koin, and Firebase. It is designed to be consumed as a BOM so all modules stay version-compatible.
 
 ## 📚 Modules
 
-### Component modules
-
-| Artifact ID | Description | Dependencies | Latest Version |
-|---|---|---|---|
-| `components-bom` | Bill of Materials — manages all module versions | - | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/components-bom.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/components-bom) |
-| `component-permission` | Permission request component with dialog integration | platform-core, platform-ui, platform-device | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/component-permission.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/component-permission) |
-| `component-rating` | Rating dialog component with state persistence | platform-core, platform-ui | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/component-rating.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/component-rating) |
-
-### Platform dependencies
-
-These components require the following platform modules to be included separately:
+### Platform modules
 
 | Artifact ID | Description | Latest Version |
 |---|---|---|
+| `platform-bom` | Bill of Materials — manages all module versions | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-bom.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-bom) |
 | `platform-core` | Core utilities, DI setup, Room, and Compose base | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-core.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-core) |
 | `platform-ui` | Jetpack Compose UI components and navigation utilities | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-ui.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-ui) |
 | `platform-device` | Device-level abstractions (location, Firebase, permissions) | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-device.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-device) |
+| `platform-network` | Network layer with OkHttp/Retrofit, Chucker debug support | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-network.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-network) |
 
 ## 🚀 Getting Started
 
@@ -48,16 +40,12 @@ These components require the following platform modules to be included separatel
 
 ```kotlin
 dependencies {
-    // Platform dependencies (required)
     implementation(platform("com.raxdenstudios:platform-bom:<latest-version>"))
+
     implementation("com.raxdenstudios:platform-core")
     implementation("com.raxdenstudios:platform-ui")
     implementation("com.raxdenstudios:platform-device")
-
-    // Components
-    implementation(platform("com.raxdenstudios:components-bom:<latest-version>"))
-    implementation("com.raxdenstudios:component-permission")
-    implementation("com.raxdenstudios:component-rating")
+    implementation("com.raxdenstudios:platform-network")
 }
 ```
 
@@ -65,14 +53,10 @@ dependencies {
 
 ```kotlin
 dependencies {
-    // Platform dependencies (required)
     implementation("com.raxdenstudios:platform-core:<version>")
     implementation("com.raxdenstudios:platform-ui:<version>")
     implementation("com.raxdenstudios:platform-device:<version>")
-
-    // Components
-    implementation("com.raxdenstudios:component-permission:<version>")
-    implementation("com.raxdenstudios:component-rating:<version>")
+    implementation("com.raxdenstudios:platform-network:<version>")
 }
 ```
 
