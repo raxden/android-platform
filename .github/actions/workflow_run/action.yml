@@ -1,0 +1,50 @@
+name: Workflow run operation
+description: Perform an operation on the current workflow run (cancel, rerun-failed, rerun-all)
+
+inputs:
+  github_token:
+    description: "GitHub token with actions: write permission (e.g. secrets.GITHUB_TOKEN)"
+    required: true
+  operation:
+    description: "Operation to perform on the current workflow run: cancel (stop it), rerun-failed (retry only failed jobs) or rerun-all (retry all jobs)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate operation
+      shell: bash
+      run: |
+        set -euo pipefail
+        op="${{ inputs.operation }}"
+        case "$op" in
+          cancel|rerun-failed|rerun-all) ;;
+          *)
+            echo "Unsupported operation: $op"
+            echo "Supported operations: cancel | rerun-failed | rerun-all"
+            exit 1
+            ;;
+        esac
+
+    - name: Execute operation
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          const op = `${{ inputs.operation }}`;
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const run_id = context.runId;
+
+          if (op === "cancel") {
+            await github.rest.actions.cancelWorkflowRun({ owner, repo, run_id });
+            core.info(`Cancelled workflow run ${run_id}`);
+          } else if (op === "rerun-failed") {
+            await github.rest.actions.reRunWorkflowFailedJobs({ owner, repo, run_id });
+            core.info(`Re-run FAILED jobs for workflow run ${run_id}`);
+          } else if (op === "rerun-all") {
+            await github.rest.actions.reRunWorkflow({ owner, repo, run_id });
+            core.info(`Re-run ALL jobs for workflow run ${run_id}`);
+          } else {
+            core.setFailed(`Unsupported operation: ${op}`);
+          }

@@ -1,0 +1,76 @@
+name: Common machine setup
+description: 'Sets up the build environment: installs the requested JDK distribution and configures Gradle with optional dependency caching'
+
+inputs:
+  java-version:
+    description: Java version
+    required: false
+    default: "17"
+
+  distribution:
+    description: JDK distribution
+    required: false
+    default: "temurin"
+
+  gradle-cache:
+    description: 'Enable Gradle dependency caching to speed up subsequent runs (true/false)'
+    required: false
+    default: "true"
+
+  gradle-cache-cleanup:
+    description: 'Remove stale Gradle cache entries at the end of the run to keep cache size under control (true/false)'
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+
+    - name: Setup JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
+      with:
+        cache-disabled: ${{ inputs.gradle-cache != 'true' }}
+        gradle-home-cache-cleanup: ${{ inputs.gradle-cache-cleanup == 'true' }}
+
+    - name: Environment summary
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        {
+          echo "## ⚙️ Build Environment"
+          echo ""
+
+          echo "- JDK distribution: ${{ inputs.distribution }}"
+          echo "- Java version: ${{ inputs.java-version }}"
+          echo "- Gradle cache enabled: ${{ inputs.gradle-cache }}"
+          echo "- Gradle cache cleanup: ${{ inputs.gradle-cache-cleanup }}"
+          echo ""
+
+          echo "### Java"
+          echo '```'
+          java -version 2>&1
+          echo '```'
+
+          echo ""
+
+          echo "### Gradle"
+          echo '```'
+          ./gradlew --version || gradle --version || true
+          echo '```'
+
+          echo ""
+
+          echo "### Gradle user home"
+          echo '```'
+          echo "$HOME/.gradle"
+          du -sh "$HOME/.gradle" || true
+          echo '```'
+
+        } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="component_permission_notifications_title">Enable notifications</string>
+    <string name="component_permission_notifications_description">Allow this app to send you notifications about important updates and information.</string>
+    <string name="component_permission_notifications_accept">Allow</string>
+    <string name="component_permission_notifications_denied">Not now</string>
+</resources>

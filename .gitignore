@@ -14,6 +14,8 @@ bin/
 gen/
 out/
 
+**/.DS_Store
+
 # Gradle files
 .gradle/
 build/
@@ -36,6 +38,7 @@ captures/
 # Intellij
 *.iml
 .idea*
+.kotlin*
 
 # Keystore files
 *.jks

@@ -1,0 +1,313 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Continuous Integration (Publish)
+
+# Workflow events: Controls when the action will run.
+# More info: https://docs.github.com/en/actions/reference/events-that-trigger-workflows
+on:
+  push:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+
+      modules:
+        description: 'JSON array of modules (e.g. [":libraries:core",":libraries:network"]), "all" for all modules, or leave empty for auto-detect.'
+        required: false
+        default: ''
+
+      bom-module:
+        description: 'BOM module name (used for version bumping, e.g. ":bom")'
+        required: false
+        default: ':bom'
+
+      build-type:
+        description: 'Build type (Debug or Release)'
+        required: false
+        default: 'Release'
+
+      publication-type:
+        description: 'Central Portal publication type (USER_MANAGED or AUTOMATIC)'
+        required: false
+        default: 'USER_MANAGED'
+
+concurrency:
+  group: build-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Increment this to invalidate the cache.
+  CACHE_VERSION: 1
+  # Increase Gradle heap size to prevent OOM errors in large builds
+  GRADLE_OPTS: >
+    -Dorg.gradle.jvmargs=-Xmx4g
+    -Dkotlin.daemon.jvm.options=-Xmx2g
+  # Enable debug for the `gradle-build-action` cache operations
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
+  # Retention days used for output files
+  RETENTION_DAYS: 1
+  # Build type
+  BUILD_TYPE: ${{ github.event.inputs.build-type || 'Release' }}
+  # Publishing type for Central Portal (USER_MANAGED or AUTOMATIC)
+  PUBLICATION_TYPE: ${{ github.event.inputs.publication-type || 'AUTOMATIC' }}
+  # BOM module name (used for version bumping)
+  BOM_MODULE: ${{ github.event.inputs.bom-module || ':bom' }}
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+
+  info:
+    name: Workflow Information
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Print workflow information
+        uses: ./.github/actions/info
+
+  computeChangedModules:
+    name: Compute changed modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      modules: ${{ steps.resolve.outputs.modules }}
+      modulesWithBom: ${{ steps.resolve.outputs.modulesWithBom }}
+      hasModules: ${{ steps.resolve.outputs.hasModules }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Compute changed modules
+        id: computed
+        uses: ./.github/actions/compute_changed_modules
+        with:
+          modules: ${{ github.event.inputs.modules || '' }}
+
+      - name: Add BOM module if needed
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          modules='${{ steps.computed.outputs.value }}'
+      
+          if [[ "$(echo "$modules" | jq 'length')" -gt 0 ]]; then
+            modulesWithBom="$(echo "$modules" | jq -c --arg bom "${{ env.BOM_MODULE }}" '. + [$bom] | unique')"
+            hasModules=true
+          else
+            modulesWithBom='[]'
+            hasModules=false
+          fi
+      
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
+          echo "modulesWithBom=$modulesWithBom" >> "$GITHUB_OUTPUT"
+          echo "hasModules=$hasModules" >> "$GITHUB_OUTPUT"
+      
+          echo "Modules: $modules"
+          echo "Modules with BOM: $modulesWithBom"
+
+  checkstyle:
+    name: Check code style
+    needs: [ computeChangedModules ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Check code via Detekt
+        uses: ./.github/actions/checkstyle
+        with:
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  build:
+    name: Build
+    needs: [ checkstyle ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Assemble ${{ env.BUILD_TYPE }}
+        uses: ./.github/actions/assemble
+        with:
+          build-type: ${{ env.BUILD_TYPE }}
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Cancel workflow run if failed
+        if: failure()
+        uses: ./.github/actions/workflow_run
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          operation: cancel
+
+  test:
+    name: Run Unit Tests
+    needs: [ checkstyle ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: ./.github/actions/setup
+
+      - name: Execute unit tests
+        uses: ./.github/actions/unit_tests
+        with:
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+      - name: Cancel workflow run if failed
+        if: failure()
+        uses: ./.github/actions/workflow_run
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          operation: cancel
+
+  bump:
+    name: Bump libraries version
+    needs: [ build, test, computeChangedModules ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Get PR info
+        id: pr_info
+        uses: ./.github/actions/pr_info
+
+      - name: Bump version
+        uses: ./.github/actions/bump_module_version
+        with:
+          version: ${{ steps.pr_info.outputs.bump }}
+          modules: ${{ needs.computeChangedModules.outputs.modules }}
+          git-branch: ${{ github.ref_name }}
+          git-user-name: ${{ vars.CI_GIT_USER_NAME }}
+          git-user-email: ${{ vars.CI_GIT_USER_EMAIL }}
+
+  publish-libraries:
+    name: Publish libraries to Central
+    needs: [ bump, computeChangedModules ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Pull latest changes (with bumped versions)
+        shell: bash
+        run: |
+          git pull --rebase origin ${{ github.ref_name }}
+
+      - name: Publish libraries only
+        uses: ./.github/actions/publish
+        with:
+          modules: ${{ needs.computeChangedModules.outputs.modules }}
+          publishing-type: ${{ env.PUBLICATION_TYPE }}
+          username: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          password: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          signing-key: ${{ secrets.SIGNING_KEY }}
+          signing-key-id: ${{ secrets.SIGNING_KEY_ID }}
+          signing-password: ${{ secrets.SIGNING_PASSWORD }}
+
+  bump-bom:
+    name: Bump BOM version
+    needs: [ publish-libraries ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Pull latest changes
+        shell: bash
+        run: |
+          git pull --rebase origin ${{ github.ref_name }}
+
+      - name: Get PR info
+        id: pr_info
+        uses: ./.github/actions/pr_info
+
+      - name: Bump BOM version
+        uses: ./.github/actions/bump_module_version
+        with:
+          version: ${{ steps.pr_info.outputs.bump }}
+          modules: '["${{ env.BOM_MODULE }}"]'
+          git-create-tag: true
+          git-branch: ${{ github.ref_name }}
+          git-user-name: ${{ vars.CI_GIT_USER_NAME }}
+          git-user-email: ${{ vars.CI_GIT_USER_EMAIL }}
+
+  publish-bom:
+    name: Publish BOM to Central
+    needs: [ bump-bom, computeChangedModules ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Pull latest changes (with bumped BOM version)
+        shell: bash
+        run: |
+          git pull --rebase origin ${{ github.ref_name }}
+
+      - name: Publish BOM
+        uses: ./.github/actions/publish
+        with:
+          modules: '["${{ env.BOM_MODULE }}"]'
+          publishing-type: ${{ env.PUBLICATION_TYPE }}
+          username: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          password: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          signing-key: ${{ secrets.SIGNING_KEY }}
+          signing-key-id: ${{ secrets.SIGNING_KEY_ID }}
+          signing-password: ${{ secrets.SIGNING_PASSWORD }}

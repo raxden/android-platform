@@ -1,0 +1,53 @@
+name: 'Generate reports'
+description: 'Downloads unit-test outputs, generates JaCoCo coverage reports via Gradle, uploads them as an artifact and sends the results to Codecov'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+
+  build-type:
+    description: 'Build type (Debug/Release/...)'
+    required: false
+    default: 'Debug'
+
+  token:
+    description: 'Codecov upload token for the target repository'
+    required: true
+
+  retention-days:
+    description: 'Number of days before the uploaded JaCoCo artifact is removed'
+    required: false
+    default: '1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download unit test outputs
+      uses: actions/download-artifact@v8
+      with:
+        name: unit-tests-${{ inputs.build-type }}-${{ inputs.id }}
+
+    - name: Generate JaCoCo reports
+      shell: bash
+      run: |
+        set -euo pipefail
+        ./gradlew coverageReport -PbuildType=${{ inputs.build-type }} --stacktrace
+
+    - name: Upload JaCoCo reports
+      uses: actions/upload-artifact@v6
+      with:
+        name: reports-jacoco-${{ inputs.id }}
+        path: |
+          **/build/reports/jacoco/**/*
+          **/build/reports/jacoco/**/*.xml
+          **/build/reports/jacoco.xml
+        if-no-files-found: warn
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ inputs.token }}
+        fail_ci_if_error: true

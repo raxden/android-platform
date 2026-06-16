@@ -1,0 +1,103 @@
+name: Get PR info
+description: 'Resolves pull-request metadata (title, number) from the event payload, the GitHub API, or the commit message as a fallback. Infers a suggested semver bump (patch/minor/major) from the PR title.'
+
+outputs:
+  title:
+    description: "Pull request title (or commit message fallback)"
+    value: ${{ steps.resolve.outputs.title }}
+  number:
+    description: "Pull request number if found"
+    value: ${{ steps.resolve.outputs.number }}
+  source:
+    description: "Resolution strategy used: pr_event (event payload) | api (GitHub REST API) | commit (commit message fallback)"
+    value: ${{ steps.resolve.outputs.source }}
+  bump:
+    description: "Suggested semver bump inferred from the PR title: major | minor | patch"
+    value: ${{ steps.resolve.outputs.bump }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve PR info
+      id: resolve
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        title=""
+        number=""
+        source=""
+
+        echo "Event: $GITHUB_EVENT_NAME"
+
+        # ------------------------------------------------------------
+        # 1️⃣ pull_request event
+        # ------------------------------------------------------------
+        if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "pull_request_target" ]]; then
+          title='${{ github.event.pull_request.title }}'
+          number='${{ github.event.pull_request.number }}'
+          source="pr_event"
+        fi
+
+        # ------------------------------------------------------------
+        # 2️⃣ push → intentar localizar PR vía API
+        # ------------------------------------------------------------
+        if [[ -z "$title" ]]; then
+          echo "Trying to resolve PR via API…"
+
+          sha="${GITHUB_SHA}"
+          repo="${GITHUB_REPOSITORY}"
+
+          response="$(curl -sS \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Accept: application/vnd.github.groot-preview+json" \
+            "https://api.github.com/repos/${repo}/commits/${sha}/pulls" || true)"
+
+          if command -v jq >/dev/null 2>&1; then
+            # Check if response is an array and has elements
+            if echo "$response" | jq -e 'type == "array" and length > 0' >/dev/null 2>&1; then
+              title="$(echo "$response" | jq -r '.[0].title // empty')"
+              number="$(echo "$response" | jq -r '.[0].number // empty')"
+            fi
+          fi
+
+          if [[ -n "$title" ]]; then
+            source="api"
+          fi
+        fi
+
+        # ------------------------------------------------------------
+        # 3️⃣ fallback → commit message
+        # ------------------------------------------------------------
+        if [[ -z "$title" ]]; then
+          echo "Falling back to commit message"
+          title='${{ github.event.head_commit.message }}'
+          source="commit"
+        fi
+
+        # ------------------------------------------------------------
+        # 4️⃣ Detectar tipo de bump
+        # ------------------------------------------------------------
+        t="$(echo "$title" | tr '[:upper:]' '[:lower:]')"
+
+        bump="patch"
+        if echo "$t" | grep -Eq '(^|[^a-z])major([^a-z]|$)'; then
+          bump="major"
+        elif echo "$t" | grep -Eq '(^|[^a-z])minor([^a-z]|$)'; then
+          bump="minor"
+        elif echo "$t" | grep -Eq '(^|[^a-z])patch([^a-z]|$)'; then
+          bump="patch"
+        fi
+
+        echo "Resolved source: $source"
+        echo "Resolved title: $title"
+        echo "Resolved number: $number"
+        echo "Resolved bump: $bump"
+
+        echo "title=$title" >> "$GITHUB_OUTPUT"
+        echo "number=$number" >> "$GITHUB_OUTPUT"
+        echo "source=$source" >> "$GITHUB_OUTPUT"
+        echo "bump=$bump" >> "$GITHUB_OUTPUT"

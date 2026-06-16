@@ -1,1 +1,0 @@
-include ':square', ':square-commons', ':square-cast', ':square-reactive', ':square-zxing', ':sample'

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- time formatting -->
+    <string name="hours_minutes">%1$s heures %2$s minutes</string>
+    <string name="hours">%1$s heures</string>
+    <string name="hour_minutes">%1$s heure %2$s minutes</string>
+    <string name="hour">%1$s heure</string>
+    <string name="minutes">%1$s minutes</string>
+
+    <!-- errors -->
+    <string name="error_information">Information</string>
+    <string name="error_lost_connection">Pas de connexion Internet</string>
+    <string name="error_unexpected_error_message">Une erreur inattendue s\'est produite, veuillez réessayer plus tard.</string>
+    <string name="cancel">Annuler</string>
+</resources>

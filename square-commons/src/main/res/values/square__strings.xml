@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-
-    <string name="square__drawer_open">Open navigation drawer</string>
-    <string name="square__drawer_close">Close navigation drawer</string>
-    <string name="square__count_back_exit_message">Press again the back button to exit</string>
-
-</resources>

@@ -1,0 +1,60 @@
+name: 'Deploy to Firebase App Distribution'
+description: 'Deploys an Android build to Firebase App Distribution'
+
+inputs:
+  id:
+    description: 'Value used to identify the workflow run'
+    required: false
+    default: ${{ github.run_number }}
+
+  build-type:
+    description: 'Build variant to deploy (e.g. Debug, Release, Staging)'
+    required: false
+    default: "Debug"
+
+  gradle-args:
+    description: 'Extra Gradle arguments appended to the appDistributionUpload task'
+    required: false
+    default: '--configuration-cache --stacktrace'
+
+  artifact-type:
+    description: 'Artifact type of the build to download before deploying (APK or AAB)'
+    required: false
+    default: "APK"
+
+  service-credentials:
+    description: 'Base64-encoded Firebase service account JSON used to authenticate with App Distribution'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Recover artifacts needed to deploy
+      uses: actions/download-artifact@v4
+      with:
+        name: build-${{ inputs.artifact-type }}-${{ inputs.build-type }}-${{ inputs.id }}
+
+    - name: Decode service credentials
+      id: decode_firebase_credentials
+      uses: timheuer/base64-to-file@v1.2
+      with:
+        fileName: "service_firebase_credentials.json"
+        fileDir: "./config"
+        encodedString: ${{ inputs.service-credentials }}
+
+    - name: Deploy in Firebase App Distribution
+      shell: bash
+      run: |
+        set -euo pipefail
+        
+        task=":app:appDistributionUpload${{ inputs.build-type }}"
+        echo "Running: ./gradlew $task ${{ inputs.gradle-args }}"
+        ./gradlew "$task" ${{ inputs.gradle-args }}
+        
+        {
+          echo "## 🚀 Firebase Deployment"
+          echo ""
+          echo "- Build type: \`${{ inputs.build-type }}\`"
+          echo "- Artifact type: \`${{ inputs.artifact-type }}\`"
+          echo "- Status: **Success**"
+        } >> "$GITHUB_STEP_SUMMARY"

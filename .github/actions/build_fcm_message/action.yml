@@ -1,0 +1,78 @@
+name: Build FCM Message
+description: Builds a FCM message payload for inactivity reminder
+
+inputs:
+  fcm_token:
+    description: Optional FCM device token. If provided, sends only to that device; otherwise broadcasts to topic
+    required: false
+    default: ""
+  fcm_topic:
+    description: FCM topic to broadcast to when no token is provided
+    required: false
+    default: "radio_daily"
+
+outputs:
+  message:
+    description: JSON FCM message payload
+    value: ${{ steps.build.outputs.message }}
+  target:
+    description: Target identifier (token or topic:<name>)
+    value: ${{ steps.build.outputs.target }}
+  notification_payload:
+    description: Notification data payload JSON
+    value: ${{ steps.build.outputs.notification_payload }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build message
+      id: build
+      shell: bash
+      env:
+        FCM_TOKEN: ${{ inputs.fcm_token }}
+        FCM_TOPIC: ${{ inputs.fcm_topic }}
+      run: |
+        set -euo pipefail
+
+        NOTIFICATION_PAYLOAD='{"type":"inactivity_reminder"}'
+
+        if [[ -n "${FCM_TOKEN:-}" ]]; then
+          echo "Building targeted FCM message"
+          MESSAGE="$(jq -c -n \
+            --arg token "$FCM_TOKEN" \
+            --arg payload "$NOTIFICATION_PAYLOAD" \
+            '{
+              message: {
+                token: $token,
+                data: { payload: $payload },
+                android: { priority: "HIGH" }
+              }
+            }')"
+          TARGET="token"
+        else
+          if [[ -z "${FCM_TOPIC:-}" ]]; then
+            echo "::error::Neither fcm_token nor fcm_topic provided"
+            exit 1
+          fi
+          echo "Building topic FCM message"
+          MESSAGE="$(jq -c -n \
+            --arg topic "$FCM_TOPIC" \
+            --arg payload "$NOTIFICATION_PAYLOAD" \
+            '{
+              message: {
+                topic: $topic,
+                data: { payload: $payload },
+                android: { priority: "HIGH" }
+              }
+            }')"
+          TARGET="topic:${FCM_TOPIC}"
+        fi
+
+        {
+          echo "message=$MESSAGE"
+          echo "target=$TARGET"
+          echo "notification_payload=$NOTIFICATION_PAYLOAD"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "FCM target: $TARGET"
+        echo "Notification payload: $NOTIFICATION_PAYLOAD"

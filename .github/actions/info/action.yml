@@ -1,0 +1,77 @@
+name: 'Workflow Information'
+description: 'Writes a workflow summary table with event, repository, ref, actor and runner details. Adds extra sections for pull-request, push and workflow_dispatch events.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Summary
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        REPO_URL="https://github.com/${{ github.repository }}"
+        ACTOR_URL="https://github.com/${{ github.actor }}"
+
+        {
+          echo "## 🧭 Workflow"
+          echo ""
+          echo "| Item | Value |"
+          echo "|---|---|"
+          echo "| Event | \`${{ github.event_name }}\` |"
+          echo "| Action | \`${{ github.event.action || '—' }}\` |"
+          echo "| Repository | [\`${{ github.repository }}\`](${REPO_URL}) |"
+          echo "| Ref | \`${{ github.ref_name }}\` |"
+          echo "| Base ref | \`${{ github.base_ref || '—' }}\` |"
+          echo "| Head ref | \`${{ github.head_ref || '—' }}\` |"
+          echo "| SHA | \`${{ github.sha }}\` |"
+          echo "| Run | [#${{ github.run_number }}](${RUN_URL}) (attempt \`${{ github.run_attempt }}\`) |"
+          echo "| Actor | [\`${{ github.actor }}\`](${ACTOR_URL}) |"
+          echo "| Runner | \`${{ runner.os }} / ${{ runner.arch }}\` |"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: PR details
+      if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+      shell: bash
+      run: |
+        set -euo pipefail
+        PR_URL="${{ github.event.pull_request.html_url }}"
+        {
+          echo "### 🔀 Pull Request"
+          echo ""
+          echo "- PR: [#${{ github.event.pull_request.number }}](${PR_URL})"
+          echo "- Title: ${{ github.event.pull_request.title }}"
+          echo "- Base: \`${{ github.event.pull_request.base.ref }}\` → Head: \`${{ github.event.pull_request.head.ref }}\`"
+          echo "- Draft: \`${{ github.event.pull_request.draft }}\`  Merged: \`${{ github.event.pull_request.merged }}\`"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Push details
+      if: github.event_name == 'push'
+      shell: bash
+      run: |
+        set -euo pipefail
+        COMMIT="${{ github.event.head_commit.id }}"
+        COMMIT_URL="https://github.com/${{ github.repository }}/commit/${COMMIT}"
+        {
+          echo "### 📦 Push"
+          echo ""
+          echo "- Head: [\`${COMMIT}\`](${COMMIT_URL})"
+          echo "- Message: ${{ github.event.head_commit.message }}"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Dispatch inputs
+      if: github.event_name == 'workflow_dispatch'
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "### 🧪 workflow_dispatch inputs"
+          echo ""
+          echo '```json'
+          echo '${{ toJson(github.event.inputs) }}'
+          echo '```'
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
