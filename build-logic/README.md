@@ -1,6 +1,9 @@
-# android-convention
+# Android Convention
 
-A collection of Gradle convention plugins for Android projects, designed to keep a single source of truth for common module configurations.
+[![API](https://img.shields.io/badge/API-24%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=24)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+A collection of Gradle **convention plugins** for Android projects, designed to keep a single source of truth for common module configurations.
 
 This approach is based on:
 - [Herding Elephants – Square Engineering](https://developer.squareup.com/blog/herding-elephants/)
@@ -8,12 +11,46 @@ This approach is based on:
 
 Convention plugins avoid duplicated build script setup and messy `subprojects` blocks, without the pitfalls of `buildSrc`. They are **additive** and **composable** — each plugin has a single responsibility, and modules pick only what they need. One-off logic that isn't shared should stay directly in the module's `build.gradle.kts`.
 
+## Table of contents
+
+- [Why convention plugins?](#why-convention-plugins)
+- [Requirements](#requirements)
+- [Structure](#structure)
+- [Setup](#setup)
+- [Plugins](#plugins)
+- [Usage by module type](#usage-by-module-type)
+- [What each plugin configures](#what-each-plugin-configures)
+- [Dependency bundle helpers](#dependency-bundle-helpers)
+- [Tasks](#tasks)
+- [Signing](#signing)
+- [Updating the submodule](#updating-the-submodule)
+
+## Why convention plugins?
+
+| Approach | Drawback |
+|----------|----------|
+| Copy/paste build config | Drifts out of sync across modules |
+| `subprojects {}` / `allprojects {}` | Forces config on modules that don't need it, hurts caching |
+| `buildSrc` | Invalidates the whole build cache on any change |
+| **Convention plugins** ✅ | Opt-in, composable, cache-friendly, single responsibility |
+
+## Requirements
+
+| Tool | Version |
+|------|---------|
+| **JDK** | 17 |
+| **Min SDK** | 24 |
+| **Gradle** | 8.x+ (uses `includeBuild` / composite builds) |
+| **AGP / Kotlin** | Provided by the host project's version catalog |
+
+> All SDK, JDK and toolchain versions are read from the host project's `gradle/libraries.versions.toml`. See [`model/Versions.kt`](convention/src/main/kotlin/model/Versions.kt) for the keys consumed by the plugins.
+
 ## Structure
 
 ```
 android-convention/
 ├── convention/                  # Convention plugins module
-│   ├── build.gradle.kts
+│   ├── build.gradle.kts         # Plugin classpath (AGP, Kotlin, KSP, coverage…)
 │   └── src/main/kotlin/
 │       ├── android-application-conventions.gradle.kts
 │       ├── android-library-conventions.gradle.kts
@@ -22,9 +59,19 @@ android-convention/
 │       ├── android-compose-library-conventions.gradle.kts
 │       ├── android-compose-feature-conventions.gradle.kts
 │       ├── android-project-conventions.gradle.kts
-│       └── extension/           # Shared Kotlin helpers for plugins
+│       ├── extension/           # Shared Kotlin helpers
+│       │   ├── CommonExtension.kt           # android {} accessor helpers
+│       │   ├── DependencyExtension.kt       # *Bundle dependency helpers
+│       │   ├── ProjectExtension.kt          # getProperty / signing props
+│       │   ├── URLExtension.kt              # repo download helper
+│       │   └── VersionCatalogExtensions.kt  # libs / versions accessors
+│       ├── model/
+│       │   └── Versions.kt      # Type-safe version-catalog keys
+│       └── task/
+│           ├── DownloadGradleDependencies.kt # Refresh build-logic from remote
+│           └── DownloadGithubActions.kt      # Sync shared GitHub Actions
 ├── gradle/
-│   └── libraries.versions.toml  # Version catalog
+│   └── libraries.versions.toml  # Fallback version catalog
 └── settings.gradle.kts
 ```
 
@@ -184,11 +231,14 @@ plugins {
 
 - Applies: `com.android.application`, `com.google.devtools.ksp`, `kotlin-parcelize`
 - `compileSdk`, `minSdk`, `targetSdk` from version catalog
-- `debug` signing config using `config/debug.keystore`
-- `release` signing config loaded from `signing.release.properties`
-- `debug`: minify disabled, unit test and Android test coverage enabled
+- `buildFeatures.buildConfig = true`
+- `testInstrumentationRunner = androidx.test.runner.AndroidJUnitRunner`
+- `debug` signing config using `config/debug.keystore` (alias `androiddebugkey`)
+- `release` signing config loaded from `config/signing.release.properties`
+- `debug`: `applicationIdSuffix = ".debug"`, minify disabled, unit + Android test coverage enabled
 - `release`: minify + resource shrinking enabled, proguard configured
-- Java/Kotlin toolchain set from version catalog
+- Packaging excludes for common `META-INF` license/kotlin-module clashes
+- Java/Kotlin toolchain (`jvmToolchain`) set from version catalog
 
 ### `android-compose-application-conventions`
 
@@ -222,9 +272,59 @@ Thin wrapper — applies `android-compose-library-conventions`. Use it for featu
 ### `android-project-conventions`
 
 Root-project only. Configures:
-- Code coverage aggregation via [`rootcoverage`](https://github.com/NeoTech-Software/Android-Root-Coverage-Plugin) (HTML + XML reports, unit tests + Android tests)
+- Code coverage aggregation via [`rootcoverage`](https://github.com/NeoTech-Software/Android-Root-Coverage-Plugin) (HTML + XML reports, unit + Android test results), with sensible `excludes` for DI, generated, Compose and Android-framework classes
 - `project-report` plugin on all subprojects
-- `DownloadGradleDependencies` task
+- Registers the [`downloadGradleDependencies`](#tasks) and [`downloadGithubActions`](#tasks) tasks
+
+> The build variant used by coverage is controlled by the `buildType` Gradle property (defaults to `debug`).
+
+---
+
+## Dependency bundle helpers
+
+`extension/DependencyExtension.kt` provides helpers that expand a version-catalog **bundle** and route each dependency to the correct configuration automatically:
+
+- Entries whose name contains `bom` are added with `platform(...)`
+- Entries whose name contains `compiler` are added to the matching KSP configuration
+- Everything else is added to the standard configuration
+
+| Helper | Configuration | KSP target |
+|--------|---------------|-----------|
+| `implementationBundle(...)` | `implementation` | `ksp` |
+| `debugImplementationBundle(...)` | `debugImplementation` | — |
+| `androidTestImplementationBundle(...)` | `androidTestImplementation` | `kspAndroidTest` |
+
+```kotlin
+import extension.implementationBundle
+
+dependencies {
+    // A bundle that may mix a BOM, a compiler (KSP) and regular libraries —
+    // each entry is dispatched to the right configuration automatically.
+    implementationBundle(libs.bundles.room)
+}
+```
+
+---
+
+## Tasks
+
+Registered by `android-project-conventions` under the `dependencies` group:
+
+| Task | Description |
+|------|-------------|
+| `downloadGradleDependencies` | Downloads the latest `android-convention` archive into `build-logic/`, refreshing the convention plugins. |
+| `downloadGithubActions` | Downloads the shared [`android-github-actions`](https://github.com/raxden/android-github-actions) repo and syncs its contents into the host project's `.github/`. |
+
+```sh
+./gradlew downloadGradleDependencies
+./gradlew downloadGithubActions
+```
+
+> Coverage report (from the `rootcoverage` plugin):
+>
+> ```sh
+> ./gradlew rootCoverageReport
+> ```
 
 ---
 
@@ -244,4 +344,42 @@ storeFile=config/release.keystore
 storePassword=your_store_password
 keyAlias=your_key_alias
 keyPassword=your_key_password
+```
+
+> Keep `config/signing.release.properties` and `config/release.keystore` **out of version control**. The `debug` keystore uses the well-known Android defaults and is safe to commit.
+
+---
+
+## Updating the submodule
+
+Since `build-logic` is a Git submodule, pull the latest convention plugins with:
+
+```sh
+git submodule update --remote build-logic
+```
+
+Or, without managing the submodule manually, run the bundled task to re-download the latest version into `build-logic/`:
+
+```sh
+./gradlew downloadGradleDependencies
+```
+
+---
+
+## License
+
+```
+Copyright 2022 Ángel Gómez
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ```

@@ -130,8 +130,8 @@ android-publish-library = "0.57.30"
 android-publish-platform = "0.57.30"
 
 commons-bom = "1.3.4"
-platform-bom = "1.0.1"
-component-bom = "1.0.1"
+platform-bom = "1.0.2"
+component-bom = "1.0.2"
 junit-jupiter = "5.10.0"
 
 [libraries]

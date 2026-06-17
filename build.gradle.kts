@@ -1,9 +1,8 @@
 import com.adarshr.gradle.testlogger.theme.ThemeType
+import extension.getLibraryArtifactIds
 import extension.getProperty
+import extension.getPublicationName
 import java.time.Duration
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 plugins {
@@ -66,12 +65,28 @@ subprojects {
         theme = ThemeType.MOCHA
         slowThreshold = 3000
     }
+}
 
-    configurations.all {
-        exclude(group = "com.raxdenstudios", module = "platform-core")
-        exclude(group = "com.raxdenstudios", module = "platform-device")
-        exclude(group = "com.raxdenstudios", module = "platform-network")
-        exclude(group = "com.raxdenstudios", module = "platform-ui")
+// Prevent duplicate library artifacts on the classpath.
+//
+// This project produces all commons-* modules locally (projects.libraries.*). Transitive
+// dependencies may, however, pull the same libraries as *published* artifacts from Maven
+// Central (com.raxdenstudios:commons-*). Excluding those published coordinates guarantees
+// that only the local source modules are used, avoiding version conflicts and duplicate
+// classes. Project dependencies are unaffected because their module name is the Gradle
+// project name (e.g. "core"), not the published artifactId (e.g. "commons-core").
+//
+// The list is derived dynamically from each library module's publish configuration, so new
+// modules are picked up automatically. It must run inside projectsEvaluated so every module's
+// publication is already configured before reading its artifactId.
+gradle.projectsEvaluated {
+    val libraryArtifactIds = getLibraryArtifactIds()
+    subprojects.forEach { module ->
+        module.configurations.all {
+            libraryArtifactIds.forEach { artifactId ->
+                exclude(group = "com.raxdenstudios", module = artifactId)
+            }
+        }
     }
 }
 
@@ -85,17 +100,4 @@ tasks {
             println(org.jetbrains.kotlin.config.KotlinCompilerVersion.VERSION)
         }
     }
-}
-
-private fun getPublicationName(): String {
-    val gitShortSha = runCatching {
-        val p = ProcessBuilder("git", "rev-parse", "--short=7", "HEAD")
-            .redirectErrorStream(true)
-            .start()
-        val out = p.inputStream.bufferedReader().readText().trim()
-        if (p.waitFor() == 0 && out.isNotBlank()) out else null
-    }.getOrNull()
-    val utcStamp = ZonedDateTime.now(ZoneOffset.UTC)
-        .format(DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss"))
-    return listOfNotNull(utcStamp, gitShortSha).joinToString("+")
 }
