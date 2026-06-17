@@ -18,7 +18,7 @@ interface FCMLocalDataSource {
 
 internal class FCMLocalDataSourceImpl(
     private val context: Context,
-) : com.raxdenstudios.platform.device.data.datasource.FCMLocalDataSource {
+) : FCMLocalDataSource {
 
     private val sharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
