@@ -12,7 +12,6 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         google()
-        mavenLocal()
         mavenCentral()
         // Avoid mavenLocal in CI to keep builds reproducible
         if (!providers.environmentVariable("CI").isPresent) mavenLocal()
