@@ -312,3 +312,35 @@ jobs:
           signing-key: ${{ secrets.SIGNING_KEY }}
           signing-key-id: ${{ secrets.SIGNING_KEY_ID }}
           signing-password: ${{ secrets.SIGNING_PASSWORD }}
+
+  update-convention:
+    name: Update android-convention dependencies
+    needs: [ publish-bom ]
+    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/setup
+
+      - uses: ./.github/actions/git_sync
+
+      - name: Get BOM version
+        id: bom_version
+        uses: ./.github/actions/get_module_version
+        with:
+          module: ${{ env.BOM_MODULE }}
+
+      - name: Trigger android-convention update
+        uses: ./.github/actions/trigger_convention_update
+        with:
+          repository: ${{ vars.CI_CONVENTION_REPOSITORY }}
+          event-type: update-platform-bom
+          version: ${{ steps.bom_version.outputs.version }}
+          token: ${{ secrets.CI_CONVENTION_PAT }}

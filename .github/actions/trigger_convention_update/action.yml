@@ -1,0 +1,45 @@
+name: Trigger convention update
+
+description: Trigger repository_dispatch event on android-convention to update BOM dependency version
+
+inputs:
+  repository:
+    description: Repository name (e.g., "android-convention"). Owner is always "raxden"
+    required: true
+
+  event-type:
+    description: Event type for repository_dispatch (e.g., "update-commons-bom", "update-platform-bom")
+    required: true
+
+  version:
+    description: Version to update to
+    required: true
+
+  token:
+    description: PAT (Personal Access Token) with read/write permissions on the target repository
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Trigger repository dispatch
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        repo="raxden/${{ inputs.repository }}"
+        event_type="${{ inputs.event-type }}"
+        version="${{ inputs.version }}"
+
+        echo "Triggering $event_type on $repo with version $version"
+
+        gh api \
+          --method POST \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/${repo}/dispatches" \
+          -f "event_type=${event_type}" \
+          -f "client_payload={\"version\":\"${version}\"}"
+
+        echo ":rocket: Triggered $event_type on $repo with version $version" >> "$GITHUB_STEP_SUMMARY"

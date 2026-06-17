@@ -1,5 +1,5 @@
 name: Compute changed modules
-description: 'Detects which modules changed in the current push/PR by comparing against settings.gradle.kts. Returns a JSON array suitable for a GitHub Actions matrix. Accepts an override to target specific modules or all modules.'
+description: 'Detects which library modules changed in the current push/PR by comparing against settings.gradle.kts. Returns a JSON array suitable for a GitHub Actions matrix. Accepts an override to target specific modules or all modules.'
 
 inputs:
   modules:
@@ -7,14 +7,9 @@ inputs:
     required: false
     default: ""
 
-  namespace:
-    description: "Module namespace to search for in settings.gradle.kts (e.g. 'libraries', 'platform')"
-    required: false
-    default: "libraries"
-
 outputs:
   value:
-    description: "JSON array of Gradle module paths that changed (e.g. [\":platform:core\",\":bom\"])"
+    description: "JSON array of Gradle module paths that changed (e.g. [\":libraries:core\",\":bom\"])"
     value: ${{ steps.resolve.outputs.value }}
 
   hasModules:
@@ -34,13 +29,11 @@ runs:
       run: |
         set -euo pipefail
         
-        namespace='${{ inputs.namespace }}'
-        
         echo "Extracting modules from settings.gradle.kts..."
         
         # Extract module names as JSON array
-        # Example: include(":platform:core") -> ":platform:core"
-        modules=$(grep -E "^include\(\":${namespace}:" settings.gradle.kts \
+        # Example: include(":libraries:core") -> ":libraries:core"
+        modules=$(grep -E '^include\(":libraries:' settings.gradle.kts \
           | sed 's/include("\(.*\)")/\1/' \
           | jq -R . \
           | jq -s -c .)
@@ -49,8 +42,8 @@ runs:
         echo "Total modules: $(echo "$modules" | jq 'length')"
         
         # Extract module paths and convert to file patterns for change detection
-        # Example: :platform:core -> platform/core/**
-        module_patterns=$(grep -E "^include\(\":${namespace}:" settings.gradle.kts \
+        # Example: :libraries:core -> libraries/core/**
+        module_patterns=$(grep -E '^include\(":libraries:' settings.gradle.kts \
           | sed 's/include(":\(.*\)")/\1/' \
           | sed 's/:/\//g' \
           | sed 's|$|/**|' \
@@ -122,10 +115,8 @@ runs:
 
             files_list=$(printf "%s" "$files_raw" | tr ' \n' '\n' | sed '/^$/d')
 
-            namespace='${{ inputs.namespace }}'
-
             modules=$(printf "%s\n" "$files_list" \
-              | sed -n "s|^${namespace}/\([^/]*\)/.*|:${namespace}:\1|p" \
+              | sed -n 's|^libraries/\([^/]*\)/.*|:libraries:\1|p' \
               | sort -u \
               | jq -R . \
               | jq -s -c .)

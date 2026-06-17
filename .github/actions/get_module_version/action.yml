@@ -1,0 +1,34 @@
+name: Get module version
+
+description: Get the version of a module using Gradle getVersion task
+
+inputs:
+  module:
+    description: Gradle module path (e.g., ":bom" or ":libraries:core")
+    required: true
+
+outputs:
+  version:
+    description: The extracted version value
+    value: ${{ steps.extract.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get version via Gradle
+      id: extract
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        module="${{ inputs.module }}"
+
+        version=$(./gradlew -q "${module}:getVersion" | tail -n 1)
+
+        if [[ -z "$version" ]]; then
+          echo "Error: Could not get version for module $module"
+          exit 1
+        fi
+
+        echo "Module $module version: $version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
