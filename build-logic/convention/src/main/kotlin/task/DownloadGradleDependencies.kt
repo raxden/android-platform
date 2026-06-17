@@ -25,12 +25,32 @@ open class DownloadGradleDependencies : DefaultTask() {
 
         val source = URI.create(GIT_CONVENTIONS_SOURCE).toURL()
         val destination = File(project.rootDir.path + "/build-logic/")
-        val outputDir = project.downloadRepository(source, destination)
+        val outputDir = project.downloadRepository(
+            repository = source,
+            destination = destination,
+            excludes = listOf("**/.github/**")
+        )
+
+        syncVersionCatalog(outputDir)
 
         println("  ├$separator")
         println("  │  Saved to ${outputDir.absolutePath}")
         println("  └$separator")
         println()
+    }
+
+    private fun syncVersionCatalog(buildLogicDir: File) {
+        val source = File(buildLogicDir, "gradle/libraries.versions.toml")
+        if (!source.exists()) return
+        val destination = File(project.rootDir.path + "/gradle/libraries.versions.toml")
+        source.copyTo(destination, overwrite = true)
+        println("  │  Synced libraries.versions.toml → ${destination.absolutePath}")
+
+        File(buildLogicDir, "gradle").deleteRecursively()
+        println("  │  Removed ${buildLogicDir.absolutePath}/gradle")
+
+        File(buildLogicDir, "gradle.properties").delete()
+        println("  │  Removed ${buildLogicDir.absolutePath}/gradle.properties")
     }
 
     companion object {

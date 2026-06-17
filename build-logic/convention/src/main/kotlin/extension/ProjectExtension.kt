@@ -11,6 +11,7 @@ private const val PROGRESS_BAR_SEGMENTS = 20
 fun Project.downloadRepository(
     repository: URL,
     destination: File,
+    excludes: List<String> = emptyList(),
 ): File {
     val zipFile = File("${rootDir.path}/${repository.path.hashCode()}.zip")
     val outputDir = destination.also {
@@ -32,6 +33,7 @@ fun Project.downloadRepository(
         from(zipTree(zipFile))
         into(outputDir)
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        excludes.forEach { exclude(it) }
     }
 
     outputDir.listFiles()?.firstOrNull()?.run {
