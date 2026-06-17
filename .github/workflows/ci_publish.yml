@@ -38,6 +38,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 env:
   # Increment this to invalidate the cache.
@@ -90,7 +91,6 @@ jobs:
         id: computed
         uses: ./.github/actions/compute_changed_modules
         with:
-          namespace: platform
           modules: ${{ github.event.inputs.modules || '' }}
 
       - name: Add BOM module if needed
@@ -230,10 +230,7 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Pull latest changes (with bumped versions)
-        shell: bash
-        run: |
-          git pull --rebase origin ${{ github.ref_name }}
+      - uses: ./.github/actions/git_sync
 
       - name: Publish libraries only
         uses: ./.github/actions/publish
@@ -262,10 +259,7 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Pull latest changes
-        shell: bash
-        run: |
-          git pull --rebase origin ${{ github.ref_name }}
+      - uses: ./.github/actions/git_sync
 
       - name: Get PR info
         id: pr_info
@@ -297,10 +291,7 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Pull latest changes (with bumped BOM version)
-        shell: bash
-        run: |
-          git pull --rebase origin ${{ github.ref_name }}
+      - uses: ./.github/actions/git_sync
 
       - name: Publish BOM
         uses: ./.github/actions/publish
@@ -341,6 +332,6 @@ jobs:
         uses: ./.github/actions/trigger_convention_update
         with:
           repository: ${{ vars.CI_CONVENTION_REPOSITORY }}
-          event-type: update-platform-bom
+          event-type: update-commons-bom
           version: ${{ steps.bom_version.outputs.version }}
           token: ${{ secrets.CI_CONVENTION_PAT }}

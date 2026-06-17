@@ -38,7 +38,7 @@ env:
     -Dorg.gradle.jvmargs=-Xmx4g
     -Dkotlin.daemon.jvm.options=-Xmx2g
   # Enable debug for the `gradle-build-action` cache operations
-  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: false
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
   # Retention days used for output files
   RETENTION_DAYS: 1
   # BOM module name (used for version bumping)

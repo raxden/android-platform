@@ -21,7 +21,7 @@ env:
     -Dorg.gradle.jvmargs=-Xmx4g
     -Dkotlin.daemon.jvm.options=-Xmx2g
   # Enable debug for Gradle cache action
-  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: false
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
   # Artifact retention
   RETENTION_DAYS: 1
   # Build configuration
@@ -53,8 +53,6 @@ jobs:
       - name: Compute changed modules
         id: modules
         uses: ./.github/actions/compute_changed_modules
-        with:
-          namespace: platform
 
   checkstyle:
     name: Check code style
