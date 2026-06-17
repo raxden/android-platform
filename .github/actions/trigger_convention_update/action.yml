@@ -33,15 +33,11 @@ runs:
         event_type="${{ inputs.event-type }}"
         version="${{ inputs.version }}"
 
-        echo "Triggering $event_type on $repo with version $version"
-
-        client_payload=$(jq -n --arg v "$version" '{version: $v}')
-
         gh api \
           --method POST \
           -H "Accept: application/vnd.github+json" \
           "/repos/${repo}/dispatches" \
           -f "event_type=${event_type}" \
-          -f "client_payload=${client_payload}"
+          -F "client_payload[version]=${version}"
 
         echo ":rocket: Triggered $event_type on $repo with version $version" >> "$GITHUB_STEP_SUMMARY"
