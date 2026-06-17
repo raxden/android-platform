@@ -1,5 +1,5 @@
 name: Compute changed modules
-description: 'Detects which library modules changed in the current push/PR by comparing against settings.gradle.kts. Returns a JSON array suitable for a GitHub Actions matrix. Accepts an override to target specific modules or all modules.'
+description: Detects changed Gradle modules from settings.gradle.kts and returns a JSON array for a GitHub Actions matrix.
 
 inputs:
   modules:
@@ -9,62 +9,41 @@ inputs:
 
 outputs:
   value:
-    description: "JSON array of Gradle module paths that changed (e.g. [\":libraries:core\",\":bom\"])"
+    description: "JSON array of Gradle module paths that changed"
     value: ${{ steps.resolve.outputs.value }}
 
   hasModules:
-    description: "true when at least one module was detected, false otherwise"
+    description: "true when at least one module was detected"
     value: ${{ steps.resolve.outputs.hasModules }}
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-
-    # --------------------------------
-    # Extract modules and patterns from settings.gradle.kts
-    # --------------------------------
     - name: Extract modules from settings.gradle.kts
       id: extract_modules
       shell: bash
       run: |
         set -euo pipefail
-        
-        echo "Extracting modules from settings.gradle.kts..."
-        
-        # Extract module names as JSON array
-        # Example: include(":libraries:core") -> ":libraries:core"
-        modules=$(grep -E '^include\(":libraries:' settings.gradle.kts \
-          | sed 's/include("\(.*\)")/\1/' \
+
+        modules=$(grep -E '^[[:space:]]*include\(":' settings.gradle.kts \
+          | sed -E 's|^[[:space:]]*include\("([^"]+)"\).*|\1|' \
           | jq -R . \
           | jq -s -c .)
-        
-        echo "Modules JSON: $modules"
-        echo "Total modules: $(echo "$modules" | jq 'length')"
-        
-        # Extract module paths and convert to file patterns for change detection
-        # Example: :libraries:core -> libraries/core/**
-        module_patterns=$(grep -E '^include\(":libraries:' settings.gradle.kts \
-          | sed 's/include(":\(.*\)")/\1/' \
-          | sed 's/:/\//g' \
-          | sed 's|$|/**|' \
-          | paste -sd '\n' -)
-        
-        echo "Module patterns for change detection:"
-        echo "$module_patterns"
-        
-        # Save modules JSON to output
+
+        module_patterns=$(echo "$modules" \
+          | jq -r '.[]' \
+          | sed 's|^:||' \
+          | sed 's|:|/|g' \
+          | sed 's|$|/**|')
+
         echo "modules=$modules" >> "$GITHUB_OUTPUT"
-        
-        # Save patterns to output (multiline)
+
         {
           echo 'patterns<<EOF'
           echo "$module_patterns"
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
 
-    # --------------------------------
-    # Detect changed files (only if needed)
-    # --------------------------------
     - name: Detect changed files
       id: changed
       if: ${{ inputs.modules == '' }}
@@ -72,67 +51,48 @@ runs:
       with:
         files: ${{ steps.extract_modules.outputs.patterns }}
 
-    # --------------------------------
-    # Resolve modules
-    # --------------------------------
     - name: Resolve modules
       id: resolve
       shell: bash
       run: |
         set -euo pipefail
 
-        # -------------------------
-        # Manual override
-        # -------------------------
         if [[ -n '${{ inputs.modules }}' ]]; then
           input_modules='${{ inputs.modules }}'
 
-          # Check if input is "all"
           if [[ "$input_modules" == "all" ]]; then
-            echo "Using all modules from settings.gradle.kts..."
-            
-            # Reuse modules already extracted in the first step
             modules='${{ steps.extract_modules.outputs.modules }}'
-            
-            echo "All modules: $modules"
-            echo "Total: $(echo "$modules" | jq 'length') modules"
           else
             modules="$input_modules"
-            
-            # Validate JSON
             echo "$modules" | jq empty
           fi
-
         else
-          # -------------------------
-          # No changed files
-          # -------------------------
           if [[ "${{ steps.changed.outputs.any_changed }}" != "true" ]]; then
             modules="[]"
-
           else
             files_raw='${{ steps.changed.outputs.all_changed_files }}'
-
             files_list=$(printf "%s" "$files_raw" | tr ' \n' '\n' | sed '/^$/d')
+            all_modules='${{ steps.extract_modules.outputs.modules }}'
 
-            modules=$(printf "%s\n" "$files_list" \
-              | sed -n 's|^libraries/\([^/]*\)/.*|:libraries:\1|p' \
-              | sort -u \
-              | jq -R . \
-              | jq -s -c .)
+            modules=$(printf "%s\n" "$files_list" | while read -r file; do
+              echo "$all_modules" | jq -r '.[]' | while read -r module; do
+                path="${module#:}"
+                path="${path//:/\/}"
+
+                if [[ "$file" == "$path/"* ]]; then
+                  echo "$module"
+                fi
+              done
+            done | sort -u | jq -R . | jq -s -c .)
           fi
         fi
 
         hasModules=$(echo "$modules" | jq 'length > 0')
 
         echo "Modules JSON: $modules"
-
         echo "value=$modules" >> "$GITHUB_OUTPUT"
         echo "hasModules=$hasModules" >> "$GITHUB_OUTPUT"
 
-    # --------------------------------
-    # Summary
-    # --------------------------------
     - name: Write modules to job summary
       shell: bash
       run: |
@@ -156,7 +116,7 @@ runs:
               echo "🧩 **Modules affected:** $count"
             fi
           fi
-          
+
           echo ""
 
           if [[ "$count" -gt 0 ]]; then
@@ -168,5 +128,4 @@ runs:
 
           echo "---"
           echo "_Generated by compute_changed_modules_"
-          echo ""
         } >> "$GITHUB_STEP_SUMMARY"
