@@ -40,6 +40,6 @@ runs:
           -H "Accept: application/vnd.github+json" \
           "/repos/${repo}/dispatches" \
           -f "event_type=${event_type}" \
-          -F "client_payload[version]=${version}"
+          -f "client_payload={\"version\":\"${version}\"}"
 
         echo ":rocket: Triggered $event_type on $repo with version $version" >> "$GITHUB_STEP_SUMMARY"
