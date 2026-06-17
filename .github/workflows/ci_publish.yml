@@ -332,6 +332,6 @@ jobs:
         uses: ./.github/actions/trigger_convention_update
         with:
           repository: ${{ vars.CI_CONVENTION_REPOSITORY }}
-          event-type: update-commons-bom
+          event-type: update-platform-bom
           version: ${{ steps.bom_version.outputs.version }}
           token: ${{ secrets.CI_CONVENTION_PAT }}
