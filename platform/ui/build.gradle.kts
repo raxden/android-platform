@@ -1,5 +1,6 @@
 import com.raxdenstudios.publishing.model.Coordinates
 import com.raxdenstudios.publishing.model.Developer
+import extension.debugImplementationBundle
 import extension.implementationBundle
 
 plugins {
@@ -44,4 +45,6 @@ dependencies {
     implementationBundle(libs.bundles.android.compose)
     implementationBundle(libs.bundles.room)
     implementationBundle(libs.bundles.koin)
+
+    debugImplementationBundle(libs.bundles.debug.android.compose)
 }
