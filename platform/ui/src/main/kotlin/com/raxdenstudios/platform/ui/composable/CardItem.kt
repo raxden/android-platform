@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -26,8 +27,6 @@ import com.raxdenstudios.platform.ui.preview.DevicePreviews
 import com.raxdenstudios.platform.ui.theme.AppComposeTheme
 import com.raxdenstudios.platform.ui.theme.Icons
 import com.raxdenstudios.platform.ui.theme.Spacing
-
-private val MinContainerHeight = 48.dp
 
 object Item {
 
@@ -58,7 +57,7 @@ object Item {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = MinContainerHeight)
+                        .heightIn(min = ButtonDefaults.MinHeight)
                         .clickable { onClick() },
                     verticalArrangement = Arrangement.Center,
                 ) {

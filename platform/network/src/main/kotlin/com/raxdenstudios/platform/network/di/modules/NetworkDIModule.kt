@@ -8,7 +8,7 @@ import com.google.gson.GsonBuilder
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
 import com.raxdenstudios.platform.core.di.DIModule
 import com.raxdenstudios.platform.network.HttpClientFactory
-import com.raxdenstudios.platform.network.HttpClientFactoryImpl
+import com.raxdenstudios.platform.network.DefaultHttpClientFactory
 import com.raxdenstudios.commons.android.util.Network
 import com.raxdenstudios.commons.network.interceptor.CacheLoggerInterceptor
 import com.raxdenstudios.commons.network.interceptor.CacheNetworkInterceptor
@@ -59,7 +59,7 @@ internal class NetworkDIModule : DIModule {
         factory<SSLSocketFactory?> { null }
         factory<X509TrustManager?> { null }
 
-        singleOf(::HttpClientFactoryImpl) bind HttpClientFactory::class
+        singleOf(::DefaultHttpClientFactory) bind HttpClientFactory::class
         single<OkHttpClient> {
             get<HttpClientFactory>().create()
         }
