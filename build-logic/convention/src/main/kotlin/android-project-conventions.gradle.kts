@@ -1,4 +1,5 @@
 import extension.getProperty
+import org.neotech.plugin.rootcoverage.rootCoverage
 import task.DownloadGradleDependencies
 import task.DownloadGithubActions
 
