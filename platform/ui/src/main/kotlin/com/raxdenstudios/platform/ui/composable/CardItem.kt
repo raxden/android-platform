@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -69,8 +70,8 @@ object Item {
         @Composable
         fun Default(
             modifier: Modifier = Modifier,
-            leadingContent: (@Composable () -> Unit)? = null,
-            trailingContent: @Composable (() -> Unit)? = null,
+            leadingContent: @Composable (RowScope.() -> Unit)? = null,
+            trailingContent: @Composable (RowScope.() -> Unit)? = null,
             bottomContent: @Composable (ColumnScope.() -> Unit)? = null,
             selected: Boolean = false,
             onClick: () -> Unit = {},
@@ -116,8 +117,8 @@ object Item {
             modifier: Modifier = Modifier,
             title: String,
             description: String = String.EMPTY,
-            leadingContent: (@Composable () -> Unit)? = null,
-            trailingContent: @Composable (() -> Unit)? = null,
+            leadingContent: @Composable (RowScope.() -> Unit)? = null,
+            trailingContent: @Composable (RowScope.() -> Unit)? = null,
             bottomContent: @Composable (ColumnScope.() -> Unit)? = null,
             selected: Boolean = false,
             onClick: () -> Unit = {},
@@ -240,7 +241,7 @@ object Item {
         fun Checkbox(
             modifier: Modifier = Modifier,
             checked: Boolean = false,
-            leadingContent: (@Composable () -> Unit)? = null,
+            leadingContent: @Composable (RowScope.() -> Unit)? = null,
             onCheckedChange: (Boolean) -> Unit = {},
             content: @Composable ColumnScope.() -> Unit,
         ) {
