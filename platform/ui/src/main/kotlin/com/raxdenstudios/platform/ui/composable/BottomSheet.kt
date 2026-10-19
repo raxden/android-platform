@@ -34,9 +34,9 @@ object BottomSheet {
             primaryButton = primaryButton,
             secondaryButton = secondaryButton,
         ) {
-            Label.TitleLarge(title.toText())
+            Label.TitleLarge(title)
             Spacer.Vertical.Small()
-            Label.BodyMedium(message.toText())
+            Label.BodyMedium(message)
             Spacer.Vertical.Custom(xLarge)
         }
     }
@@ -67,13 +67,13 @@ object BottomSheet {
                 ) {
                     secondaryButton?.let {
                         TextButton(
-                            content = { Label.BodyMedium(it.first.toText()) },
+                            content = { Label.BodyMedium(it.first) },
                             onClick = it.second,
                         )
                     }
                     primaryButton?.let {
                         TextButton(
-                            content = { Label.BodyMedium(it.first.toText()) },
+                            content = { Label.BodyMedium(it.first) },
                             onClick = it.second,
                         )
                     }

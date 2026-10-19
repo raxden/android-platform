@@ -23,7 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.raxdenstudios.commons.core.ext.EMPTY
+import com.raxdenstudios.platform.ui.model.StringResource
+import com.raxdenstudios.platform.ui.model.StringResource.PlainText
 import com.raxdenstudios.platform.ui.preview.DevicePreviews
 import com.raxdenstudios.platform.ui.theme.AppComposeTheme
 import com.raxdenstudios.platform.ui.theme.Icons
@@ -115,8 +116,8 @@ object Item {
         @Composable
         fun Default(
             modifier: Modifier = Modifier,
-            title: String,
-            description: String = String.EMPTY,
+            title: StringResource,
+            description: StringResource = StringResource.Empty,
             leadingContent: @Composable (RowScope.() -> Unit)? = null,
             trailingContent: @Composable (RowScope.() -> Unit)? = null,
             bottomContent: @Composable (ColumnScope.() -> Unit)? = null,
@@ -132,7 +133,7 @@ object Item {
                 onClick = onClick
             ) {
                 Label.BodyMedium(text = title)
-                if (description.isNotEmpty()) {
+                if (description.toText().isNotEmpty()) {
                     Label.BodySmall(text = description)
                 }
             }
@@ -141,8 +142,8 @@ object Item {
         @Composable
         fun Navigation(
             modifier: Modifier = Modifier,
-            title: String,
-            description: String = String.EMPTY,
+            title: StringResource,
+            description: StringResource = StringResource.Empty,
             selected: Boolean = false,
             onClick: () -> Unit = {},
         ) {
@@ -164,8 +165,8 @@ object Item {
         @Composable
         fun Switch(
             modifier: Modifier = Modifier,
-            title: String,
-            description: String = String.EMPTY,
+            title: StringResource,
+            description: StringResource = StringResource.Empty,
             checked: Boolean = false,
             onCheckedChange: (Boolean) -> Unit = {},
         ) {
@@ -180,8 +181,8 @@ object Item {
         @Composable
         fun RadioButton(
             modifier: Modifier = Modifier,
-            title: String,
-            description: String = String.EMPTY,
+            title: StringResource,
+            description: StringResource = StringResource.Empty,
             selected: Boolean = false,
             onClick: () -> Unit = {},
         ) {
@@ -191,7 +192,7 @@ object Item {
                 onClick = onClick,
             ) {
                 Label.BodyMedium(text = title)
-                if (description.isNotEmpty()) {
+                if (description.toText().isNotEmpty()) {
                     Label.BodySmall(text = description)
                 }
             }
@@ -220,8 +221,8 @@ object Item {
         @Composable
         fun Checkbox(
             modifier: Modifier = Modifier,
-            title: String,
-            description: String = String.EMPTY,
+            title: StringResource,
+            description: StringResource = StringResource.Empty,
             checked: Boolean = false,
             onCheckedChange: (Boolean) -> Unit = {},
         ) {
@@ -231,7 +232,7 @@ object Item {
                 onCheckedChange = onCheckedChange,
             ) {
                 Label.BodyMedium(text = title)
-                if (description.isNotEmpty()) {
+                if (description.toText().isNotEmpty()) {
                     Label.BodySmall(text = description)
                 }
             }
@@ -274,27 +275,33 @@ fun ListItemsPreview() {
                         contentDescription = "Location Icon",
                     )
                 },
-                title = "Item Text",
-                description = "Item Text description",
+                title = PlainText("Item Text"),
+                description = PlainText("Item Text description"),
             ) {}
-            Item.Card.Navigation(title = "Item Text") {}
+            Item.Card.Navigation(title = PlainText("Item Text")) {}
             Item.Card.Switch(
-                title = "Item Text",
-                description = "Item Description Item Description Item Description Item Description" +
-                        " Item Description Item Description"
+                title = PlainText("Item Text"),
+                description = PlainText(
+                    "Item Description Item Description Item Description Item Description" +
+                            " Item Description Item Description"
+                )
             ) {}
             Item.Card.RadioButton(
-                title = "Item Text",
-                description = "Item Description Item Description Item Description Item Description" +
-                        " Item Description Item Description"
+                title = PlainText("Item Text"),
+                description = PlainText(
+                    "Item Description Item Description Item Description Item Description" +
+                            " Item Description Item Description"
+                )
             ) {}
             Item.Card.RadioButton(
-                title = "Item Text",
+                title = PlainText("Item Text"),
             ) {}
             Item.Card.Checkbox(
-                title = "Item Text",
-                description = "Item Description Item Description Item Description Item Description" +
-                        " Item Description Item Description"
+                title = PlainText("Item Text"),
+                description = PlainText(
+                    "Item Description Item Description Item Description Item Description" +
+                            " Item Description Item Description"
+                )
             ) {}
         }
     }

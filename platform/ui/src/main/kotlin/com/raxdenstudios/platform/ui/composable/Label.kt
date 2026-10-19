@@ -1,424 +1,249 @@
 package com.raxdenstudios.platform.ui.composable
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.raxdenstudios.platform.ui.theme.Typography
+import com.raxdenstudios.platform.ui.model.StringResource
 
+/** Typography presets; fontWeight, when provided, overrides the weight in style. */
 object Label {
 
     @Composable
-    fun DisplayLargeBold(
-        text: String,
+    fun DisplayLarge(
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+        style: TextStyle = MaterialTheme.typography.displayLarge,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+    }
+
+    @Composable
+    fun DisplayMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.displayMedium,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+    }
+
+    @Composable
+    fun DisplaySmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.displaySmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun TitleLarge(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleLarge,
+        style: TextStyle = MaterialTheme.typography.titleLarge,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
-    }
-
-    @Composable
-    fun TitleLargeBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun TitleMedium(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleMedium,
+        style: TextStyle = MaterialTheme.typography.titleMedium,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
-    }
-
-    @Composable
-    fun TitleMediumBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun TitleSmall(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleSmall,
+        style: TextStyle = MaterialTheme.typography.titleSmall,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
         overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            overflow = overflow
-        )
-    }
-
-    @Composable
-    fun TitleSmallBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-        overflow: TextOverflow = TextOverflow.Clip,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            overflow = overflow
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun HeadlineLarge(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.headlineLarge,
+        style: TextStyle = MaterialTheme.typography.headlineLarge,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
         overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            overflow = overflow
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun HeadlineMedium(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.headlineMedium,
+        style: TextStyle = MaterialTheme.typography.headlineMedium,
         color: Color = Color.Unspecified,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
         overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            color = color,
-            overflow = overflow
-        )
-    }
-
-    @Composable
-    fun HeadlineMediumBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        color: Color = Color.Unspecified,
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-        overflow: TextOverflow = TextOverflow.Clip,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            color = color,
-            overflow = overflow
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun HeadlineSmall(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.headlineSmall,
+        style: TextStyle = MaterialTheme.typography.headlineSmall,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
         overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            overflow = overflow
-        )
-    }
-
-    @Composable
-    fun HeadlineSmallBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-        overflow: TextOverflow = TextOverflow.Clip,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-            overflow = overflow
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun BodySmall(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.bodySmall,
+        style: TextStyle = MaterialTheme.typography.bodySmall,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun BodyMedium(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.bodyMedium,
+        style: TextStyle = MaterialTheme.typography.bodyMedium,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun BodyLarge(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.bodyLarge,
+        style: TextStyle = MaterialTheme.typography.bodyLarge,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
-    }
-
-    @Composable
-    fun BodyLargeBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
-    }
-
-    @Composable
-    fun BodyMediumBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun LabelSmall(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelSmall,
+        style: TextStyle = MaterialTheme.typography.labelSmall,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun LabelLarge(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelLarge,
+        style: TextStyle = MaterialTheme.typography.labelLarge,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
     fun LabelMedium(
-        text: String,
+        text: StringResource,
         modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelMedium,
+        style: TextStyle = MaterialTheme.typography.labelMedium,
         textAlign: TextAlign = TextAlign.Start,
         maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
     ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
     }
 
     @Composable
-    fun LabelMedium(
-        text: Int,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelMedium,
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
+    private fun LabelText(
+        text: StringResource,
+        modifier: Modifier,
+        style: TextStyle,
+        textAlign: TextAlign,
+        maxLines: Int,
+        color: Color,
+        overflow: TextOverflow,
+        fontWeight: FontWeight?,
     ) {
         Text(
+            text = text.toText(),
             modifier = modifier,
+            style = style,
+            fontWeight = fontWeight,
+            color = color,
             textAlign = textAlign,
             maxLines = maxLines,
-            style = style,
-            text = stringResource(text),
-        )
-    }
-
-    @Composable
-    fun LabelMediumBold(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
-        )
-    }
-
-    @Composable
-    fun LabelMediumLight(
-        text: String,
-        modifier: Modifier = Modifier,
-        style: TextStyle = Typography.labelMedium.copy(fontWeight = FontWeight.Light),
-        textAlign: TextAlign = TextAlign.Start,
-        maxLines: Int = Int.MAX_VALUE,
-    ) {
-        Text(
-            modifier = modifier,
-            textAlign = textAlign,
-            maxLines = maxLines,
-            style = style,
-            text = text,
+            overflow = overflow,
         )
     }
 }

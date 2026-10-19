@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.raxdenstudios.platform.ui.model.StringResource
+import com.raxdenstudios.platform.ui.model.StringResource.PlainText
 import com.raxdenstudios.platform.ui.preview.DevicePreviews
 import com.raxdenstudios.platform.ui.theme.AppComposeTheme
 
@@ -14,18 +16,19 @@ object Dialog {
 
     @Composable
     fun Simple(
-        title: String,
-        message: String,
+        title: StringResource,
+        message: StringResource,
         isVisible: Boolean = true,
-        confirmButton: Pair<String, () -> Unit>,
-        dismissButton: Pair<String, () -> Unit>? = null,
+        confirmButton: Pair<StringResource, () -> Unit>,
+        dismissButton: Pair<StringResource, () -> Unit>? = null,
         onDismissRequest: () -> Unit = {},
     ) {
         if (!isVisible) return
 
+        val titleDescription = title.toText()
         AlertDialog(
             modifier = Modifier
-                .semantics { contentDescription = title },
+                .semantics { contentDescription = titleDescription },
             title = { Label.BodyMedium(title) },
             text = { Label.BodyMedium(message) },
             onDismissRequest = onDismissRequest,
@@ -54,10 +57,12 @@ object Dialog {
 fun ErrorDialogPreview() {
     AppComposeTheme {
         Dialog.Simple(
-            title = "Lorem Ipsum",
-            message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
-                    "tempor incididunt ut labore et dolore magna aliqua.",
-            confirmButton = "ok" to  {}
+            title = PlainText("Lorem Ipsum"),
+            message = PlainText(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
+                        "tempor incididunt ut labore et dolore magna aliqua."
+            ),
+            confirmButton = PlainText("ok") to {},
         )
     }
 }
