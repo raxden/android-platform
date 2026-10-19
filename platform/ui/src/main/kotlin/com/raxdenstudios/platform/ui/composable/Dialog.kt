@@ -4,9 +4,6 @@ import android.annotation.SuppressLint
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import com.raxdenstudios.platform.ui.model.StringResource
 import com.raxdenstudios.platform.ui.model.StringResource.PlainText
 import com.raxdenstudios.platform.ui.preview.DevicePreviews
@@ -21,15 +18,12 @@ object Dialog {
         isVisible: Boolean = true,
         confirmButton: Pair<StringResource, () -> Unit>,
         dismissButton: Pair<StringResource, () -> Unit>? = null,
-        onDismissRequest: () -> Unit = {},
+        onDismissRequest: () -> Unit,
     ) {
         if (!isVisible) return
 
-        val titleDescription = title.toText()
         AlertDialog(
-            modifier = Modifier
-                .semantics { contentDescription = titleDescription },
-            title = { Label.BodyMedium(title) },
+            title = { Label.HeadlineSmall(title) },
             text = { Label.BodyMedium(message) },
             onDismissRequest = onDismissRequest,
             dismissButton = {
@@ -63,6 +57,7 @@ fun ErrorDialogPreview() {
                         "tempor incididunt ut labore et dolore magna aliqua."
             ),
             confirmButton = PlainText("ok") to {},
+            onDismissRequest = {},
         )
     }
 }
