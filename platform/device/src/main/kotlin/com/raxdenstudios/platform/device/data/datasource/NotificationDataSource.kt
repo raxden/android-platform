@@ -1,38 +1,28 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.data.datasource
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.raxdenstudios.commons.core.Answer
+import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.domain.model.NotificationData
 
-interface NotificationSender {
+interface NotificationDataSource {
 
-    fun hasPermission(): Boolean
-    fun send(notification: NotificationData): Answer<Unit, Exception>
+    suspend fun send(notification: NotificationData): Answer<Unit, Failure>
 }
 
-class NotificationSenderImpl(
+internal class NotificationDataSourceImpl(
     private val context: Context,
     private val tracker: NotificationTracker,
-) : NotificationSender {
+) : NotificationDataSource {
 
-    override fun hasPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    override fun send(notification: NotificationData): Answer<Unit, Exception> = try {
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun send(notification: NotificationData): Answer<Unit, Failure> = try {
         val notificationManager = getNotificationManager()
         ensureChannel(notificationManager, notification.channel)
 
@@ -59,7 +49,12 @@ class NotificationSenderImpl(
         Answer.Success(Unit)
     } catch (e: Exception) {
         tracker.notificationSendError()
-        Answer.Failure(e)
+        Answer.Failure(
+            when (e) {
+                is SecurityException -> Failure.Unauthorized(e.message ?: "Notification permission denied")
+                else -> Failure.Unknown(e.message ?: "Failed to send notification")
+            }
+        )
     }
 
     private fun getDefaultPendingIntent(): PendingIntent {

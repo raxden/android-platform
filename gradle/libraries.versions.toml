@@ -104,7 +104,7 @@ compose-charts = "0.0.13"
 # Debug / QA / Analysis
 # -------------------------------------------------------------------
 leakcanary = "2.14"
-detekt = "2.0.0-alpha.2"
+detekt = "2.0.0-alpha.6"
 rootcoverage = "1.12.0"
 test-logger = "4.0.0"
 benManes = "0.53.0"
@@ -358,7 +358,7 @@ rootcoverage-gradlePlugin = { module = "nl.neotech.plugin.rootcoverage:nl.neotec
 
 # Detekt 2.x artifacts
 detekt-gradlePlugin = { module = "dev.detekt:detekt-gradle-plugin", version.ref = "detekt" }
-detekt-formatting = { module = "dev.detekt:detekt-formatting", version.ref = "detekt" }
+detekt-formatting = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }
 
 [plugins]
 

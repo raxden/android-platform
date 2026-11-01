@@ -10,7 +10,7 @@
 
         <!-- Firebase Cloud Messaging Service -->
         <service
-            android:name="com.raxdenstudios.platform.device.DeviceMessagingService"
+            android:name="com.raxdenstudios.platform.device.service.FCMMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
