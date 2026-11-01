@@ -1,6 +1,6 @@
 package com.raxdenstudios.platform.device.domain.usecase
 
-import com.raxdenstudios.platform.device.data.repository.FCMRepository
+import com.raxdenstudios.platform.device.domain.repository.FCMRepository
 import com.raxdenstudios.platform.core.domain.SuspendUseCase
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.commons.core.Answer

@@ -25,11 +25,11 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    #    - name: Detekt
-    #      shell: bash
-    #      run: |
-    #        set -euo pipefail
-    #        ./gradlew detekt --stacktrace ${{ inputs.gradle-args }}
+    - name: Detekt
+      shell: bash
+      run: |
+        set -euo pipefail
+        ./gradlew detekt --stacktrace ${{ inputs.gradle-args }}
 
     - name: Upload Detekt reports
       id: upload_reports

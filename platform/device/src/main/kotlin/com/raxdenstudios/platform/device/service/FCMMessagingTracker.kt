@@ -1,9 +1,9 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.service
 
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.logEvent
 
-interface DeviceMessagingTracker {
+interface FCMMessagingTracker {
     fun topicSubscribed(topic: String)
     fun tokenRefreshed()
     fun messageReceived()
@@ -12,9 +12,9 @@ interface DeviceMessagingTracker {
     fun tokenSendFailed()
 }
 
-class DeviceMessagingTrackerImpl(
+class FCMMessagingTrackerImpl(
     private val firebaseAnalytics: FirebaseAnalytics,
-): DeviceMessagingTracker {
+): FCMMessagingTracker {
 
     override fun topicSubscribed(topic: String) {
         firebaseAnalytics.logEvent(FCM_TOPIC_SUBSCRIBED) {

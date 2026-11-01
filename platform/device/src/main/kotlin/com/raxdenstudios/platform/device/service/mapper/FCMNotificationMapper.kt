@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.service.mapper
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -6,12 +6,12 @@ import com.google.firebase.messaging.RemoteMessage
 import com.raxdenstudios.commons.core.ext.EMPTY
 import com.raxdenstudios.platform.device.domain.model.NotificationData
 
-interface PushNotificationProcessor {
+interface FCMNotificationMapper {
     fun map(message: RemoteMessage): NotificationData?
 }
 
-internal class DefaultPushNotificationProcessor :
-    PushNotificationProcessor {
+internal class FCMNotificationMapperImpl :
+    FCMNotificationMapper {
 
     override fun map(message: RemoteMessage): NotificationData {
         return NotificationData(
