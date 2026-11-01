@@ -60,6 +60,16 @@ runs:
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
 
+    # upload-artifact creates no artifact when the glob matches nothing (e.g. modules
+    # without tests), which breaks downstream jobs that download it by name. Emit a
+    # marker file so the artifact always exists.
+    - name: Ensure test outputs artifact is not empty
+      if: always() && inputs.upload == 'true'
+      shell: bash
+      run: |
+        mkdir -p build/test-results/test
+        echo "No unit-test report files were produced." > build/test-results/test/no-test-outputs.txt
+
     - name: Upload test outputs
       if: always() && inputs.upload == 'true'
       uses: actions/upload-artifact@v6
