@@ -42,4 +42,8 @@ dependencies {
 
     implementationBundle(libs.bundles.firebase)
     implementationBundle(libs.bundles.koin)
+
+    testImplementation(libs.commons.coroutines.test)
+    testImplementation(libs.truth)
+    testImplementation(libs.mockk.android)
 }
