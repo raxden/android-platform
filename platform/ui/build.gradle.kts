@@ -47,4 +47,8 @@ dependencies {
     implementationBundle(libs.bundles.koin)
 
     debugImplementationBundle(libs.bundles.debug.android.compose)
+
+    testImplementation(libs.commons.coroutines.test)
+    testImplementation(libs.truth)
+    testImplementation(libs.mockk.android)
 }
