@@ -1,9 +1,13 @@
 package com.raxdenstudios.platform.device.di.modules
 
+import android.content.pm.ApplicationInfo
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.raxdenstudios.commons.permissions.PermissionsManager
 import com.raxdenstudios.commons.permissions.PermissionsManagerImpl
 import com.raxdenstudios.platform.core.di.DIModule
+import com.raxdenstudios.platform.device.DebugInAppReview
+import com.raxdenstudios.platform.device.InAppReview
+import com.raxdenstudios.platform.device.ReleaseInAppReview
 import com.raxdenstudios.platform.device.service.mapper.FCMNotificationMapperImpl
 import com.raxdenstudios.platform.device.service.FCMMessagingTracker
 import com.raxdenstudios.platform.device.service.FCMMessagingTrackerImpl
@@ -78,6 +82,18 @@ class DeviceDIDataModule : DIModule {
         factoryOf(::SubscribeFCMTopicUseCaseImpl) bind SubscribeFCMTopicUseCase::class
         factoryOf(::GetFCMTokenUseCaseImpl) bind GetFCMTokenUseCase::class
         factoryOf(::SaveFCMTokenUseCaseImpl) bind SaveFCMTokenUseCase::class
+
+        single<InAppReview> {
+            val context = androidContext()
+            // BuildConfig.DEBUG can't decide this: it's baked into the library AAR and is always
+            // false for consumers. FLAG_DEBUGGABLE reflects the app's build type at runtime.
+            when {
+                context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ->
+                    DebugInAppReview(context)
+
+                else -> ReleaseInAppReview(context)
+            }
+        }
 
         singleOf(::PermissionsManagerImpl) bind PermissionsManager::class
         factoryOf(::LocationMapperImpl) bind LocationMapper::class
