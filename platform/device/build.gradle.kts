@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.commons.permissions)
 
     implementation(libs.play.services.location)
+    implementation(libs.play.review.ktx)
+    implementation(libs.timber)
 
     implementationBundle(libs.bundles.firebase)
     implementationBundle(libs.bundles.koin)
