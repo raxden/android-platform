@@ -63,6 +63,8 @@ internal class ReleaseInAppReview(
     private var reviewInfo: ReviewInfo? = null
 
     override fun attach(activity: ComponentActivity) {
+        if (activityHolder.activity === activity) return
+
         activityHolder.attach(activity)
         activity.lifecycle.addObserver(this)
     }
@@ -70,6 +72,17 @@ internal class ReleaseInAppReview(
     override fun onCreate(owner: LifecycleOwner) {
         super.onCreate(owner)
         prefetchReviewInfo()
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        if (activityHolder.activity === owner) detach()
+    }
+
+    private fun detach() {
+        activityHolder.activity?.let { activity ->
+            activity.lifecycle.removeObserver(this)
+            activityHolder.detach(activity)
+        }
     }
 
     override suspend fun launch(): Answer<Unit, Failure> {

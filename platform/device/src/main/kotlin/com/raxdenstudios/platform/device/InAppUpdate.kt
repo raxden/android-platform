@@ -166,12 +166,17 @@ internal class InAppUpdateImpl(
 
     override fun attach(activity: ComponentActivity) {
         if (activityHolder.activity === activity) return
+
         check(!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             "Attach InAppUpdate before STARTED"
         }
-        detach()
+        launcher = registerInAppUpdateLauncher(activity)
         activityHolder.attach(activity)
-        launcher = activity.activityResultRegistry.register(
+        activity.lifecycle.addObserver(this)
+    }
+
+    private fun registerInAppUpdateLauncher(activity: ComponentActivity): ActivityResultLauncher<IntentSenderRequest> =
+        activity.activityResultRegistry.register(
             LAUNCHER_KEY,
             activity,
             ActivityResultContracts.StartIntentSenderForResult(),
@@ -183,8 +188,6 @@ internal class InAppUpdateImpl(
                 else -> mutableState.value = InAppUpdateState.Failed
             }
         }
-        activity.lifecycle.addObserver(this)
-    }
 
     override fun onResume(owner: LifecycleOwner) {
         manager.appUpdateInfo.addOnSuccessListener { info ->
@@ -241,7 +244,7 @@ internal class InAppUpdateImpl(
             val info = manager.appUpdateInfo.await()
             check(
                 activityHolder.activity === activity &&
-                    activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                        activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             ) { "Activity changed while checking for updates" }
             mutableState.value = info.toState()
 
@@ -293,8 +296,8 @@ internal class InAppUpdateImpl(
         priority = updatePriority(),
         stalenessDays = clientVersionStalenessDays(),
         isRecommended = isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) &&
-            updatePriority() >= config.minPriority &&
-            (clientVersionStalenessDays() ?: 0) >= config.minStalenessDays,
+                updatePriority() >= config.minPriority &&
+                (clientVersionStalenessDays() ?: 0) >= config.minStalenessDays,
     )
 
     private fun AppUpdateInfo.isInProgress() =
