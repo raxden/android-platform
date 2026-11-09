@@ -38,6 +38,8 @@ dependencies {
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)
+    implementation(libs.play.update)
+    implementation(libs.coroutines.play.services)
     implementation(libs.timber)
 
     implementationBundle(libs.bundles.firebase)

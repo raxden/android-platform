@@ -1,6 +1,11 @@
 package com.raxdenstudios.platform.device.di.modules
 
 import android.content.pm.ApplicationInfo
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.raxdenstudios.platform.device.DebugInAppUpdate
+import com.raxdenstudios.platform.device.InAppUpdate
+import com.raxdenstudios.platform.device.InAppUpdateConfig
+import com.raxdenstudios.platform.device.InAppUpdateImpl
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.raxdenstudios.commons.permissions.PermissionsManager
 import com.raxdenstudios.commons.permissions.PermissionsManagerImpl
@@ -82,6 +87,19 @@ class DeviceDIDataModule : DIModule {
         factoryOf(::SubscribeFCMTopicUseCaseImpl) bind SubscribeFCMTopicUseCase::class
         factoryOf(::GetFCMTokenUseCaseImpl) bind GetFCMTokenUseCase::class
         factoryOf(::SaveFCMTokenUseCaseImpl) bind SaveFCMTokenUseCase::class
+
+        single<InAppUpdate> {
+            val context = androidContext()
+            when {
+                context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ->
+                    DebugInAppUpdate()
+
+                else -> InAppUpdateImpl(
+                    manager = AppUpdateManagerFactory.create(context),
+                    config = getOrNull() ?: InAppUpdateConfig(),
+                )
+            }
+        }
 
         single<InAppReview> {
             val context = androidContext()
