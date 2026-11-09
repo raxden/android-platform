@@ -1,14 +1,24 @@
 package com.raxdenstudios.platform.device
 
+import android.app.Activity
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.core.app.ActivityOptionsCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import com.google.android.gms.tasks.OnFailureListener
+import com.google.android.gms.tasks.OnSuccessListener
+import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.install.InstallException
 import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallErrorCode
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.commons.core.Answer
@@ -17,6 +27,7 @@ import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -31,13 +42,20 @@ internal class InAppUpdateImplTest {
     private var lifecycleState = Lifecycle.State.INITIALIZED
     private var inAppUpdate = createInAppUpdate()
 
-    private val activityResultRegistry = object : ActivityResultRegistry() {
-        override fun <I : Any?, O : Any?> onLaunch(
-            requestCode: Int,
-            contract: ActivityResultContract<I, O>,
-            input: I,
-            options: ActivityOptionsCompat?,
-        ) = Unit
+    private val updateLauncher: ActivityResultLauncher<IntentSenderRequest> = mockk {
+        every { launch(any()) } just Runs
+        every { unregister() } just Runs
+    }
+    private val resultCallback = slot<ActivityResultCallback<ActivityResult>>()
+    private val activityResultRegistry: ActivityResultRegistry = mockk {
+        every {
+            register(
+                any<String>(),
+                any<LifecycleOwner>(),
+                any<ActivityResultContract<IntentSenderRequest, ActivityResult>>(),
+                capture(resultCallback),
+            )
+        } returns updateLauncher
     }
 
     @Test
@@ -310,6 +328,165 @@ internal class InAppUpdateImplTest {
         }
     }
 
+    @Test
+    fun `Given update available When activity resumes Then state is refreshed to available`() =
+        runTest {
+            val activity = attachActivity()
+            lifecycleState = Lifecycle.State.RESUMED
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+                appUpdateInfo(versionCode = 2, priority = 4, staleness = 3),
+            )
+
+            inAppUpdate.onResume(activity)
+
+            val expected = InAppUpdateInfo(
+                availableVersionCode = 2,
+                priority = 4,
+                stalenessDays = 3,
+                isRecommended = true,
+            )
+            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Available(expected))
+        }
+
+    @Test
+    fun `Given in-progress update When activity resumes Then update flow is restarted`() = runTest {
+        val activity = attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        val info = appUpdateInfo(
+            availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+        )
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+
+        inAppUpdate.onResume(activity)
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify {
+            manager.startUpdateFlowForResult(
+                info,
+                any(),
+                match { it.appUpdateType() == AppUpdateType.IMMEDIATE },
+            )
+        }
+    }
+
+    @Test
+    fun `Given in-progress update restarted on resume When launch Then returns already in progress`() =
+        runTest {
+            val activity = attachActivity()
+            lifecycleState = Lifecycle.State.RESUMED
+            val info = appUpdateInfo(
+                availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+            )
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
+            every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+            inAppUpdate.onResume(activity)
+
+            val result = inAppUpdate.launch()
+
+            assertThat(result)
+                .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
+        }
+
+    @Test
+    fun `Given in-progress update When owner is not resumed Then update flow is not restarted`() =
+        runTest {
+            val activity = attachActivity()
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+                appUpdateInfo(
+                    availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+                ),
+            )
+
+            inAppUpdate.onResume(activity)
+
+            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+            verify(exactly = 0) {
+                manager.startUpdateFlowForResult(any(), any(), any())
+            }
+        }
+
+    @Test
+    fun `Given resume event from a different owner When onResume Then refresh is skipped`() =
+        runTest {
+            attachActivity()
+            lifecycleState = Lifecycle.State.RESUMED
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(appUpdateInfo())
+            val other: ComponentActivity = mockk()
+
+            inAppUpdate.onResume(other)
+
+            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+            verify(exactly = 0) {
+                manager.startUpdateFlowForResult(any(), any(), any())
+            }
+        }
+
+    @Test
+    fun `Given refresh request fails When activity resumes Then state stays idle`() = runTest {
+        val activity = attachActivity()
+        every { manager.appUpdateInfo } returns failedUpdateInfoTask(Exception("boom"))
+
+        inAppUpdate.onResume(activity)
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
+
+    @Test
+    fun `Given app is not installed from Play When activity resumes Then state stays idle`() =
+        runTest {
+            val activity = attachActivity()
+            val error = InstallException(InstallErrorCode.ERROR_APP_NOT_OWNED)
+            every { manager.appUpdateInfo } returns failedUpdateInfoTask(error)
+
+            inAppUpdate.onResume(activity)
+
+            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+        }
+
+    @Test
+    fun `Given update flow launched When result is canceled Then state is declined`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns Tasks.forResult(appUpdateInfo())
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+        inAppUpdate.launch()
+
+        resultCallback.captured.onActivityResult(
+            ActivityResult(Activity.RESULT_CANCELED, null),
+        )
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Declined)
+    }
+
+    @Test
+    fun `Given update flow launched When result is unexpected Then state is failed`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns Tasks.forResult(appUpdateInfo())
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+        inAppUpdate.launch()
+
+        resultCallback.captured.onActivityResult(
+            ActivityResult(Activity.RESULT_FIRST_USER, null),
+        )
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Failed)
+    }
+
+    @Test
+    fun `Given attached activity destroyed When launch Then returns resource not found failure`() =
+        runTest {
+            val activity = attachActivity()
+            inAppUpdate.onDestroy(activity)
+
+            val result = inAppUpdate.launch()
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound("No activity attached")),
+            )
+        }
+
     private fun createInAppUpdate(
         config: InAppUpdateConfig = InAppUpdateConfig(),
     ) = InAppUpdateImpl(
@@ -343,5 +520,39 @@ internal class InAppUpdateImplTest {
         every { updatePriority() } returns priority
         every { clientVersionStalenessDays() } returns staleness
         every { isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) } returns immediateAllowed
+    }
+
+    /**
+     * A [Task] completed with [info] whose listeners run inline. [Tasks.forResult] cannot be used
+     * for the listener-based `onResume` path because `addOnSuccessListener` posts through
+     * `Handler(Looper.getMainLooper())`, which does not exist in local unit tests.
+     */
+    private fun completedUpdateInfoTask(info: AppUpdateInfo): Task<AppUpdateInfo> {
+        val task = mockk<Task<AppUpdateInfo>>()
+        every { task.isComplete } returns true
+        every { task.isSuccessful } returns true
+        every { task.isCanceled } returns false
+        every { task.exception } answers { null }
+        every { task.result } returns info
+        every { task.addOnSuccessListener(any<OnSuccessListener<AppUpdateInfo>>()) } answers {
+            firstArg<OnSuccessListener<AppUpdateInfo>>().onSuccess(info)
+            task
+        }
+        every { task.addOnFailureListener(any<OnFailureListener>()) } returns task
+        return task
+    }
+
+    private fun failedUpdateInfoTask(error: Exception): Task<AppUpdateInfo> {
+        val task = mockk<Task<AppUpdateInfo>>()
+        every { task.isComplete } returns true
+        every { task.isSuccessful } returns false
+        every { task.isCanceled } returns false
+        every { task.exception } returns error
+        every { task.addOnSuccessListener(any<OnSuccessListener<AppUpdateInfo>>()) } returns task
+        every { task.addOnFailureListener(any<OnFailureListener>()) } answers {
+            firstArg<OnFailureListener>().onFailure(error)
+            task
+        }
+        return task
     }
 }
