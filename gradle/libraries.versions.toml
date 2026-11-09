@@ -63,6 +63,7 @@ firebase-crashlytics = "3.0.6"
 google-services-plugin = "4.4.4"
 play-services-location = "21.3.0"
 play-review = "2.0.2"
+play-update = "2.1.0"
 gradle-secrets = "2.0.1"
 
 # -------------------------------------------------------------------
@@ -219,8 +220,10 @@ firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 
 # -------------------------------------------------------------------
 # Play services
+
 # -------------------------------------------------------------------
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+play-update = { module = "com.google.android.play:app-update", version.ref = "play-update" }
 play-review-ktx = { module = "com.google.android.play:review-ktx", version.ref = "play-review" }
 
 # -------------------------------------------------------------------
