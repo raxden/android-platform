@@ -3,6 +3,8 @@ package com.raxdenstudios.platform.device.di.modules
 import android.content.pm.ApplicationInfo
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.raxdenstudios.platform.device.DebugInAppUpdate
+import com.raxdenstudios.platform.device.InAppShare
+import com.raxdenstudios.platform.device.InAppShareImpl
 import com.raxdenstudios.platform.device.InAppUpdate
 import com.raxdenstudios.platform.device.InAppUpdateConfig
 import com.raxdenstudios.platform.device.InAppUpdateImpl
@@ -100,6 +102,8 @@ class DeviceDIDataModule : DIModule {
                 )
             }
         }
+
+        single<InAppShare> { InAppShareImpl(androidContext()) }
 
         single<InAppReview> {
             val context = androidContext()
