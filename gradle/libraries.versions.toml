@@ -62,6 +62,7 @@ firebase-appdistribution = "5.2.1"
 firebase-crashlytics = "3.0.6"
 google-services-plugin = "4.4.4"
 play-services-location = "21.3.0"
+maps-compose = "8.3.0"
 play-review = "2.0.2"
 play-update = "2.1.0"
 gradle-secrets = "2.0.1"
@@ -131,8 +132,8 @@ android-publish-library = "0.57.30"
 android-publish-platform = "0.57.30"
 
 commons-bom = "1.3.7"
-platform-bom = "1.0.19"
-component-bom = "1.0.10"
+platform-bom = "1.0.29"
+component-bom = "1.0.11"
 junit-jupiter = "5.10.0"
 
 [libraries]
@@ -220,9 +221,10 @@ firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 
 # -------------------------------------------------------------------
 # Play services
-
 # -------------------------------------------------------------------
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
+maps-compose-utils = { module = "com.google.maps.android:maps-compose-utils", version.ref = "maps-compose" }
 play-update = { module = "com.google.android.play:app-update", version.ref = "play-update" }
 play-review-ktx = { module = "com.google.android.play:review-ktx", version.ref = "play-review" }
 

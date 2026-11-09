@@ -28,7 +28,7 @@ open class DownloadGradleDependencies : DefaultTask() {
         val outputDir = project.downloadRepository(
             repository = source,
             destination = destination,
-            excludes = listOf("**/.github/**")
+            excludes = listOf("**/.github/**", "**/config/**")
         )
 
         syncVersionCatalog(outputDir)
