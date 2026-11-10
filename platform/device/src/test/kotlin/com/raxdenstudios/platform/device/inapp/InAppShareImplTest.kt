@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.app.Activity
 import android.app.PendingIntent
@@ -48,7 +48,8 @@ internal class InAppShareImplTest {
         every { packageName } returns "com.test"
         every { unregisterReceiver(any()) } just Runs
     }
-    private var inAppShare = InAppShareImpl(context, UnconfinedTestDispatcher())
+    private val tracker: InAppShareTracker = mockk(relaxed = true)
+    private var inAppShare = InAppShareImpl(context, tracker, UnconfinedTestDispatcher())
     private val shareLauncher: ActivityResultLauncher<Intent> = mockk {
         every { launch(any()) } just Runs
         every { unregister() } just Runs
@@ -78,6 +79,7 @@ internal class InAppShareImplTest {
             val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
 
             assertThat(result).isEqualTo(Answer.Failure(Failure.ResourceNotFound("No activity attached")))
+            verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
         }
 
     @Test
@@ -112,6 +114,7 @@ internal class InAppShareImplTest {
                 Answer.Failure(Failure.ResourceNotFound("No activity attached")),
             )
             verify { lifecycle.removeObserver(inAppShare) }
+            verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
         }
 
     @Test
@@ -129,7 +132,24 @@ internal class InAppShareImplTest {
             assertThat(result).isEqualTo(
                 Answer.Failure(Failure.Unknown("A share is already in progress")),
             )
+            verify { tracker.failed(InAppShareTracker.Reason.ALREADY_IN_PROGRESS) }
             pending.cancel()
+        }
+
+    @Test
+    fun `Given the system rejects the share intent When launch Then returns unknown failure`() =
+        runTest {
+            stubShareFramework()
+            inAppShare = createInAppShare()
+            attachActivity()
+            every { shareLauncher.launch(any()) } throws Exception("boom")
+
+            val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.Unknown("In-app share could not be launched: boom")),
+            )
+            verify { tracker.failed(InAppShareTracker.Reason.ERROR) }
         }
 
     @Test
@@ -151,6 +171,7 @@ internal class InAppShareImplTest {
 
             assertThat(result).isEqualTo(Answer.Success(InAppShareResult.Dismissed))
             verify { context.unregisterReceiver(receiverSlot.captured) }
+            verify { tracker.dismissed() }
         }
 
     @Test
@@ -173,7 +194,32 @@ internal class InAppShareImplTest {
         assertThat(result).isEqualTo(
             Answer.Success(InAppShareResult.TargetChosen("com.whatsapp")),
         )
+        verify { tracker.targetChosen("com.whatsapp") }
     }
+
+    @Test
+    fun `Given share launched When a target without package is chosen Then returns target chosen`() =
+        runTest {
+            stubShareFramework()
+            inAppShare = createInAppShare()
+            attachActivity()
+            var result: Answer<InAppShareResult, Failure>? = null
+            launch {
+                result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
+            }
+            runCurrent()
+
+            chosenTarget(null)
+            resultCallback.captured.onActivityResult(
+                ActivityResult(Activity.RESULT_OK, null),
+            )
+            advanceUntilIdle()
+
+            assertThat(result).isEqualTo(
+                Answer.Success(InAppShareResult.TargetChosen(null)),
+            )
+            verify { tracker.targetChosen(null) }
+        }
 
     @Test
     fun `Given share launched When activity is destroyed Then pending share resolves as dismissed`() =
@@ -194,7 +240,7 @@ internal class InAppShareImplTest {
         }
 
     private fun TestScope.createInAppShare(): InAppShareImpl =
-        InAppShareImpl(context, UnconfinedTestDispatcher(testScheduler))
+        InAppShareImpl(context, tracker, UnconfinedTestDispatcher(testScheduler))
 
     private fun attachActivity() {
         lifecycle = mockk()
@@ -208,8 +254,10 @@ internal class InAppShareImplTest {
     }
 
     @Suppress("DEPRECATION")
-    private fun chosenTarget(targetPackage: String) {
-        val component: ComponentName = mockk { every { packageName } returns targetPackage }
+    private fun chosenTarget(targetPackage: String?) {
+        val component: ComponentName? = targetPackage?.let { pkg ->
+            mockk { every { packageName } returns pkg }
+        }
         val intent: Intent = mockk {
             every { getParcelableExtra<ComponentName>(Intent.EXTRA_CHOSEN_COMPONENT) } returns
                 component

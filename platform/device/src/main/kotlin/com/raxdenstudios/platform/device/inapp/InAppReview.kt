@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.content.Context
 import androidx.activity.ComponentActivity
@@ -10,6 +10,8 @@ import com.google.android.play.core.review.ReviewInfo
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.raxdenstudios.commons.android.ActivityHolder
 import com.raxdenstudios.commons.core.Answer
+import com.raxdenstudios.commons.core.ext.onFailure
+import com.raxdenstudios.commons.core.ext.onSuccess
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
 import com.raxdenstudios.platform.core.domain.model.Failure
@@ -90,6 +92,7 @@ internal class DebugInAppReview(
 
 internal class ReleaseInAppReview(
     context: Context,
+    private val tracker: InAppReviewTracker,
 ) : InAppReview {
 
     private val activityHolder = ActivityHolder()
@@ -122,8 +125,13 @@ internal class ReleaseInAppReview(
 
     override suspend fun launch(): Answer<Unit, Failure> {
         val activity = activityHolder.activity
-            ?: return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
+            ?: return noActivityFailure()
         return launch(activity)
+    }
+
+    private fun noActivityFailure(): Answer<Unit, Failure> {
+        tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY)
+        return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
     }
 
     private suspend fun launch(activity: ComponentActivity): Answer<Unit, Failure> =
@@ -132,6 +140,8 @@ internal class ReleaseInAppReview(
                 Timber.e(error, "In-app review flow could not be launched")
                 Failure.Unknown("In-app review flow could not be launched: ${error.message}")
             }
+            .onSuccess { tracker.launched() }
+            .onFailure { tracker.failed(InAppReviewTracker.Reason.ERROR) }
 
     /**
      * ReviewInfo is single-use and short-lived: returns the cached one (or requests a new one)

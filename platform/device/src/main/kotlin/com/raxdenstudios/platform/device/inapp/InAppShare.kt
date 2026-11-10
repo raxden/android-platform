@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -16,6 +16,8 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.raxdenstudios.commons.android.ActivityHolder
 import com.raxdenstudios.commons.core.Answer
+import com.raxdenstudios.commons.core.ext.onFailure
+import com.raxdenstudios.commons.core.ext.onSuccess
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
 import com.raxdenstudios.platform.core.domain.model.Failure
@@ -102,6 +104,7 @@ sealed interface InAppShareResult {
 
 internal class InAppShareImpl(
     context: Context,
+    private val tracker: InAppShareTracker,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : InAppShare {
 
@@ -131,17 +134,37 @@ internal class InAppShareImpl(
         withContext(mainDispatcher) {
             val currentLauncher = launcher
             when {
-                activityHolder.activity == null || currentLauncher == null ->
-                    Answer.Failure(Failure.ResourceNotFound("No activity attached"))
-
-                pending != null ->
-                    Answer.Failure(Failure.Unknown("A share is already in progress"))
-
-                else -> coRunCatching { share(currentLauncher, content) }.thenFailure {
-                    Failure.Unknown("In-app share could not be launched: ${it.message}")
-                }
+                activityHolder.activity == null || currentLauncher == null -> noActivityFailure()
+                pending != null -> alreadyInProgressFailure()
+                else -> shareWithTracking(currentLauncher, content)
             }
         }
+
+    private fun noActivityFailure(): Answer<InAppShareResult, Failure> {
+        tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY)
+        return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
+    }
+
+    private fun alreadyInProgressFailure(): Answer<InAppShareResult, Failure> {
+        tracker.failed(InAppShareTracker.Reason.ALREADY_IN_PROGRESS)
+        return Answer.Failure(Failure.Unknown("A share is already in progress"))
+    }
+
+    private suspend fun shareWithTracking(
+        launcher: ActivityResultLauncher<Intent>,
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure> =
+        coRunCatching { share(launcher, content) }
+            .thenFailure { Failure.Unknown("In-app share could not be launched: ${it.message}") }
+            .onSuccess(::trackShareResult)
+            .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
+
+    private fun trackShareResult(result: InAppShareResult) {
+        when (result) {
+            is InAppShareResult.TargetChosen -> tracker.targetChosen(result.packageName)
+            InAppShareResult.Dismissed -> tracker.dismissed()
+        }
+    }
 
     private suspend fun share(
         launcher: ActivityResultLauncher<Intent>,

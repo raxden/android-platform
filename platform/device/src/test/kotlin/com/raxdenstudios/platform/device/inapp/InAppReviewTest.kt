@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.content.Context
 import android.content.Intent
@@ -37,6 +37,7 @@ internal class InAppReviewTest {
         every { packageName } returns "com.test"
     }
     private val reviewManager: ReviewManager = mockk()
+    private val tracker: InAppReviewTracker = mockk(relaxed = true)
 
     @After
     fun tearDown() {
@@ -53,6 +54,7 @@ internal class InAppReviewTest {
             assertThat(result).isEqualTo(
                 Answer.Failure(Failure.ResourceNotFound("No activity attached")),
             )
+            verify { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
         }
 
     @Test
@@ -69,6 +71,7 @@ internal class InAppReviewTest {
             assertThat(result).isEqualTo(Answer.Success(Unit))
             verify(exactly = 1) { reviewManager.requestReviewFlow() }
             verify { reviewManager.launchReviewFlow(activity, info) }
+            verify { tracker.launched() }
         }
 
     @Test
@@ -125,6 +128,7 @@ internal class InAppReviewTest {
                 Failure.Unknown("In-app review flow could not be launched: boom"),
             ),
         )
+        verify { tracker.failed(InAppReviewTracker.Reason.ERROR) }
     }
 
     @Test
@@ -142,6 +146,7 @@ internal class InAppReviewTest {
                 Failure.Unknown("In-app review flow could not be launched: boom"),
             ),
         )
+        verify { tracker.failed(InAppReviewTracker.Reason.ERROR) }
     }
 
     @Test
@@ -173,7 +178,7 @@ internal class InAppReviewTest {
     private fun createReleaseInAppReview(): ReleaseInAppReview {
         mockkStatic(ReviewManagerFactory::class)
         every { ReviewManagerFactory.create(any()) } returns reviewManager
-        return ReleaseInAppReview(context)
+        return ReleaseInAppReview(context, tracker)
     }
 
     private fun createDebugInAppReview(): DebugInAppReview {
