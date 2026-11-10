@@ -43,3 +43,4 @@ captures/
 # Keystore files
 *.jks
 
+graphify-out/
