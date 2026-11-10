@@ -2,19 +2,25 @@ package com.raxdenstudios.platform.device.di.modules
 
 import android.content.pm.ApplicationInfo
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
-import com.raxdenstudios.platform.device.DebugInAppUpdate
-import com.raxdenstudios.platform.device.InAppShare
-import com.raxdenstudios.platform.device.InAppShareImpl
-import com.raxdenstudios.platform.device.InAppUpdate
-import com.raxdenstudios.platform.device.InAppUpdateConfig
-import com.raxdenstudios.platform.device.InAppUpdateImpl
+import com.raxdenstudios.platform.device.inapp.DebugInAppUpdate
+import com.raxdenstudios.platform.device.inapp.InAppShare
+import com.raxdenstudios.platform.device.inapp.InAppShareImpl
+import com.raxdenstudios.platform.device.inapp.InAppShareTracker
+import com.raxdenstudios.platform.device.inapp.InAppShareTrackerImpl
+import com.raxdenstudios.platform.device.inapp.InAppUpdate
+import com.raxdenstudios.platform.device.inapp.InAppUpdateConfig
+import com.raxdenstudios.platform.device.inapp.InAppUpdateImpl
+import com.raxdenstudios.platform.device.inapp.InAppUpdateTracker
+import com.raxdenstudios.platform.device.inapp.InAppUpdateTrackerImpl
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.raxdenstudios.commons.permissions.PermissionsManager
 import com.raxdenstudios.commons.permissions.PermissionsManagerImpl
 import com.raxdenstudios.platform.core.di.DIModule
-import com.raxdenstudios.platform.device.DebugInAppReview
-import com.raxdenstudios.platform.device.InAppReview
-import com.raxdenstudios.platform.device.ReleaseInAppReview
+import com.raxdenstudios.platform.device.inapp.DebugInAppReview
+import com.raxdenstudios.platform.device.inapp.InAppReview
+import com.raxdenstudios.platform.device.inapp.InAppReviewTracker
+import com.raxdenstudios.platform.device.inapp.InAppReviewTrackerImpl
+import com.raxdenstudios.platform.device.inapp.ReleaseInAppReview
 import com.raxdenstudios.platform.device.service.mapper.FCMNotificationMapperImpl
 import com.raxdenstudios.platform.device.service.FCMMessagingTracker
 import com.raxdenstudios.platform.device.service.FCMMessagingTrackerImpl
@@ -90,6 +96,10 @@ class DeviceDIDataModule : DIModule {
         factoryOf(::GetFCMTokenUseCaseImpl) bind GetFCMTokenUseCase::class
         factoryOf(::SaveFCMTokenUseCaseImpl) bind SaveFCMTokenUseCase::class
 
+        factoryOf(::InAppUpdateTrackerImpl) bind InAppUpdateTracker::class
+        factoryOf(::InAppShareTrackerImpl) bind InAppShareTracker::class
+        factoryOf(::InAppReviewTrackerImpl) bind InAppReviewTracker::class
+
         single<InAppUpdate> {
             val context = androidContext()
             when {
@@ -99,11 +109,12 @@ class DeviceDIDataModule : DIModule {
                 else -> InAppUpdateImpl(
                     manager = AppUpdateManagerFactory.create(context),
                     config = getOrNull() ?: InAppUpdateConfig(),
+                    tracker = get(),
                 )
             }
         }
 
-        single<InAppShare> { InAppShareImpl(androidContext()) }
+        single<InAppShare> { InAppShareImpl(androidContext(), tracker = get()) }
 
         single<InAppReview> {
             val context = androidContext()
@@ -113,7 +124,7 @@ class DeviceDIDataModule : DIModule {
                 context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ->
                     DebugInAppReview(context)
 
-                else -> ReleaseInAppReview(context)
+                else -> ReleaseInAppReview(context, tracker = get())
             }
         }
 

@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.app.Activity
 import androidx.activity.ComponentActivity
@@ -18,6 +18,8 @@ import com.google.android.play.core.install.model.InstallErrorCode
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.raxdenstudios.commons.android.ActivityHolder
 import com.raxdenstudios.commons.core.Answer
+import com.raxdenstudios.commons.core.ext.onFailure
+import com.raxdenstudios.commons.core.ext.onSuccess
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
 import com.raxdenstudios.platform.core.domain.model.Failure
@@ -180,6 +182,7 @@ internal class DebugInAppUpdate : InAppUpdate {
 
 internal class InAppUpdateImpl(
     private val manager: AppUpdateManager,
+    private val tracker: InAppUpdateTracker,
     private val config: InAppUpdateConfig = InAppUpdateConfig(),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : InAppUpdate {
@@ -209,9 +212,15 @@ internal class InAppUpdateImpl(
         ) { result ->
             launching = false
             when (result.resultCode) {
-                Activity.RESULT_OK -> Unit
-                Activity.RESULT_CANCELED -> mutableState.value = InAppUpdateState.Declined
-                else -> mutableState.value = InAppUpdateState.Failed
+                Activity.RESULT_OK -> tracker.accepted()
+                Activity.RESULT_CANCELED -> {
+                    tracker.declined()
+                    mutableState.value = InAppUpdateState.Declined
+                }
+                else -> {
+                    tracker.flowFailed()
+                    mutableState.value = InAppUpdateState.Failed
+                }
             }
         }
 
@@ -233,8 +242,10 @@ internal class InAppUpdateImpl(
     }
 
     private fun resumeInProgressUpdate(info: AppUpdateInfo) {
-        runCatching { launching = startFlow(info) }
-            .onFailure { Timber.w(it, "Could not resume the in-progress update") }
+        runCatching {
+            launching = startFlow(info)
+            if (launching) tracker.resumed()
+        }.onFailure { Timber.w(it, "Could not resume the in-progress update") }
     }
 
     /**
@@ -257,10 +268,18 @@ internal class InAppUpdateImpl(
         coRunCatching {
             val info = manager.appUpdateInfo.await()
             mutableState.value = info.toState()
+            tracker.checked(
+                available = info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE,
+                versionCode = info.availableVersionCode().toLong(),
+                priority = info.updatePriority().toLong(),
+                stalenessDays = info.clientVersionStalenessDays()?.toLong(),
+            )
             info.takeIf { it.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE }
                 ?.toInfo()
         }.thenFailure {
             Failure.Unknown("In-app update status could not be checked: ${it.message}")
+        }.onFailure {
+            tracker.failed(InAppUpdateTracker.Reason.ERROR)
         }
 
     override suspend fun launch(): Answer<InAppUpdateLaunchResult, Failure> =
@@ -268,10 +287,11 @@ internal class InAppUpdateImpl(
             val activity = activityHolder.activity
                 ?: return@withContext Answer.Failure(
                     Failure.ResourceNotFound("No activity attached")
-                )
-            coRunCatching { start(activity) }.thenFailure {
-                Failure.Unknown("In-app update could not be launched: ${it.message}")
-            }
+                ).also { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
+            coRunCatching { start(activity) }
+                .thenFailure { Failure.Unknown("In-app update could not be launched: ${it.message}") }
+                .onSuccess { tracker.launched(it) }
+                .onFailure { tracker.failed(InAppUpdateTracker.Reason.ERROR) }
         }
 
     /**

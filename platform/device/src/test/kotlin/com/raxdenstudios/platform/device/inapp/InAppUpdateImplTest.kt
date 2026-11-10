@@ -1,4 +1,4 @@
-package com.raxdenstudios.platform.device
+package com.raxdenstudios.platform.device.inapp
 
 import android.app.Activity
 import androidx.activity.ComponentActivity
@@ -39,6 +39,7 @@ internal class InAppUpdateImplTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private val manager: AppUpdateManager = mockk()
+    private val tracker: InAppUpdateTracker = mockk(relaxed = true)
     private var lifecycleState = Lifecycle.State.INITIALIZED
     private var inAppUpdate = createInAppUpdate()
 
@@ -69,6 +70,14 @@ internal class InAppUpdateImplTest {
 
             assertThat(result).isEqualTo(Answer.Success(null))
             assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+            verify {
+                tracker.checked(
+                    available = false,
+                    versionCode = 2L,
+                    priority = 0L,
+                    stalenessDays = null,
+                )
+            }
         }
 
     @Test
@@ -86,6 +95,14 @@ internal class InAppUpdateImplTest {
             isRecommended = true,
         )
         assertThat(result).isEqualTo(Answer.Success(expected))
+        verify {
+            tracker.checked(
+                available = true,
+                versionCode = 2L,
+                priority = 4L,
+                stalenessDays = 3L,
+            )
+        }
     }
 
     @Test
@@ -115,6 +132,7 @@ internal class InAppUpdateImplTest {
         assertThat(result).isEqualTo(
             Answer.Failure(Failure.Unknown("In-app update status could not be checked: boom")),
         )
+        verify { tracker.failed(InAppUpdateTracker.Reason.ERROR) }
     }
 
     @Test
@@ -190,6 +208,14 @@ internal class InAppUpdateImplTest {
 
             assertThat(result).isEqualTo(Answer.Success(null))
             assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+            verify {
+                tracker.checked(
+                    available = false,
+                    versionCode = 2L,
+                    priority = 0L,
+                    stalenessDays = null,
+                )
+            }
         }
 
     @Test
@@ -199,6 +225,7 @@ internal class InAppUpdateImplTest {
         assertThat(result).isEqualTo(
             Answer.Failure(Failure.ResourceNotFound("No activity attached")),
         )
+        verify { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
     }
 
     @Test
@@ -212,6 +239,7 @@ internal class InAppUpdateImplTest {
                 Failure.Unknown("In-app update could not be launched: Activity is not resumed"),
             ),
         )
+        verify { tracker.failed(InAppUpdateTracker.Reason.ERROR) }
     }
 
     @Test
@@ -230,6 +258,7 @@ internal class InAppUpdateImplTest {
             assertThat(result)
                 .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
             assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+            verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
         }
 
     @Test
@@ -244,6 +273,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAvailable))
+        verify { tracker.launched(InAppUpdateLaunchResult.NotAvailable) }
     }
 
     @Test
@@ -258,6 +288,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAllowed))
+        verify { tracker.launched(InAppUpdateLaunchResult.NotAllowed) }
     }
 
     @Test
@@ -271,6 +302,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAllowed))
+        verify { tracker.launched(InAppUpdateLaunchResult.NotAllowed) }
     }
 
     @Test
@@ -291,6 +323,7 @@ internal class InAppUpdateImplTest {
                 match { it.appUpdateType() == AppUpdateType.IMMEDIATE },
             )
         }
+        verify { tracker.launched(InAppUpdateLaunchResult.Started) }
     }
 
     @Test
@@ -305,6 +338,8 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
+        verify { tracker.launched(InAppUpdateLaunchResult.Started) }
+        verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
     }
 
     @Test
@@ -368,7 +403,25 @@ internal class InAppUpdateImplTest {
                 match { it.appUpdateType() == AppUpdateType.IMMEDIATE },
             )
         }
+        verify { tracker.resumed() }
     }
+
+    @Test
+    fun `Given in-progress update When resume cannot restart the flow Then resumed is not tracked`() =
+        runTest {
+            val activity = attachActivity()
+            lifecycleState = Lifecycle.State.RESUMED
+            val info = appUpdateInfo(
+                availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+            )
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
+            every { manager.startUpdateFlowForResult(any(), any(), any()) } returns false
+
+            inAppUpdate.onResume(activity)
+
+            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+            verify(exactly = 0) { tracker.resumed() }
+        }
 
     @Test
     fun `Given in-progress update restarted on resume When launch Then returns already in progress`() =
@@ -445,6 +498,21 @@ internal class InAppUpdateImplTest {
         }
 
     @Test
+    fun `Given update flow launched When result is ok Then accepted is tracked`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns Tasks.forResult(appUpdateInfo())
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+        inAppUpdate.launch()
+
+        resultCallback.captured.onActivityResult(
+            ActivityResult(Activity.RESULT_OK, null),
+        )
+
+        verify { tracker.accepted() }
+    }
+
+    @Test
     fun `Given update flow launched When result is canceled Then state is declined`() = runTest {
         attachActivity()
         lifecycleState = Lifecycle.State.RESUMED
@@ -457,6 +525,7 @@ internal class InAppUpdateImplTest {
         )
 
         assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Declined)
+        verify { tracker.declined() }
     }
 
     @Test
@@ -472,6 +541,7 @@ internal class InAppUpdateImplTest {
         )
 
         assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Failed)
+        verify { tracker.flowFailed() }
     }
 
     @Test
@@ -485,12 +555,14 @@ internal class InAppUpdateImplTest {
             assertThat(result).isEqualTo(
                 Answer.Failure(Failure.ResourceNotFound("No activity attached")),
             )
+            verify { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
         }
 
     private fun createInAppUpdate(
         config: InAppUpdateConfig = InAppUpdateConfig(),
     ) = InAppUpdateImpl(
         manager = manager,
+        tracker = tracker,
         config = config,
         mainDispatcher = testDispatcher,
     )
