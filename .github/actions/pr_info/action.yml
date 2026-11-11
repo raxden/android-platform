@@ -23,6 +23,8 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        PR_EVENT_TITLE: ${{ github.event.pull_request.title }}
+        COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       run: |
         set -euo pipefail
 
@@ -36,7 +38,7 @@ runs:
         # 1️⃣ pull_request event
         # ------------------------------------------------------------
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "pull_request_target" ]]; then
-          title='${{ github.event.pull_request.title }}'
+          title="${PR_EVENT_TITLE}"
           number='${{ github.event.pull_request.number }}'
           source="pr_event"
         fi
@@ -74,7 +76,7 @@ runs:
         # ------------------------------------------------------------
         if [[ -z "$title" ]]; then
           echo "Falling back to commit message"
-          title='${{ github.event.head_commit.message }}'
+          title="${COMMIT_MESSAGE}"
           source="commit"
         fi
 
