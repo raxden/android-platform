@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- in-app share prompt -->
-    <string name="in_app_share_prompt_title">Нравится %1$s?</string>
-    <string name="in_app_share_prompt_message">Поделитесь им с друзьями</string>
-    <string name="in_app_share_prompt_positive">Поделиться</string>
+    <string name="in_app_share_prompt_title">Поможешь мне рассказать о %1$s?</string>
+    <string name="in_app_share_prompt_message">Я создал %1$s, чтобы ты мог слушать радио в простом приложении без рекламы.\n\nЕсли оно тебе нравится, порекомендовать его кому-нибудь — отличный способ помочь этому маленькому проекту расти. Спасибо за поддержку!</string>
+    <string name="in_app_share_prompt_positive">Поделиться %1$s</string>
     <string name="in_app_share_prompt_negative">Не сейчас</string>
 </resources>
