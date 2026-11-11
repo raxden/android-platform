@@ -1,10 +1,11 @@
 import com.raxdenstudios.publishing.model.Coordinates
 import com.raxdenstudios.publishing.model.Developer
+import extension.debugImplementationBundle
 import extension.implementationBundle
 
 plugins {
     alias(libs.plugins.android.versioning)
-    alias(libs.plugins.android.library.conventions)
+    alias(libs.plugins.android.compose.library.conventions)
     alias(libs.plugins.android.publish.library)
 }
 
@@ -30,6 +31,7 @@ publishLibrary {
 
 dependencies {
     implementation(projects.platform.core)
+    implementation(projects.platform.ui)
 
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android)
@@ -44,7 +46,9 @@ dependencies {
 
     implementationBundle(libs.bundles.firebase)
     implementationBundle(libs.bundles.koin)
-    implementationBundle(libs.bundles.android.material)
+    implementationBundle(libs.bundles.android.compose)
+
+    debugImplementationBundle(libs.bundles.debug.android.compose)
 
     testImplementation(libs.commons.coroutines.test)
     testImplementation(libs.truth)
