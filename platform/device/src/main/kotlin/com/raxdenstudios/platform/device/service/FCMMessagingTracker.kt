@@ -12,9 +12,7 @@ interface FCMMessagingTracker {
     fun tokenSendFailed()
 }
 
-class FCMMessagingTrackerImpl(
-    private val firebaseAnalytics: FirebaseAnalytics,
-): FCMMessagingTracker {
+class FCMMessagingTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : FCMMessagingTracker {
 
     override fun topicSubscribed(topic: String) {
         firebaseAnalytics.logEvent(FCM_TOPIC_SUBSCRIBED) {

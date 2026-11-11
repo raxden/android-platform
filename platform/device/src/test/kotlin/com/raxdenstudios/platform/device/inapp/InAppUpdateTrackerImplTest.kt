@@ -48,10 +48,14 @@ internal class InAppUpdateTrackerImplTest {
 
         verify { firebaseAnalytics.logEvent("in_app_update_checked", any()) }
         assertThat(params).containsExactly(
-            "available", "true",
-            "version_code", 2L,
-            "priority", 4L,
-            "staleness_days", 3L,
+            "available",
+            "true",
+            "version_code",
+            2L,
+            "priority",
+            4L,
+            "staleness_days",
+            3L,
         )
     }
 
@@ -61,9 +65,12 @@ internal class InAppUpdateTrackerImplTest {
 
         verify { firebaseAnalytics.logEvent("in_app_update_checked", any()) }
         assertThat(params).containsExactly(
-            "available", "false",
-            "version_code", 2L,
-            "priority", 0L,
+            "available",
+            "false",
+            "version_code",
+            2L,
+            "priority",
+            0L,
         )
     }
 

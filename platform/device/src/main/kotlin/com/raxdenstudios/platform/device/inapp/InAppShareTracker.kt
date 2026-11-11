@@ -65,9 +65,7 @@ internal interface InAppShareTracker {
 }
 
 /** [InAppShareTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppShareTrackerImpl(
-    private val firebaseAnalytics: FirebaseAnalytics,
-) : InAppShareTracker {
+internal class InAppShareTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppShareTracker {
 
     override fun promptShown() {
         firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_SHOWN) {}

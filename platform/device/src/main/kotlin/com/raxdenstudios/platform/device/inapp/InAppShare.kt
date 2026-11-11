@@ -100,11 +100,7 @@ interface InAppShare : DefaultLifecycleObserver {
  * @property text plain text to share, typically including the Play Store link.
  * @property chooserTitle optional title of the share sheet.
  */
-data class InAppShareContent(
-    val subject: String,
-    val text: String,
-    val chooserTitle: String? = null,
-)
+data class InAppShareContent(val subject: String, val text: String, val chooserTitle: String? = null)
 
 /**
  * How the share sheet ended. The system never confirms the content was actually sent by the
@@ -189,6 +185,7 @@ internal class InAppShareImpl(
                 .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
             when (prompted) {
                 is Answer.Failure -> prompted
+
                 is Answer.Success -> if (prompted.value) {
                     tracker.promptAccepted()
                     pending = null
@@ -216,26 +213,24 @@ internal class InAppShareImpl(
     private suspend fun shareWithTracking(
         launcher: ActivityResultLauncher<Intent>,
         content: InAppShareContent,
-    ): Answer<InAppShareResult, Failure> =
-        coRunCatching { share(launcher, content) }
-            .thenFailure { Failure.Unknown("In-app share could not be launched: ${it.message}") }
-            .onSuccess(::trackShareResult)
-            .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
+    ): Answer<InAppShareResult, Failure> = coRunCatching { share(launcher, content) }
+        .thenFailure { Failure.Unknown("In-app share could not be launched: ${it.message}") }
+        .onSuccess(::trackShareResult)
+        .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
 
     private fun trackShareResult(result: InAppShareResult) {
         when (result) {
             is InAppShareResult.TargetChosen -> tracker.targetChosen(result.packageName)
+
             InAppShareResult.Dismissed -> tracker.dismissed()
+
             // share() (invoked by shareWithTracking) never returns Declined: that result is only
             // produced by launch()'s prompt step, before the sheet is shown.
             InAppShareResult.Declined -> Unit
         }
     }
 
-    private suspend fun share(
-        launcher: ActivityResultLauncher<Intent>,
-        content: InAppShareContent,
-    ): InAppShareResult {
+    private suspend fun share(launcher: ActivityResultLauncher<Intent>, content: InAppShareContent): InAppShareResult {
         val share = PendingShare().also { pending = it }
         val receiver = registerChosenTargetReceiver(share)
         try {
@@ -278,13 +273,12 @@ internal class InAppShareImpl(
      * The chooser reports the picked target by filling [Intent.EXTRA_CHOSEN_COMPONENT] into this
      * broadcast's extras before sending it — that is why the pending intent must be mutable.
      */
-    private fun buildChosenTargetSender(): IntentSender =
-        PendingIntent.getBroadcast(
-            appContext,
-            0,
-            Intent(chosenAction).setPackage(appContext.packageName),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-        ).intentSender
+    private fun buildChosenTargetSender(): IntentSender = PendingIntent.getBroadcast(
+        appContext,
+        0,
+        Intent(chosenAction).setPackage(appContext.packageName),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+    ).intentSender
 
     private fun detach() {
         activityHolder.activity?.let { activity ->

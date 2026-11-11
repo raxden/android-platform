@@ -13,28 +13,24 @@ interface AppAccessLocalDataSource {
     suspend fun saveLastAccess(timestamp: Long): Answer<Unit, Failure>
 }
 
-internal class AppAccessLocalDataSourceImpl(
-    private val sharedPreferences: SharedPreferences,
-) : AppAccessLocalDataSource {
+internal class AppAccessLocalDataSourceImpl(private val sharedPreferences: SharedPreferences) :
+    AppAccessLocalDataSource {
 
     private val _lastAccess = MutableStateFlow(load())
 
-    override suspend fun getLastAccess(): Answer<Long, Failure> =
-        coRunCatching { load() }
-            .thenFailure { error ->
-                error.toUnknownError("Error to get last access")
-            }
-
-    override suspend fun saveLastAccess(timestamp: Long): Answer<Unit, Failure> =
-        coRunCatching {
-            sharedPreferences.persist(timestamp)
-            _lastAccess.value = timestamp
-        }.thenFailure { error ->
-            error.toUnknownError("Error to save last access")
+    override suspend fun getLastAccess(): Answer<Long, Failure> = coRunCatching { load() }
+        .thenFailure { error ->
+            error.toUnknownError("Error to get last access")
         }
 
-    private fun load(): Long =
-        sharedPreferences.getLong(LAST_ACCESS_KEY, System.currentTimeMillis())
+    override suspend fun saveLastAccess(timestamp: Long): Answer<Unit, Failure> = coRunCatching {
+        sharedPreferences.persist(timestamp)
+        _lastAccess.value = timestamp
+    }.thenFailure { error ->
+        error.toUnknownError("Error to save last access")
+    }
+
+    private fun load(): Long = sharedPreferences.getLong(LAST_ACCESS_KEY, System.currentTimeMillis())
 
     private fun SharedPreferences.persist(timestamp: Long) {
         edit { putLong(LAST_ACCESS_KEY, timestamp) }

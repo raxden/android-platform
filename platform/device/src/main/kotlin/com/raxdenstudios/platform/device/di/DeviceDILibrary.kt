@@ -1,8 +1,8 @@
 package com.raxdenstudios.platform.device.di
 
-import com.raxdenstudios.platform.device.di.modules.DeviceDIDataModule
 import com.raxdenstudios.platform.core.di.DILibrary
 import com.raxdenstudios.platform.core.di.DIModule
+import com.raxdenstudios.platform.device.di.modules.DeviceDIDataModule
 
 class DeviceDILibrary : DILibrary {
 

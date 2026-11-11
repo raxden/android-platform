@@ -2,7 +2,7 @@
 <resources>
     <!-- in-app share prompt -->
     <string name="in_app_share_prompt_title">Ajudas-me a dar a conhecer %1$s?</string>
-    <string name="in_app_share_prompt_message">Criei o %1$s para desfrutares da rádio com uma app simples e sem anúncios.\n\nSe gostas dela, recomendá-la a alguém é uma grande ajuda para que este pequeno projeto continue a crescer. Obrigado pelo teu apoio!</string>
+    <string name="in_app_share_prompt_message">Se gostas dela, recomendá-la a alguém é uma grande ajuda para que este pequeno projeto continue a crescer. Obrigado pelo teu apoio!</string>
     <string name="in_app_share_prompt_positive">Partilhar %1$s</string>
     <string name="in_app_share_prompt_negative">Agora não</string>
 </resources>

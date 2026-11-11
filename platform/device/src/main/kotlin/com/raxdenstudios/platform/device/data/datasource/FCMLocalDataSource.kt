@@ -16,40 +16,35 @@ interface FCMLocalDataSource {
     suspend fun clearToken(): Answer<Unit, Failure>
 }
 
-internal class FCMLocalDataSourceImpl(
-    private val context: Context,
-) : FCMLocalDataSource {
+internal class FCMLocalDataSourceImpl(private val context: Context) : FCMLocalDataSource {
 
     private val sharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    override suspend fun saveToken(token: String): Answer<Unit, Failure> =
-        withContext(Dispatchers.IO) {
-            coRunCatching {
-                sharedPreferences.edit { putString(KEY_FCM_TOKEN, token) }
-            }.thenFailure { error ->
-                Failure.Unknown("Failed to save FCM token: ${error.message}")
-            }
+    override suspend fun saveToken(token: String): Answer<Unit, Failure> = withContext(Dispatchers.IO) {
+        coRunCatching {
+            sharedPreferences.edit { putString(KEY_FCM_TOKEN, token) }
+        }.thenFailure { error ->
+            Failure.Unknown("Failed to save FCM token: ${error.message}")
         }
+    }
 
-    override suspend fun getToken(): Answer<String, Failure> =
-        withContext(Dispatchers.IO) {
-            coRunCatching {
-                sharedPreferences.getString(KEY_FCM_TOKEN, String.EMPTY) ?: String.EMPTY
-            }.thenFailure { error ->
-                Failure.Unknown("Failed to get FCM token: ${error.message}")
-            }
+    override suspend fun getToken(): Answer<String, Failure> = withContext(Dispatchers.IO) {
+        coRunCatching {
+            sharedPreferences.getString(KEY_FCM_TOKEN, String.EMPTY) ?: String.EMPTY
+        }.thenFailure { error ->
+            Failure.Unknown("Failed to get FCM token: ${error.message}")
         }
+    }
 
-    override suspend fun clearToken(): Answer<Unit, Failure> =
-        withContext(Dispatchers.IO) {
-            coRunCatching {
-                sharedPreferences.edit { remove(KEY_FCM_TOKEN) }
-            }.thenFailure { error ->
-                Failure.Unknown("Failed to clear FCM token: ${error.message}")
-            }
+    override suspend fun clearToken(): Answer<Unit, Failure> = withContext(Dispatchers.IO) {
+        coRunCatching {
+            sharedPreferences.edit { remove(KEY_FCM_TOKEN) }
+        }.thenFailure { error ->
+            Failure.Unknown("Failed to clear FCM token: ${error.message}")
         }
+    }
 
     companion object {
         private const val PREFS_NAME = "fcm_prefs"

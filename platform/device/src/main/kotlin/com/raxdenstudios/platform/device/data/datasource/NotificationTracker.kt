@@ -10,9 +10,7 @@ interface NotificationTracker {
     fun notificationSendError()
 }
 
-internal class NotificationTrackerImpl(
-    private val firebaseAnalytics: FirebaseAnalytics,
-): NotificationTracker {
+internal class NotificationTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : NotificationTracker {
 
     override fun channelCreated() {
         firebaseAnalytics.logEvent(NOTIFICATION_CHANNEL_CREATED) {}

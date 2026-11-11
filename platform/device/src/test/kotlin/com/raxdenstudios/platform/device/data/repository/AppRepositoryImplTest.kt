@@ -4,7 +4,6 @@ import android.content.Context
 import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.commons.android.util.SDK
 import com.raxdenstudios.commons.core.Answer
-import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.data.datasource.AppAccessLocalDataSource
 import io.mockk.coEvery
 import io.mockk.coVerify

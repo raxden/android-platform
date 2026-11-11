@@ -12,20 +12,19 @@ interface LocationRepository {
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
     suspend fun getLastLocation(): Answer<Location, Failure>
 }
 
-internal class LocationRepositoryImpl(
-    private val locationDataSource: LocationDataSource,
-) : LocationRepository {
+internal class LocationRepositoryImpl(private val locationDataSource: LocationDataSource) : LocationRepository {
 
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
-    override suspend fun getLastLocation(): Answer<Location, Failure> =
-        locationDataSource.getLastLocation()
+    override suspend fun getLastLocation(): Answer<Location, Failure> = locationDataSource.getLastLocation()
 }

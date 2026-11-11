@@ -45,75 +45,71 @@ internal class InAppReviewTest {
     }
 
     @Test
-    fun `Given no activity attached When launch Then returns resource not found failure`() =
-        runTest {
-            val inAppReview = createReleaseInAppReview()
+    fun `Given no activity attached When launch Then returns resource not found failure`() = runTest {
+        val inAppReview = createReleaseInAppReview()
 
-            val result = inAppReview.launch()
+        val result = inAppReview.launch()
 
-            assertThat(result).isEqualTo(
-                Answer.Failure(Failure.ResourceNotFound("No activity attached")),
-            )
-            verify { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
-        }
-
-    @Test
-    fun `Given no prefetched review info When launch Then requests review info and launches flow`() =
-        runTest {
-            val info: ReviewInfo = mockk()
-            every { reviewManager.requestReviewFlow() } returns completedReviewTask(info)
-            every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
-            val inAppReview = createReleaseInAppReview()
-            val activity = attachActivity(inAppReview)
-
-            val result = inAppReview.launch()
-
-            assertThat(result).isEqualTo(Answer.Success(Unit))
-            verify(exactly = 1) { reviewManager.requestReviewFlow() }
-            verify { reviewManager.launchReviewFlow(activity, info) }
-            verify { tracker.launched() }
-        }
+        assertThat(result).isEqualTo(
+            Answer.Failure(Failure.ResourceNotFound("No activity attached")),
+        )
+        verify { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
+    }
 
     @Test
-    fun `Given prefetched review info When launch Then cached info is launched without a new request`() =
-        runTest {
-            val info: ReviewInfo = mockk()
-            every { reviewManager.requestReviewFlow() } returns completedReviewTask(info)
-            every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
-            val inAppReview = createReleaseInAppReview()
-            val activity = attachActivity(inAppReview)
-            inAppReview.onCreate(activity)
+    fun `Given no prefetched review info When launch Then requests review info and launches flow`() = runTest {
+        val info: ReviewInfo = mockk()
+        every { reviewManager.requestReviewFlow() } returns completedReviewTask(info)
+        every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
+        val inAppReview = createReleaseInAppReview()
+        val activity = attachActivity(inAppReview)
 
-            val result = inAppReview.launch()
+        val result = inAppReview.launch()
 
-            assertThat(result).isEqualTo(Answer.Success(Unit))
-            verify(exactly = 1) { reviewManager.requestReviewFlow() }
-            verify { reviewManager.launchReviewFlow(activity, info) }
-        }
+        assertThat(result).isEqualTo(Answer.Success(Unit))
+        verify(exactly = 1) { reviewManager.requestReviewFlow() }
+        verify { reviewManager.launchReviewFlow(activity, info) }
+        verify { tracker.launched() }
+    }
 
     @Test
-    fun `Given prefetched review info consumed When launch again Then a fresh info is requested`() =
-        runTest {
-            val prefetched: ReviewInfo = mockk()
-            val requested: ReviewInfo = mockk()
-            every { reviewManager.requestReviewFlow() } returnsMany listOf(
-                completedReviewTask(prefetched),
-                completedReviewTask(requested),
-            )
-            every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
-            val inAppReview = createReleaseInAppReview()
-            val activity = attachActivity(inAppReview)
-            inAppReview.onCreate(activity)
+    fun `Given prefetched review info When launch Then cached info is launched without a new request`() = runTest {
+        val info: ReviewInfo = mockk()
+        every { reviewManager.requestReviewFlow() } returns completedReviewTask(info)
+        every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
+        val inAppReview = createReleaseInAppReview()
+        val activity = attachActivity(inAppReview)
+        inAppReview.onCreate(activity)
 
-            inAppReview.launch()
-            inAppReview.launch()
+        val result = inAppReview.launch()
 
-            verify(exactly = 2) { reviewManager.requestReviewFlow() }
-            verifyOrder {
-                reviewManager.launchReviewFlow(activity, prefetched)
-                reviewManager.launchReviewFlow(activity, requested)
-            }
+        assertThat(result).isEqualTo(Answer.Success(Unit))
+        verify(exactly = 1) { reviewManager.requestReviewFlow() }
+        verify { reviewManager.launchReviewFlow(activity, info) }
+    }
+
+    @Test
+    fun `Given prefetched review info consumed When launch again Then a fresh info is requested`() = runTest {
+        val prefetched: ReviewInfo = mockk()
+        val requested: ReviewInfo = mockk()
+        every { reviewManager.requestReviewFlow() } returnsMany listOf(
+            completedReviewTask(prefetched),
+            completedReviewTask(requested),
+        )
+        every { reviewManager.launchReviewFlow(any(), any()) } returns completedLaunchTask()
+        val inAppReview = createReleaseInAppReview()
+        val activity = attachActivity(inAppReview)
+        inAppReview.onCreate(activity)
+
+        inAppReview.launch()
+        inAppReview.launch()
+
+        verify(exactly = 2) { reviewManager.requestReviewFlow() }
+        verifyOrder {
+            reviewManager.launchReviewFlow(activity, prefetched)
+            reviewManager.launchReviewFlow(activity, requested)
         }
+    }
 
     @Test
     fun `Given review request fails When launch Then returns unknown failure`() = runTest {
@@ -161,19 +157,18 @@ internal class InAppReviewTest {
     }
 
     @Test
-    fun `Given debug review and play store cannot be opened When launch Then returns unknown failure`() =
-        runTest {
-            val inAppReview = createDebugInAppReview()
-            every { context.startActivity(any()) } throws Exception("boom")
+    fun `Given debug review and play store cannot be opened When launch Then returns unknown failure`() = runTest {
+        val inAppReview = createDebugInAppReview()
+        every { context.startActivity(any()) } throws Exception("boom")
 
-            val result = inAppReview.launch()
+        val result = inAppReview.launch()
 
-            assertThat(result).isEqualTo(
-                Answer.Failure(
-                    Failure.Unknown("Play Store could not be opened: boom"),
-                ),
-            )
-        }
+        assertThat(result).isEqualTo(
+            Answer.Failure(
+                Failure.Unknown("Play Store could not be opened: boom"),
+            ),
+        )
+    }
 
     private fun createReleaseInAppReview(): ReleaseInAppReview {
         mockkStatic(ReviewManagerFactory::class)

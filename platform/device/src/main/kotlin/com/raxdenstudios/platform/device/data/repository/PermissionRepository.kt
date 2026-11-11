@@ -13,9 +13,7 @@ interface PermissionRepository {
     suspend fun requestPermission(permission: Permission): Answer<PermissionResult, Failure>
 }
 
-internal class PermissionRepositoryImpl(
-    private val permissionsManager: PermissionsManager,
-) : PermissionRepository {
+internal class PermissionRepositoryImpl(private val permissionsManager: PermissionsManager) : PermissionRepository {
 
     override suspend fun hasPermission(permission: Permission): Answer<Boolean, Failure> =
         suspendCancellableCoroutine { continuation ->
@@ -41,7 +39,7 @@ internal class PermissionRepositoryImpl(
                         val answer = Answer.Success(PermissionResult.Denied(permission))
                         continuation.resume(answer)
                     },
-                )
+                ),
             )
         }
 }

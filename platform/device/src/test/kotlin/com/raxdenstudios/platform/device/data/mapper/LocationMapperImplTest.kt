@@ -1,11 +1,11 @@
 package com.raxdenstudios.platform.device.data.mapper
 
-import android.location.Location as AndroidLocation
 import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.platform.device.domain.model.Location
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Test
+import android.location.Location as AndroidLocation
 
 internal class LocationMapperImplTest {
 

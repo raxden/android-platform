@@ -18,9 +18,5 @@ data class NotificationData(
     val contentIntent: PendingIntent? = null,
 ) {
 
-    data class Action(
-        val icon: Int,
-        val title: String,
-        val intent: PendingIntent,
-    )
+    data class Action(val icon: Int, val title: String, val intent: PendingIntent)
 }

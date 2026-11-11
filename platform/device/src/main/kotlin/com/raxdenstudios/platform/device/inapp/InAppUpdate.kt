@@ -107,10 +107,7 @@ interface InAppUpdate : DefaultLifecycleObserver {
  * @property minPriority minimum `updatePriority` (0..5) set when releasing in Play Console.
  * @property minStalenessDays minimum days since the update became available to this device.
  */
-data class InAppUpdateConfig(
-    val minPriority: Int = 0,
-    val minStalenessDays: Int = 0,
-)
+data class InAppUpdateConfig(val minPriority: Int = 0, val minStalenessDays: Int = 0)
 
 /**
  * Snapshot of the update Play currently offers, without exposing Play types.
@@ -213,10 +210,12 @@ internal class InAppUpdateImpl(
             launching = false
             when (result.resultCode) {
                 Activity.RESULT_OK -> tracker.accepted()
+
                 Activity.RESULT_CANCELED -> {
                     tracker.declined()
                     mutableState.value = InAppUpdateState.Declined
                 }
+
                 else -> {
                     tracker.flowFailed()
                     mutableState.value = InAppUpdateState.Failed
@@ -264,35 +263,33 @@ internal class InAppUpdateImpl(
         if (activityHolder.activity === owner) detach()
     }
 
-    override suspend fun check(): Answer<InAppUpdateInfo?, Failure> =
-        coRunCatching {
-            val info = manager.appUpdateInfo.await()
-            mutableState.value = info.toState()
-            tracker.checked(
-                available = info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE,
-                versionCode = info.availableVersionCode().toLong(),
-                priority = info.updatePriority().toLong(),
-                stalenessDays = info.clientVersionStalenessDays()?.toLong(),
-            )
-            info.takeIf { it.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE }
-                ?.toInfo()
-        }.thenFailure {
-            Failure.Unknown("In-app update status could not be checked: ${it.message}")
-        }.onFailure {
-            tracker.failed(InAppUpdateTracker.Reason.ERROR)
-        }
+    override suspend fun check(): Answer<InAppUpdateInfo?, Failure> = coRunCatching {
+        val info = manager.appUpdateInfo.await()
+        mutableState.value = info.toState()
+        tracker.checked(
+            available = info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE,
+            versionCode = info.availableVersionCode().toLong(),
+            priority = info.updatePriority().toLong(),
+            stalenessDays = info.clientVersionStalenessDays()?.toLong(),
+        )
+        info.takeIf { it.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE }
+            ?.toInfo()
+    }.thenFailure {
+        Failure.Unknown("In-app update status could not be checked: ${it.message}")
+    }.onFailure {
+        tracker.failed(InAppUpdateTracker.Reason.ERROR)
+    }
 
-    override suspend fun launch(): Answer<InAppUpdateLaunchResult, Failure> =
-        withContext(mainDispatcher) {
-            val activity = activityHolder.activity
-                ?: return@withContext Answer.Failure(
-                    Failure.ResourceNotFound("No activity attached")
-                ).also { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
-            coRunCatching { start(activity) }
-                .thenFailure { Failure.Unknown("In-app update could not be launched: ${it.message}") }
-                .onSuccess { tracker.launched(it) }
-                .onFailure { tracker.failed(InAppUpdateTracker.Reason.ERROR) }
-        }
+    override suspend fun launch(): Answer<InAppUpdateLaunchResult, Failure> = withContext(mainDispatcher) {
+        val activity = activityHolder.activity
+            ?: return@withContext Answer.Failure(
+                Failure.ResourceNotFound("No activity attached"),
+            ).also { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
+        coRunCatching { start(activity) }
+            .thenFailure { Failure.Unknown("In-app update could not be launched: ${it.message}") }
+            .onSuccess { tracker.launched(it) }
+            .onFailure { tracker.failed(InAppUpdateTracker.Reason.ERROR) }
+    }
 
     /**
      * Serializes launch attempts through [launching]: the flag stays set while Play's UI is up
@@ -322,20 +319,22 @@ internal class InAppUpdateImpl(
      */
     private fun resolveLaunchResult(info: AppUpdateInfo): InAppUpdateLaunchResult = when {
         info.isInProgress() -> InAppUpdateLaunchResult.AlreadyInProgress
+
         info.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE ->
             InAppUpdateLaunchResult.NotAvailable
 
         !info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> InAppUpdateLaunchResult.NotAllowed
+
         startFlow(info) -> InAppUpdateLaunchResult.Started
+
         else -> InAppUpdateLaunchResult.NotAllowed
     }
 
-    private fun startFlow(info: AppUpdateInfo): Boolean =
-        manager.startUpdateFlowForResult(
-            info,
-            checkNotNull(launcher) { "InAppUpdate not attached" },
-            buildImmediateUpdateOptions(),
-        )
+    private fun startFlow(info: AppUpdateInfo): Boolean = manager.startUpdateFlowForResult(
+        info,
+        checkNotNull(launcher) { "InAppUpdate not attached" },
+        buildImmediateUpdateOptions(),
+    )
 
     private fun buildImmediateUpdateOptions(): AppUpdateOptions =
         AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build()
@@ -356,7 +355,9 @@ internal class InAppUpdateImpl(
      */
     private fun AppUpdateInfo.toState(): InAppUpdateState = when {
         isInProgress() -> InAppUpdateState.InProgress
+
         updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE -> InAppUpdateState.Idle
+
         else -> toInfo().takeIf { it.isRecommended }
             ?.let { InAppUpdateState.Available(it) }
             ?: InAppUpdateState.Idle
@@ -367,12 +368,11 @@ internal class InAppUpdateImpl(
         priority = updatePriority(),
         stalenessDays = clientVersionStalenessDays(),
         isRecommended = isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) &&
-                updatePriority() >= config.minPriority &&
-                (clientVersionStalenessDays() ?: 0) >= config.minStalenessDays,
+            updatePriority() >= config.minPriority &&
+            (clientVersionStalenessDays() ?: 0) >= config.minStalenessDays,
     )
 
-    private fun LifecycleOwner.isResumed() =
-        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+    private fun LifecycleOwner.isResumed() = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
 
     private fun AppUpdateInfo.isInProgress() =
         updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
