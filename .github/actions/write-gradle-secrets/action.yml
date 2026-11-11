@@ -1,0 +1,27 @@
+name: Write Gradle secrets
+description: Writes explicitly provided KEY=VALUE pairs to a Gradle properties file
+
+inputs:
+  properties:
+    description: Multiline KEY=VALUE pairs to write
+    required: false
+    default: ""
+
+  properties-file:
+    description: Destination properties file path
+    required: false
+    default: "config/secrets.properties"
+
+runs:
+  using: composite
+  steps:
+    - name: Write secrets properties
+      shell: bash
+      env:
+        PROPERTIES: ${{ inputs.properties }}
+        PROPERTIES_FILE: ${{ inputs.properties-file }}
+      run: |
+        set -euo pipefail
+        umask 077
+        mkdir -p "$(dirname "$PROPERTIES_FILE")"
+        printf '%s\n' "$PROPERTIES" > "$PROPERTIES_FILE"

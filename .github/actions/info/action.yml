@@ -34,6 +34,8 @@ runs:
     - name: PR details
       if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
       shell: bash
+      env:
+        PR_TITLE: ${{ github.event.pull_request.title }}
       run: |
         set -euo pipefail
         PR_URL="${{ github.event.pull_request.html_url }}"
@@ -41,7 +43,7 @@ runs:
           echo "### 🔀 Pull Request"
           echo ""
           echo "- PR: [#${{ github.event.pull_request.number }}](${PR_URL})"
-          echo "- Title: ${{ github.event.pull_request.title }}"
+          echo "- Title: ${PR_TITLE}"
           echo "- Base: \`${{ github.event.pull_request.base.ref }}\` → Head: \`${{ github.event.pull_request.head.ref }}\`"
           echo "- Draft: \`${{ github.event.pull_request.draft }}\`  Merged: \`${{ github.event.pull_request.merged }}\`"
           echo ""
@@ -50,6 +52,8 @@ runs:
     - name: Push details
       if: github.event_name == 'push'
       shell: bash
+      env:
+        COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       run: |
         set -euo pipefail
         COMMIT="${{ github.event.head_commit.id }}"
@@ -58,7 +62,7 @@ runs:
           echo "### 📦 Push"
           echo ""
           echo "- Head: [\`${COMMIT}\`](${COMMIT_URL})"
-          echo "- Message: ${{ github.event.head_commit.message }}"
+          echo "- Message: ${COMMIT_MESSAGE}"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
 
