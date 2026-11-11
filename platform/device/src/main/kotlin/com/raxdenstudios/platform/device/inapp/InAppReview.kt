@@ -73,27 +73,21 @@ interface InAppReview : DefaultLifecycleObserver {
  * Debug builds are not installed through Play, so the review flow cannot run there; this
  * variant goes straight to the Play Store page so the entry point can still be exercised.
  */
-internal class DebugInAppReview(
-    private val context: Context,
-) : InAppReview {
+internal class DebugInAppReview(private val context: Context) : InAppReview {
 
     private val intentFactory = IntentFactoryImpl(context.applicationContext)
 
     override fun attach(activity: ComponentActivity) = Unit
 
-    override suspend fun launch(): Answer<Unit, Failure> =
-        coRunCatching {
-            Timber.d("Debug mode: Opening Play Store directly")
-            context.startActivity(intentFactory.build(IntentType.PlayStore))
-        }.thenFailure { error ->
-            Failure.Unknown("Play Store could not be opened: ${error.message}")
-        }
+    override suspend fun launch(): Answer<Unit, Failure> = coRunCatching {
+        Timber.d("Debug mode: Opening Play Store directly")
+        context.startActivity(intentFactory.build(IntentType.PlayStore))
+    }.thenFailure { error ->
+        Failure.Unknown("Play Store could not be opened: ${error.message}")
+    }
 }
 
-internal class ReleaseInAppReview(
-    context: Context,
-    private val tracker: InAppReviewTracker,
-) : InAppReview {
+internal class ReleaseInAppReview(context: Context, private val tracker: InAppReviewTracker) : InAppReview {
 
     private val activityHolder = ActivityHolder()
     private val manager = ReviewManagerFactory.create(context.applicationContext)

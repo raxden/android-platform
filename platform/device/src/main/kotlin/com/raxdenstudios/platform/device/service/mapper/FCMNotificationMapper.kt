@@ -10,20 +10,17 @@ interface FCMNotificationMapper {
     fun map(message: RemoteMessage): NotificationData?
 }
 
-internal class FCMNotificationMapperImpl :
-    FCMNotificationMapper {
+internal class FCMNotificationMapperImpl : FCMNotificationMapper {
 
-    override fun map(message: RemoteMessage): NotificationData {
-        return NotificationData(
-            channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ),
-            contentTitle = message.notification?.title ?: message.data["title"] ?: String.EMPTY,
-            contentText = message.notification?.body ?: message.data["body"] ?: String.EMPTY,
-        )
-    }
+    override fun map(message: RemoteMessage): NotificationData = NotificationData(
+        channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ),
+        contentTitle = message.notification?.title ?: message.data["title"] ?: String.EMPTY,
+        contentText = message.notification?.body ?: message.data["body"] ?: String.EMPTY,
+    )
 
     private companion object {
         const val CHANNEL_ID = "channel_id"

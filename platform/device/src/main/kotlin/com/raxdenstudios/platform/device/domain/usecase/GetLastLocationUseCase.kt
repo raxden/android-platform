@@ -11,9 +11,8 @@ interface GetLastLocationUseCase : SuspendUseCase<GetLastLocationUseCase.Params,
     data object Params
 }
 
-internal class GetLastLocationUseCaseImpl(
-    private val locationRepository: LocationRepository,
-) : GetLastLocationUseCase {
+internal class GetLastLocationUseCaseImpl(private val locationRepository: LocationRepository) :
+    GetLastLocationUseCase {
 
     override suspend fun invoke(params: GetLastLocationUseCase.Params): Answer<Location, Failure> =
         locationRepository.getLastLocation()

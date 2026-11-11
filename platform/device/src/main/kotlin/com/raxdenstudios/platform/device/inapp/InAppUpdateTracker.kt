@@ -67,16 +67,9 @@ internal interface InAppUpdateTracker {
 }
 
 /** [InAppUpdateTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppUpdateTrackerImpl(
-    private val firebaseAnalytics: FirebaseAnalytics,
-) : InAppUpdateTracker {
+internal class InAppUpdateTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppUpdateTracker {
 
-    override fun checked(
-        available: Boolean,
-        versionCode: Long,
-        priority: Long,
-        stalenessDays: Long?,
-    ) {
+    override fun checked(available: Boolean, versionCode: Long, priority: Long, stalenessDays: Long?) {
         firebaseAnalytics.logEvent(IN_APP_UPDATE_CHECKED) {
             param("available", available.toString())
             param("version_code", versionCode)

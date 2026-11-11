@@ -38,9 +38,7 @@ internal interface InAppReviewTracker {
 }
 
 /** [InAppReviewTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppReviewTrackerImpl(
-    private val firebaseAnalytics: FirebaseAnalytics,
-) : InAppReviewTracker {
+internal class InAppReviewTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppReviewTracker {
 
     override fun launched() {
         firebaseAnalytics.logEvent(IN_APP_REVIEW_LAUNCHED) {}

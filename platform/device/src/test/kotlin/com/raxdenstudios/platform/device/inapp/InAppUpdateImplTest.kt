@@ -60,25 +60,24 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given no update available When check Then returns success with null and state stays idle`() =
-        runTest {
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(availability = UpdateAvailability.UPDATE_NOT_AVAILABLE),
+    fun `Given no update available When check Then returns success with null and state stays idle`() = runTest {
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(availability = UpdateAvailability.UPDATE_NOT_AVAILABLE),
+        )
+
+        val result = inAppUpdate.check()
+
+        assertThat(result).isEqualTo(Answer.Success(null))
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+        verify {
+            tracker.checked(
+                available = false,
+                versionCode = 2L,
+                priority = 0L,
+                stalenessDays = null,
             )
-
-            val result = inAppUpdate.check()
-
-            assertThat(result).isEqualTo(Answer.Success(null))
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-            verify {
-                tracker.checked(
-                    available = false,
-                    versionCode = 2L,
-                    priority = 0L,
-                    stalenessDays = null,
-                )
-            }
         }
+    }
 
     @Test
     fun `Given update available When check Then returns update info`() = runTest {
@@ -106,22 +105,21 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given update recommended by default config When check Then state is available`() =
-        runTest {
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(versionCode = 2, priority = 4, staleness = 3),
-            )
+    fun `Given update recommended by default config When check Then state is available`() = runTest {
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(versionCode = 2, priority = 4, staleness = 3),
+        )
 
-            inAppUpdate.check()
+        inAppUpdate.check()
 
-            val expected = InAppUpdateInfo(
-                availableVersionCode = 2,
-                priority = 4,
-                stalenessDays = 3,
-                isRecommended = true,
-            )
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Available(expected))
-        }
+        val expected = InAppUpdateInfo(
+            availableVersionCode = 2,
+            priority = 4,
+            stalenessDays = 3,
+            isRecommended = true,
+        )
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Available(expected))
+    }
 
     @Test
     fun `Given update check fails When check Then returns unknown failure`() = runTest {
@@ -136,24 +134,23 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given minimum priority not met When check Then info is not recommended and state is idle`() =
-        runTest {
-            inAppUpdate = createInAppUpdate(InAppUpdateConfig(minPriority = 4))
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(priority = 1),
-            )
+    fun `Given minimum priority not met When check Then info is not recommended and state is idle`() = runTest {
+        inAppUpdate = createInAppUpdate(InAppUpdateConfig(minPriority = 4))
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(priority = 1),
+        )
 
-            val result = inAppUpdate.check()
+        val result = inAppUpdate.check()
 
-            val expected = InAppUpdateInfo(
-                availableVersionCode = 2,
-                priority = 1,
-                stalenessDays = null,
-                isRecommended = false,
-            )
-            assertThat(result).isEqualTo(Answer.Success(expected))
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-        }
+        val expected = InAppUpdateInfo(
+            availableVersionCode = 2,
+            priority = 1,
+            stalenessDays = null,
+            isRecommended = false,
+        )
+        assertThat(result).isEqualTo(Answer.Success(expected))
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
 
     @Test
     fun `Given minimum staleness not met When check Then info is not recommended`() = runTest {
@@ -169,54 +166,51 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given unknown staleness When check with minimum staleness Then staleness is treated as zero`() =
-        runTest {
-            inAppUpdate = createInAppUpdate(InAppUpdateConfig(minStalenessDays = 1))
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(staleness = null),
-            )
+    fun `Given unknown staleness When check with minimum staleness Then staleness is treated as zero`() = runTest {
+        inAppUpdate = createInAppUpdate(InAppUpdateConfig(minStalenessDays = 1))
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(staleness = null),
+        )
 
-            val result = inAppUpdate.check()
+        val result = inAppUpdate.check()
 
-            assertThat((result as Answer.Success).value?.isRecommended).isFalse()
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-        }
-
-    @Test
-    fun `Given immediate not allowed by Play When check Then info is not recommended and state is idle`() =
-        runTest {
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(immediateAllowed = false),
-            )
-
-            val result = inAppUpdate.check()
-
-            assertThat((result as Answer.Success).value?.isRecommended).isFalse()
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-        }
+        assertThat((result as Answer.Success).value?.isRecommended).isFalse()
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
 
     @Test
-    fun `Given developer triggered update in progress When check Then state is in progress`() =
-        runTest {
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(
-                    availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
-                ),
+    fun `Given immediate not allowed by Play When check Then info is not recommended and state is idle`() = runTest {
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(immediateAllowed = false),
+        )
+
+        val result = inAppUpdate.check()
+
+        assertThat((result as Answer.Success).value?.isRecommended).isFalse()
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
+
+    @Test
+    fun `Given developer triggered update in progress When check Then state is in progress`() = runTest {
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(
+                availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+            ),
+        )
+
+        val result = inAppUpdate.check()
+
+        assertThat(result).isEqualTo(Answer.Success(null))
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify {
+            tracker.checked(
+                available = false,
+                versionCode = 2L,
+                priority = 0L,
+                stalenessDays = null,
             )
-
-            val result = inAppUpdate.check()
-
-            assertThat(result).isEqualTo(Answer.Success(null))
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
-            verify {
-                tracker.checked(
-                    available = false,
-                    versionCode = 2L,
-                    priority = 0L,
-                    stalenessDays = null,
-                )
-            }
         }
+    }
 
     @Test
     fun `Given no attached activity When launch Then returns resource not found failure`() = runTest {
@@ -243,23 +237,22 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given developer triggered update in progress When launch Then returns already in progress`() =
-        runTest {
-            attachActivity()
-            lifecycleState = Lifecycle.State.RESUMED
-            every { manager.appUpdateInfo } returns Tasks.forResult(
-                appUpdateInfo(
-                    availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
-                ),
-            )
+    fun `Given developer triggered update in progress When launch Then returns already in progress`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(
+                availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+            ),
+        )
 
-            val result = inAppUpdate.launch()
+        val result = inAppUpdate.launch()
 
-            assertThat(result)
-                .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
-            verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
-        }
+        assertThat(result)
+            .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
+    }
 
     @Test
     fun `Given update not available When launch Then returns not available`() = runTest {
@@ -364,24 +357,23 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given update available When activity resumes Then state is refreshed to available`() =
-        runTest {
-            val activity = attachActivity()
-            lifecycleState = Lifecycle.State.RESUMED
-            every { manager.appUpdateInfo } returns completedUpdateInfoTask(
-                appUpdateInfo(versionCode = 2, priority = 4, staleness = 3),
-            )
+    fun `Given update available When activity resumes Then state is refreshed to available`() = runTest {
+        val activity = attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+            appUpdateInfo(versionCode = 2, priority = 4, staleness = 3),
+        )
 
-            inAppUpdate.onResume(activity)
+        inAppUpdate.onResume(activity)
 
-            val expected = InAppUpdateInfo(
-                availableVersionCode = 2,
-                priority = 4,
-                stalenessDays = 3,
-                isRecommended = true,
-            )
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Available(expected))
-        }
+        val expected = InAppUpdateInfo(
+            availableVersionCode = 2,
+            priority = 4,
+            stalenessDays = 3,
+            isRecommended = true,
+        )
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Available(expected))
+    }
 
     @Test
     fun `Given in-progress update When activity resumes Then update flow is restarted`() = runTest {
@@ -407,73 +399,69 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given in-progress update When resume cannot restart the flow Then resumed is not tracked`() =
-        runTest {
-            val activity = attachActivity()
-            lifecycleState = Lifecycle.State.RESUMED
-            val info = appUpdateInfo(
+    fun `Given in-progress update When resume cannot restart the flow Then resumed is not tracked`() = runTest {
+        val activity = attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        val info = appUpdateInfo(
+            availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+        )
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns false
+
+        inAppUpdate.onResume(activity)
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify(exactly = 0) { tracker.resumed() }
+    }
+
+    @Test
+    fun `Given in-progress update restarted on resume When launch Then returns already in progress`() = runTest {
+        val activity = attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        val info = appUpdateInfo(
+            availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+        )
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+        inAppUpdate.onResume(activity)
+
+        val result = inAppUpdate.launch()
+
+        assertThat(result)
+            .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
+    }
+
+    @Test
+    fun `Given in-progress update When owner is not resumed Then update flow is not restarted`() = runTest {
+        val activity = attachActivity()
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+            appUpdateInfo(
                 availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
-            )
-            every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
-            every { manager.startUpdateFlowForResult(any(), any(), any()) } returns false
+            ),
+        )
 
-            inAppUpdate.onResume(activity)
+        inAppUpdate.onResume(activity)
 
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
-            verify(exactly = 0) { tracker.resumed() }
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify(exactly = 0) {
+            manager.startUpdateFlowForResult(any(), any(), any())
         }
+    }
 
     @Test
-    fun `Given in-progress update restarted on resume When launch Then returns already in progress`() =
-        runTest {
-            val activity = attachActivity()
-            lifecycleState = Lifecycle.State.RESUMED
-            val info = appUpdateInfo(
-                availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
-            )
-            every { manager.appUpdateInfo } returns completedUpdateInfoTask(info)
-            every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
-            inAppUpdate.onResume(activity)
+    fun `Given resume event from a different owner When onResume Then refresh is skipped`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(appUpdateInfo())
+        val other: ComponentActivity = mockk()
 
-            val result = inAppUpdate.launch()
+        inAppUpdate.onResume(other)
 
-            assertThat(result)
-                .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+        verify(exactly = 0) {
+            manager.startUpdateFlowForResult(any(), any(), any())
         }
-
-    @Test
-    fun `Given in-progress update When owner is not resumed Then update flow is not restarted`() =
-        runTest {
-            val activity = attachActivity()
-            every { manager.appUpdateInfo } returns completedUpdateInfoTask(
-                appUpdateInfo(
-                    availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
-                ),
-            )
-
-            inAppUpdate.onResume(activity)
-
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
-            verify(exactly = 0) {
-                manager.startUpdateFlowForResult(any(), any(), any())
-            }
-        }
-
-    @Test
-    fun `Given resume event from a different owner When onResume Then refresh is skipped`() =
-        runTest {
-            attachActivity()
-            lifecycleState = Lifecycle.State.RESUMED
-            every { manager.appUpdateInfo } returns completedUpdateInfoTask(appUpdateInfo())
-            val other: ComponentActivity = mockk()
-
-            inAppUpdate.onResume(other)
-
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-            verify(exactly = 0) {
-                manager.startUpdateFlowForResult(any(), any(), any())
-            }
-        }
+    }
 
     @Test
     fun `Given refresh request fails When activity resumes Then state stays idle`() = runTest {
@@ -486,16 +474,15 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given app is not installed from Play When activity resumes Then state stays idle`() =
-        runTest {
-            val activity = attachActivity()
-            val error = InstallException(InstallErrorCode.ERROR_APP_NOT_OWNED)
-            every { manager.appUpdateInfo } returns failedUpdateInfoTask(error)
+    fun `Given app is not installed from Play When activity resumes Then state stays idle`() = runTest {
+        val activity = attachActivity()
+        val error = InstallException(InstallErrorCode.ERROR_APP_NOT_OWNED)
+        every { manager.appUpdateInfo } returns failedUpdateInfoTask(error)
 
-            inAppUpdate.onResume(activity)
+        inAppUpdate.onResume(activity)
 
-            assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
-        }
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
 
     @Test
     fun `Given update flow launched When result is ok Then accepted is tracked`() = runTest {
@@ -545,22 +532,19 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given attached activity destroyed When launch Then returns resource not found failure`() =
-        runTest {
-            val activity = attachActivity()
-            inAppUpdate.onDestroy(activity)
+    fun `Given attached activity destroyed When launch Then returns resource not found failure`() = runTest {
+        val activity = attachActivity()
+        inAppUpdate.onDestroy(activity)
 
-            val result = inAppUpdate.launch()
+        val result = inAppUpdate.launch()
 
-            assertThat(result).isEqualTo(
-                Answer.Failure(Failure.ResourceNotFound("No activity attached")),
-            )
-            verify { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
-        }
+        assertThat(result).isEqualTo(
+            Answer.Failure(Failure.ResourceNotFound("No activity attached")),
+        )
+        verify { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
+    }
 
-    private fun createInAppUpdate(
-        config: InAppUpdateConfig = InAppUpdateConfig(),
-    ) = InAppUpdateImpl(
+    private fun createInAppUpdate(config: InAppUpdateConfig = InAppUpdateConfig()) = InAppUpdateImpl(
         manager = manager,
         tracker = tracker,
         config = config,

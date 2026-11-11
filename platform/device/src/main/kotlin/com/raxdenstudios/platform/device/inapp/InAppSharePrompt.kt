@@ -66,9 +66,7 @@ internal interface InAppSharePrompt {
  * the activity is destroyed, so the suspended caller never waits forever on a sheet that can no
  * longer be answered.
  */
-internal class InAppSharePromptImpl(
-    private val themeProvider: ThemeProvider,
-) : InAppSharePrompt {
+internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : InAppSharePrompt {
 
     override suspend fun show(activity: ComponentActivity): Boolean {
         val answer = CompletableDeferred<Boolean>()
@@ -84,21 +82,19 @@ internal class InAppSharePromptImpl(
         }
     }
 
-    private fun buildComposeView(
-        activity: ComponentActivity,
-        answer: CompletableDeferred<Boolean>,
-    ): ComposeView = ComposeView(activity).apply {
-        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-        setContent {
-            themeProvider.Apply {
-                InAppSharePromptSheet(
-                    activity = activity,
-                    onShare = { answer.complete(true) },
-                    onDismiss = { answer.complete(false) },
-                )
+    private fun buildComposeView(activity: ComponentActivity, answer: CompletableDeferred<Boolean>): ComposeView =
+        ComposeView(activity).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                themeProvider.Apply {
+                    InAppSharePromptSheet(
+                        activity = activity,
+                        onShare = { answer.complete(true) },
+                        onDismiss = { answer.complete(false) },
+                    )
+                }
             }
         }
-    }
 
     private fun attach(activity: ComponentActivity, composeView: ComposeView) {
         val content = activity.findViewById<ViewGroup>(android.R.id.content)
@@ -114,22 +110,17 @@ internal class InAppSharePromptImpl(
         content.removeView(composeView)
     }
 
-    private fun closeOnDestroy(
-        answer: CompletableDeferred<Boolean>,
-    ): DefaultLifecycleObserver = object : DefaultLifecycleObserver {
-        override fun onDestroy(owner: LifecycleOwner) {
-            answer.complete(false)
+    private fun closeOnDestroy(answer: CompletableDeferred<Boolean>): DefaultLifecycleObserver =
+        object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                answer.complete(false)
+            }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InAppSharePromptSheet(
-    activity: ComponentActivity,
-    onShare: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Unit, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val appName = activity.applicationInfo.loadLabel(activity.packageManager).toString()
@@ -156,7 +147,7 @@ private fun InAppSharePromptSheet(
         Spacer.Vertical.Large()
         Label.TitleLarge(ResourceId(R.string.in_app_share_prompt_title, listOf(appName)))
         Spacer.Vertical.Small()
-        Label.BodyMedium(ResourceId(R.string.in_app_share_prompt_message))
+        Label.BodyMedium(ResourceId(R.string.in_app_share_prompt_message, listOf(appName)))
         Spacer.Vertical.Large()
     }
 }

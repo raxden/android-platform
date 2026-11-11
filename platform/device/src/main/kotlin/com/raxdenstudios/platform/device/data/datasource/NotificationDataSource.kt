@@ -16,10 +16,8 @@ interface NotificationDataSource {
     suspend fun send(notification: NotificationData): Answer<Unit, Failure>
 }
 
-internal class NotificationDataSourceImpl(
-    private val context: Context,
-    private val tracker: NotificationTracker,
-) : NotificationDataSource {
+internal class NotificationDataSourceImpl(private val context: Context, private val tracker: NotificationTracker) :
+    NotificationDataSource {
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun send(notification: NotificationData): Answer<Unit, Failure> = try {
@@ -53,7 +51,7 @@ internal class NotificationDataSourceImpl(
             when (e) {
                 is SecurityException -> Failure.Unauthorized(e.message ?: "Notification permission denied")
                 else -> Failure.Unknown(e.message ?: "Failed to send notification")
-            }
+            },
         )
     }
 
@@ -73,10 +71,7 @@ internal class NotificationDataSourceImpl(
     private fun getNotificationManager(): NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    private fun ensureChannel(
-        notificationManager: NotificationManager,
-        channel: NotificationChannel,
-    ) {
+    private fun ensureChannel(notificationManager: NotificationManager, channel: NotificationChannel) {
         if (notificationManager.getNotificationChannel(channel.id) != null) return
         notificationManager.createNotificationChannel(channel)
         tracker.channelCreated()

@@ -3,9 +3,9 @@ package com.raxdenstudios.platform.device.service
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.raxdenstudios.commons.coroutines.DispatcherProvider
-import com.raxdenstudios.platform.device.service.mapper.FCMNotificationMapper
-import com.raxdenstudios.platform.device.domain.usecase.SendNotificationUseCase
 import com.raxdenstudios.platform.device.domain.usecase.SaveFCMTokenUseCase
+import com.raxdenstudios.platform.device.domain.usecase.SendNotificationUseCase
+import com.raxdenstudios.platform.device.service.mapper.FCMNotificationMapper
 import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 

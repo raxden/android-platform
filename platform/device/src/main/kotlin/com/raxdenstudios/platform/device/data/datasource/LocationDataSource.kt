@@ -25,7 +25,8 @@ interface LocationDataSource {
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
     suspend fun getLastLocation(): Answer<Location, Failure>
 
@@ -34,7 +35,8 @@ interface LocationDataSource {
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
     suspend fun getCountryCode(): Answer<String, Failure>
 }
@@ -52,36 +54,37 @@ internal class LocationDataSourceImpl(
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
-    override suspend fun getLastLocation(): Answer<Location, Failure> =
-        try {
-            suspendCancellableCoroutine { continuation ->
-                fusedLocationClient.lastLocation.addOnCompleteListener { task ->
-                    if (!continuation.isActive) return@addOnCompleteListener
-                    when {
-                        task.isCanceled -> continuation.cancel(CancellationException("Location request cancelled"))
-                        !task.isSuccessful -> continuation.resume(
-                            Answer.Failure(
-                                task.exception?.toFailure("Location request failed")
-                                    ?: Failure.Unknown("Location request failed")
-                            )
-                        )
+    override suspend fun getLastLocation(): Answer<Location, Failure> = try {
+        suspendCancellableCoroutine { continuation ->
+            fusedLocationClient.lastLocation.addOnCompleteListener { task ->
+                if (!continuation.isActive) return@addOnCompleteListener
+                when {
+                    task.isCanceled -> continuation.cancel(CancellationException("Location request cancelled"))
 
-                        else -> continuation.resume(
-                            task.result?.let { location ->
-                                Answer.Success(locationMapper.transform(location))
-                            }
-                                ?: Answer.Failure(Failure.ResourceNotFound("Last known location is unavailable"))
-                        )
-                    }
+                    !task.isSuccessful -> continuation.resume(
+                        Answer.Failure(
+                            task.exception?.toFailure("Location request failed")
+                                ?: Failure.Unknown("Location request failed"),
+                        ),
+                    )
+
+                    else -> continuation.resume(
+                        task.result?.let { location ->
+                            Answer.Success(locationMapper.transform(location))
+                        }
+                            ?: Answer.Failure(Failure.ResourceNotFound("Last known location is unavailable")),
+                    )
                 }
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            Answer.Failure(error.toFailure("Location request failed"))
         }
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Answer.Failure(error.toFailure("Location request failed"))
+    }
 
     @Suppress("TooGenericExceptionCaught")
     override suspend fun getCountryCode(location: Location): Answer<String, Failure> {
@@ -111,13 +114,13 @@ internal class LocationDataSourceImpl(
     @RequiresPermission(
         anyOf = [
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION]
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ],
     )
-    override suspend fun getCountryCode(): Answer<String, Failure> =
-        when (val location = getLastLocation()) {
-            is Answer.Success -> getCountryCode(location.value)
-            is Answer.Failure -> location
-        }
+    override suspend fun getCountryCode(): Answer<String, Failure> = when (val location = getLastLocation()) {
+        is Answer.Success -> getCountryCode(location.value)
+        is Answer.Failure -> location
+    }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private suspend fun geocodeAsync(
@@ -126,23 +129,28 @@ internal class LocationDataSourceImpl(
         longitude: Double,
     ): Answer<String, Failure> = suspendCancellableCoroutine { continuation ->
         // Geocoder has no cancellation API; ignore results after the caller cancels.
-        geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
-            override fun onGeocode(addresses: MutableList<Address>) {
-                if (continuation.isActive) continuation.resume(countryCodeFrom(addresses))
-            }
-
-            override fun onError(errorMessage: String?) {
-                if (continuation.isActive) {
-                    continuation.resume(
-                        Answer.Failure(
-                            Failure.Unknown(
-                                errorMessage ?: "Geocoding failed"
-                            )
-                        )
-                    )
+        geocoder.getFromLocation(
+            latitude,
+            longitude,
+            1,
+            object : Geocoder.GeocodeListener {
+                override fun onGeocode(addresses: MutableList<Address>) {
+                    if (continuation.isActive) continuation.resume(countryCodeFrom(addresses))
                 }
-            }
-        })
+
+                override fun onError(errorMessage: String?) {
+                    if (continuation.isActive) {
+                        continuation.resume(
+                            Answer.Failure(
+                                Failure.Unknown(
+                                    errorMessage ?: "Geocoding failed",
+                                ),
+                            ),
+                        )
+                    }
+                }
+            },
+        )
     }
 
     private fun countryCodeFrom(addresses: List<Address>?): Answer<String, Failure> {
