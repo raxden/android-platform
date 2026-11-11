@@ -147,7 +147,7 @@ private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Un
         Spacer.Vertical.Large()
         Label.TitleLarge(ResourceId(R.string.in_app_share_prompt_title, listOf(appName)))
         Spacer.Vertical.Small()
-        Label.BodyMedium(ResourceId(R.string.in_app_share_prompt_message, listOf(appName)))
+        Label.BodyMedium(ResourceId(R.string.in_app_share_prompt_message))
         Spacer.Vertical.Large()
     }
 }
