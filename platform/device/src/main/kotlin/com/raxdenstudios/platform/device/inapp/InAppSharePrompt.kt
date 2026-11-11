@@ -132,6 +132,7 @@ private fun InAppSharePromptSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+    val appName = activity.applicationInfo.loadLabel(activity.packageManager).toString()
 
     fun answerAndHide(onAnswered: () -> Unit) {
         scope.launch {
@@ -144,7 +145,7 @@ private fun InAppSharePromptSheet(
     BottomSheet.Simple(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        primaryButton = ResourceId(R.string.in_app_share_prompt_positive) to {
+        primaryButton = ResourceId(R.string.in_app_share_prompt_positive, listOf(appName)) to {
             answerAndHide(onShare)
         },
         secondaryButton = ResourceId(R.string.in_app_share_prompt_negative) to {
@@ -153,7 +154,6 @@ private fun InAppSharePromptSheet(
     ) {
         InAppSharePromptHeader(activity)
         Spacer.Vertical.Large()
-        val appName = activity.applicationInfo.loadLabel(activity.packageManager).toString()
         Label.TitleLarge(ResourceId(R.string.in_app_share_prompt_title, listOf(appName)))
         Spacer.Vertical.Small()
         Label.BodyMedium(ResourceId(R.string.in_app_share_prompt_message))
