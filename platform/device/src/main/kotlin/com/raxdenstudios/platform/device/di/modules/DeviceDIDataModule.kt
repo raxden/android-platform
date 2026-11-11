@@ -71,6 +71,7 @@ import com.raxdenstudios.platform.device.domain.usecase.SendNotificationUseCase
 import com.raxdenstudios.platform.device.domain.usecase.SendNotificationUseCaseImpl
 import com.raxdenstudios.platform.device.domain.repository.NotificationRepository
 import com.raxdenstudios.platform.device.data.repository.NotificationRepositoryImpl
+import com.raxdenstudios.platform.ui.theme.DefaultThemeProvider
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
@@ -100,7 +101,7 @@ class DeviceDIDataModule : DIModule {
 
         factoryOf(::InAppUpdateTrackerImpl) bind InAppUpdateTracker::class
         factoryOf(::InAppShareTrackerImpl) bind InAppShareTracker::class
-        factoryOf(::InAppSharePromptImpl) bind InAppSharePrompt::class
+        factory<InAppSharePrompt> { InAppSharePromptImpl(themeProvider = getOrNull() ?: DefaultThemeProvider()) }
         factoryOf(::InAppReviewTrackerImpl) bind InAppReviewTracker::class
 
         single<InAppUpdate> {
