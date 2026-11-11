@@ -10,6 +10,24 @@ import com.google.firebase.analytics.logEvent
 internal interface InAppShareTracker {
 
     /**
+     * Fires `in_app_share_prompt_shown` when the native modal asking whether to share the app is
+     * displayed, before the system share sheet. No params.
+     */
+    fun promptShown()
+
+    /**
+     * Fires `in_app_share_prompt_accepted` when the user accepts the modal and the system share
+     * sheet is about to open. No params.
+     */
+    fun promptAccepted()
+
+    /**
+     * Fires `in_app_share_prompt_declined` when the user rejects or dismisses the modal without
+     * opening the system share sheet. No params.
+     */
+    fun promptDeclined()
+
+    /**
      * Fires `in_app_share_target_chosen` when the user picks a destination app in the share
      * sheet. [packageName] is sent as the `package_name` param and omitted entirely when the
      * system did not report the chosen component. Like [InAppShareResult.TargetChosen], this
@@ -51,6 +69,18 @@ internal class InAppShareTrackerImpl(
     private val firebaseAnalytics: FirebaseAnalytics,
 ) : InAppShareTracker {
 
+    override fun promptShown() {
+        firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_SHOWN) {}
+    }
+
+    override fun promptAccepted() {
+        firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_ACCEPTED) {}
+    }
+
+    override fun promptDeclined() {
+        firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_DECLINED) {}
+    }
+
     override fun targetChosen(packageName: String?) {
         firebaseAnalytics.logEvent(IN_APP_SHARE_TARGET_CHOSEN) {
             packageName?.let { param("package_name", it) }
@@ -68,6 +98,9 @@ internal class InAppShareTrackerImpl(
     }
 
     private companion object {
+        const val IN_APP_SHARE_PROMPT_SHOWN = "in_app_share_prompt_shown"
+        const val IN_APP_SHARE_PROMPT_ACCEPTED = "in_app_share_prompt_accepted"
+        const val IN_APP_SHARE_PROMPT_DECLINED = "in_app_share_prompt_declined"
         const val IN_APP_SHARE_TARGET_CHOSEN = "in_app_share_target_chosen"
         const val IN_APP_SHARE_DISMISSED = "in_app_share_dismissed"
         const val IN_APP_SHARE_FAILED = "in_app_share_failed"

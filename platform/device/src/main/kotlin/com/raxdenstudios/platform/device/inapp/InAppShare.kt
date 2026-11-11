@@ -59,6 +59,11 @@ import kotlin.time.Duration.Companion.milliseconds
  *         }
  * }
  * ```
+ *
+ * [launch] first shows a native modal asking the user whether they want to share the app and
+ * only opens the system share sheet if they accept; [InAppShareResult.Declined] means they
+ * rejected or dismissed that modal. [share] skips the modal and opens the system share sheet
+ * directly.
  */
 interface InAppShare : DefaultLifecycleObserver {
 
@@ -70,12 +75,24 @@ interface InAppShare : DefaultLifecycleObserver {
     fun attach(activity: ComponentActivity)
 
     /**
-     * Shows the system share sheet on the attached activity and suspends until it is closed.
+     * Shows a native modal asking the user whether they want to share the app and, only if they
+     * accept, the system share sheet. Suspends until both are closed.
+     *
+     * [Answer.Success] with [InAppShareResult.Declined] means the user rejected or dismissed the
+     * modal without opening the share sheet. [Answer.Failure] means the modal or the sheet could
+     * not be shown (no activity attached, a share already in progress or the system rejected the
+     * intent).
+     */
+    suspend fun launch(content: InAppShareContent): Answer<InAppShareResult, Failure>
+
+    /**
+     * Shows the system share sheet directly on the attached activity, skipping the modal shown
+     * by [launch], and suspends until it is closed.
      *
      * [Answer.Failure] means the sheet could not be shown (no activity attached, a share already
      * in progress or the system rejected the intent).
      */
-    suspend fun launch(content: InAppShareContent): Answer<InAppShareResult, Failure>
+    suspend fun share(content: InAppShareContent): Answer<InAppShareResult, Failure>
 }
 
 /**
@@ -100,11 +117,15 @@ sealed interface InAppShareResult {
 
     /** The user closed the share sheet without picking anything. */
     data object Dismissed : InAppShareResult
+
+    /** The user rejected or dismissed the modal asking to share, before the share sheet opened. */
+    data object Declined : InAppShareResult
 }
 
 internal class InAppShareImpl(
     context: Context,
     private val tracker: InAppShareTracker,
+    private val prompt: InAppSharePrompt,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : InAppShare {
 
@@ -132,6 +153,17 @@ internal class InAppShareImpl(
 
     override suspend fun launch(content: InAppShareContent): Answer<InAppShareResult, Failure> =
         withContext(mainDispatcher) {
+            val activity = activityHolder.activity
+            val currentLauncher = launcher
+            when {
+                activity == null || currentLauncher == null -> noActivityFailure()
+                pending != null -> alreadyInProgressFailure()
+                else -> launchWithPrompt(activity, currentLauncher, content)
+            }
+        }
+
+    override suspend fun share(content: InAppShareContent): Answer<InAppShareResult, Failure> =
+        withContext(mainDispatcher) {
             val currentLauncher = launcher
             when {
                 activityHolder.activity == null || currentLauncher == null -> noActivityFailure()
@@ -139,6 +171,37 @@ internal class InAppShareImpl(
                 else -> shareWithTracking(currentLauncher, content)
             }
         }
+
+    /**
+     * Marks a share in progress for the whole modal + sheet flow so a concurrent [launch] or
+     * [share] call is rejected while the modal is still visible, same as while the sheet is open.
+     */
+    private suspend fun launchWithPrompt(
+        activity: ComponentActivity,
+        launcher: ActivityResultLauncher<Intent>,
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure> {
+        pending = PendingShare()
+        return try {
+            tracker.promptShown()
+            val prompted = coRunCatching { prompt.show(activity) }
+                .thenFailure { Failure.Unknown("In-app share prompt could not be shown: ${it.message}") }
+                .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
+            when (prompted) {
+                is Answer.Failure -> prompted
+                is Answer.Success -> if (prompted.value) {
+                    tracker.promptAccepted()
+                    pending = null
+                    shareWithTracking(launcher, content)
+                } else {
+                    tracker.promptDeclined()
+                    Answer.Success(InAppShareResult.Declined)
+                }
+            }
+        } finally {
+            pending = null
+        }
+    }
 
     private fun noActivityFailure(): Answer<InAppShareResult, Failure> {
         tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY)
@@ -163,6 +226,9 @@ internal class InAppShareImpl(
         when (result) {
             is InAppShareResult.TargetChosen -> tracker.targetChosen(result.packageName)
             InAppShareResult.Dismissed -> tracker.dismissed()
+            // share() (invoked by shareWithTracking) never returns Declined: that result is only
+            // produced by launch()'s prompt step, before the sheet is shown.
+            InAppShareResult.Declined -> Unit
         }
     }
 
