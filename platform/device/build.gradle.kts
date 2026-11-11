@@ -44,6 +44,7 @@ dependencies {
 
     implementationBundle(libs.bundles.firebase)
     implementationBundle(libs.bundles.koin)
+    implementationBundle(libs.bundles.android.material)
 
     testImplementation(libs.commons.coroutines.test)
     testImplementation(libs.truth)

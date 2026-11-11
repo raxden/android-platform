@@ -5,6 +5,8 @@ import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.raxdenstudios.platform.device.inapp.DebugInAppUpdate
 import com.raxdenstudios.platform.device.inapp.InAppShare
 import com.raxdenstudios.platform.device.inapp.InAppShareImpl
+import com.raxdenstudios.platform.device.inapp.InAppSharePrompt
+import com.raxdenstudios.platform.device.inapp.InAppSharePromptImpl
 import com.raxdenstudios.platform.device.inapp.InAppShareTracker
 import com.raxdenstudios.platform.device.inapp.InAppShareTrackerImpl
 import com.raxdenstudios.platform.device.inapp.InAppUpdate
@@ -98,6 +100,7 @@ class DeviceDIDataModule : DIModule {
 
         factoryOf(::InAppUpdateTrackerImpl) bind InAppUpdateTracker::class
         factoryOf(::InAppShareTrackerImpl) bind InAppShareTracker::class
+        factoryOf(::InAppSharePromptImpl) bind InAppSharePrompt::class
         factoryOf(::InAppReviewTrackerImpl) bind InAppReviewTracker::class
 
         single<InAppUpdate> {
@@ -114,7 +117,7 @@ class DeviceDIDataModule : DIModule {
             }
         }
 
-        single<InAppShare> { InAppShareImpl(androidContext(), tracker = get()) }
+        single<InAppShare> { InAppShareImpl(androidContext(), tracker = get(), prompt = get()) }
 
         single<InAppReview> {
             val context = androidContext()

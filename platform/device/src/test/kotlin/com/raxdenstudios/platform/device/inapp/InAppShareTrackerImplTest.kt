@@ -43,6 +43,30 @@ internal class InAppShareTrackerImplTest {
     }
 
     @Test
+    fun `Given the prompt is displayed When promptShown Then logs in_app_share_prompt_shown`() {
+        tracker.promptShown()
+
+        verify { firebaseAnalytics.logEvent("in_app_share_prompt_shown", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
+    fun `Given the prompt is accepted When promptAccepted Then logs in_app_share_prompt_accepted`() {
+        tracker.promptAccepted()
+
+        verify { firebaseAnalytics.logEvent("in_app_share_prompt_accepted", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
+    fun `Given the prompt is rejected When promptDeclined Then logs in_app_share_prompt_declined`() {
+        tracker.promptDeclined()
+
+        verify { firebaseAnalytics.logEvent("in_app_share_prompt_declined", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
     fun `Given a target with package When targetChosen Then logs target chosen with package name`() {
         tracker.targetChosen("com.whatsapp")
 

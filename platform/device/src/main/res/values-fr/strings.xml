@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- in-app share prompt -->
+    <string name="in_app_share_prompt_title">Vous aimez %1$s ?</string>
+    <string name="in_app_share_prompt_message">Partagez-la avec vos amis</string>
+    <string name="in_app_share_prompt_positive">Partager</string>
+    <string name="in_app_share_prompt_negative">Pas maintenant</string>
+</resources>

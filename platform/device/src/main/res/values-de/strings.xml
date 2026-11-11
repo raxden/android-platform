@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- in-app share prompt -->
+    <string name="in_app_share_prompt_title">Gefällt dir %1$s?</string>
+    <string name="in_app_share_prompt_message">Teile sie mit deinen Freunden</string>
+    <string name="in_app_share_prompt_positive">Teilen</string>
+    <string name="in_app_share_prompt_negative">Nicht jetzt</string>
+</resources>
