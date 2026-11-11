@@ -26,7 +26,7 @@ import com.raxdenstudios.platform.ui.composable.Label
 import com.raxdenstudios.platform.ui.composable.Spacer
 import com.raxdenstudios.platform.ui.model.StringResource.PlainText
 import com.raxdenstudios.platform.ui.model.StringResource.ResourceId
-import com.raxdenstudios.platform.ui.theme.AppComposeTheme
+import com.raxdenstudios.platform.ui.theme.ThemeProvider
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 
@@ -58,12 +58,17 @@ internal interface InAppSharePrompt {
 
 /**
  * Hosts [BottomSheet.Simple] on a standalone [ComposeView] attached to the activity decor view,
- * since [InAppSharePrompt] is shown from a context without its own `setContent`. The sheet
- * answer is bridged into a [CompletableDeferred] that also completes with `false` from a
- * [DefaultLifecycleObserver] when the activity is destroyed, so the suspended caller never waits
- * forever on a sheet that can no longer be answered.
+ * since [InAppSharePrompt] is shown from a context without its own `setContent`. The sheet is
+ * wrapped in the [ThemeProvider] registered in DI — `DefaultThemeProvider` by default, or the
+ * provider the host app overrides it with — so it follows the app palette and light/dark
+ * preference instead of the stock Material 3 color scheme. The sheet answer is bridged into a
+ * [CompletableDeferred] that also completes with `false` from a [DefaultLifecycleObserver] when
+ * the activity is destroyed, so the suspended caller never waits forever on a sheet that can no
+ * longer be answered.
  */
-internal class InAppSharePromptImpl : InAppSharePrompt {
+internal class InAppSharePromptImpl(
+    private val themeProvider: ThemeProvider,
+) : InAppSharePrompt {
 
     override suspend fun show(activity: ComponentActivity): Boolean {
         val answer = CompletableDeferred<Boolean>()
@@ -85,7 +90,7 @@ internal class InAppSharePromptImpl : InAppSharePrompt {
     ): ComposeView = ComposeView(activity).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
-            AppComposeTheme {
+            themeProvider.Apply {
                 InAppSharePromptSheet(
                     activity = activity,
                     onShare = { answer.complete(true) },
