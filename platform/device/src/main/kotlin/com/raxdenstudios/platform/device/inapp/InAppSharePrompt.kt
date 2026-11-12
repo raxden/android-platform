@@ -10,7 +10,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -28,6 +32,7 @@ import com.raxdenstudios.platform.ui.model.StringResource.PlainText
 import com.raxdenstudios.platform.ui.model.StringResource.ResourceId
 import com.raxdenstudios.platform.ui.theme.ThemeProvider
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -50,6 +55,9 @@ internal interface InAppSharePrompt {
      * tap the negative action (Not now), press back, tap outside the sheet or the activity is
      * destroyed while the modal is visible. If the awaiting coroutine is cancelled the sheet is
      * still dismissed and its lifecycle observer removed before the cancellation propagates.
+     * The caller is therefore guaranteed to resume — on an answer, on activity destruction or
+     * on cancellation — and the modal's window is torn down with it in every case, so it can
+     * never linger as an invisible overlay blocking the activity.
      *
      * Must be called on the main thread.
      */
@@ -65,6 +73,13 @@ internal interface InAppSharePrompt {
  * [CompletableDeferred] that also completes with `false` from a [DefaultLifecycleObserver] when
  * the activity is destroyed, so the suspended caller never waits forever on a sheet that can no
  * longer be answered.
+ *
+ * The prompt's window lifecycle is bound to composition disposal: `ModalBottomSheet` keeps its
+ * dialog window attached until it leaves the composition, so the sheet is only composed while
+ * visible and [show] disposes the composition before removing the view — the
+ * [ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed] strategy alone would not dispose
+ * on view removal and would leave the window blocking the activity. The answer is emitted when
+ * the hide animation finishes or is cancelled, so [show] always resumes its caller.
  */
 internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : InAppSharePrompt {
 
@@ -105,7 +120,13 @@ internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : 
         )
     }
 
+    /**
+     * The composition must be disposed before the view is removed: the chosen strategy only
+     * disposes on lifecycle destruction, so without this the sheet's window would outlive the
+     * modal and keep intercepting touches over the activity.
+     */
     private fun detach(activity: ComponentActivity, composeView: ComposeView) {
+        composeView.disposeComposition()
         val content = activity.findViewById<ViewGroup>(android.R.id.content)
         content.removeView(composeView)
     }
@@ -121,6 +142,11 @@ internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Unit, onDismiss: () -> Unit) {
+    // ModalBottomSheet keeps its own window open until it leaves the composition, so the sheet
+    // is only composed while shown; once answered, hiding it removes the window for good.
+    var isShowing by remember { mutableStateOf(true) }
+    if (!isShowing) return
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val appName = activity.applicationInfo.loadLabel(activity.packageManager).toString()
@@ -129,12 +155,19 @@ private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Un
         scope.launch {
             sheetState.hide()
         }.invokeOnCompletion {
-            if (!sheetState.isVisible) onAnswered()
+            // The answer must be emitted even if the hide animation was interrupted, otherwise
+            // the awaiting caller would never resume. If the composition itself was disposed
+            // (scope cancelled) the modal is gone, so it counts as a dismissal, never as a share.
+            isShowing = false
+            if (scope.isActive) onAnswered() else onDismiss()
         }
     }
 
     BottomSheet.Simple(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            isShowing = false
+            onDismiss()
+        },
         sheetState = sheetState,
         primaryButton = ResourceId(R.string.in_app_share_prompt_positive, listOf(appName)) to {
             answerAndHide(onShare)
