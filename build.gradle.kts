@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.android.publish.library) apply false
     alias(libs.plugins.android.publish.platform) apply false
     alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.test.logger)
     alias(libs.plugins.nmcp.aggregation)
     id("android-project-conventions")

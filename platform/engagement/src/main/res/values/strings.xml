@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="account_share_text_subject">Check out RadioSquare!</string>
+    <string name="account_share_text_value">I\'m using RadioSquare to listen to my favorite radio stations. Download it now! https://play.google.com/store/apps/details?id=%s</string>
+</resources>
