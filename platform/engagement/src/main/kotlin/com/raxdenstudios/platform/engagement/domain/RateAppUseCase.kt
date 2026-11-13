@@ -20,7 +20,7 @@ interface RateAppUseCase : SuspendUseCase<RateAppUseCase.Params, Boolean> {
     data object Params
 }
 
-class RateAppUseCaseImpl(
+internal class RateAppUseCaseImpl(
     private val inAppReview: InAppReview,
     private val engagementDataRepository: EngagementDataRepository,
 ) : RateAppUseCase {

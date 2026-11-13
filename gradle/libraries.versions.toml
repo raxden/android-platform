@@ -340,6 +340,7 @@ platform-bom = { module = "com.raxdenstudios:platform-bom", version.ref = "platf
 platform-core = { module = "com.raxdenstudios:platform-core" }
 platform-ui = { module = "com.raxdenstudios:platform-ui" }
 platform-device = { module = "com.raxdenstudios:platform-device" }
+platform-engagement = { module = "com.raxdenstudios:platform-engagement" }
 platform-network = { module = "com.raxdenstudios:platform-network" }
 
 # -------------------------------------------------------------------

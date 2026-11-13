@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="account_share_text_subject">Посмотрите Радио FM!</string>
-    <string name="account_share_text_value">Я использую Радио FM для прослушивания моих любимых радиостанций. Скачайте сейчас! https://play.google.com/store/apps/details?id=%s</string>
+    <string name="engagement_share_subject">Посмотрите %1$s!</string>
+    <string name="engagement_share_text">Я использую %1$s. Скачайте сейчас! %2$s</string>
 </resources>

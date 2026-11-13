@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="account_share_text_subject">Schauen Sie sich RadioSquare an!</string>
-    <string name="account_share_text_value">Ich verwende RadioSquare, um meine Lieblings-Radiosender zu hören. Jetzt herunterladen! https://play.google.com/store/apps/details?id=%s</string>
+    <string name="engagement_share_subject">Schauen Sie sich %1$s an!</string>
+    <string name="engagement_share_text">Ich verwende %1$s. Jetzt herunterladen! %2$s</string>
 </resources>

@@ -6,14 +6,16 @@ import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDat
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
 import kotlinx.coroutines.flow.Flow
 
-interface EngagementDataRepository {
+internal interface EngagementDataRepository {
 
     fun observeEngagementData(): Flow<Answer<EngagementData, Failure>>
-    suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure>
+
     suspend fun getEngagementData(): Answer<EngagementData, Failure>
+
+    suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure>
 }
 
-class EngagementDataRepositoryImpl(private val engagementDataLocalDataSource: EngagementDataLocalDataSource) :
+internal class EngagementDataRepositoryImpl(private val engagementDataLocalDataSource: EngagementDataLocalDataSource) :
     EngagementDataRepository {
 
     override fun observeEngagementData(): Flow<Answer<EngagementData, Failure>> =

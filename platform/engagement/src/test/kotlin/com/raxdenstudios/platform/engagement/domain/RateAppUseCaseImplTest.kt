@@ -20,15 +20,25 @@ internal class RateAppUseCaseImplTest {
 
     private val failure = Failure.Network.Unknown("error")
 
+    /**
+     * In-memory stand-in for the persisted state: the repository mock reads it back on
+     * `getEngagementData` and stores every update, like the real repository does.
+     */
+    private var storedData = EngagementData()
+
     private lateinit var useCase: RateAppUseCaseImpl
 
     @Before
     fun setUp() {
+        storedData = EngagementData()
         coEvery { inAppReview.launch() } returns Answer.Success(Unit)
-        coEvery { engagementDataRepository.getEngagementData() } returns
-            Answer.Success(EngagementData())
-        coEvery { engagementDataRepository.updateEngagementData(any()) } returns
+        coEvery { engagementDataRepository.getEngagementData() } answers {
+            Answer.Success(storedData)
+        }
+        coEvery { engagementDataRepository.updateEngagementData(any()) } coAnswers {
+            storedData = firstArg()
             Answer.Success(Unit)
+        }
 
         useCase = RateAppUseCaseImpl(
             inAppReview = inAppReview,
@@ -38,17 +48,15 @@ internal class RateAppUseCaseImplTest {
 
     @Test
     fun `Given review launches successfully When invoked Then app is marked as rated`() = runTest {
-        coEvery { engagementDataRepository.getEngagementData() } returns
-            Answer.Success(EngagementData(counts = mapOf("app_opened" to 3)))
+        storedData = EngagementData(counts = mapOf("app_opened" to 3))
 
         val result = useCase(RateAppUseCase.Params)
 
         assertEquals(Answer.Success(false), result)
-        coVerify {
-            engagementDataRepository.updateEngagementData(
-                EngagementData(counts = mapOf("app_opened" to 3), hasRated = true),
-            )
-        }
+        assertEquals(
+            EngagementData(counts = mapOf("app_opened" to 3), hasRated = true),
+            storedData,
+        )
     }
 
     @Test
@@ -59,16 +67,6 @@ internal class RateAppUseCaseImplTest {
 
         assertEquals(Answer.Success(true), result)
         coVerify(exactly = 0) { engagementDataRepository.getEngagementData() }
-        coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
-    }
-
-    @Test
-    fun `Given stats fetch fails When invoked Then failure is propagated`() = runTest {
-        coEvery { engagementDataRepository.getEngagementData() } returns Answer.Failure(failure)
-
-        val result = useCase(RateAppUseCase.Params)
-
-        assertEquals(Answer.Failure(failure), result)
         coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
     }
 

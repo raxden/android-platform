@@ -12,23 +12,25 @@ import com.raxdenstudios.platform.engagement.domain.model.EngagementData
 import kotlinx.coroutines.sync.Mutex
 
 /**
- * Prompts the user to engage with the app from the given [Params.origin]. Only one engagement
- * flow is ever shown at a time: the in-app review ([RateAppUseCase]) is tried first and, once the
- * app has been rated, the share prompt ([ShareAppUseCase] with `withPrompt = true`) is tried
- * next. Once both have happened, subsequent calls are a no-op.
+ * Registers an occurrence of [Params.origin] and, when it reaches a milestone accepted by
+ * [EngagementEligibility], prompts the user to engage with the app.
  *
- * The use case succeeds with `true` when the caller should navigate to the Play Store rating page
- * instead: the review flow could not be launched and the app has not been rated yet.
+ * Every call is counted, even when another engagement flow is already running. Only one flow is
+ * shown at a time: the in-app review ([RateAppUseCase]) is tried first and, once the app has
+ * been rated, the share prompt ([ShareAppUseCase] with `withPrompt = true`). When the review
+ * cannot be launched the share prompt is tried in the same call, so it never stays unreachable.
+ * Once both have happened, subsequent calls only count occurrences.
  *
- * A [Mutex] guarantees a single engagement flow is launched at a time: a concurrent call made
- * while one is already in progress succeeds with `false` without being queued.
+ * A concurrent call made while a flow is in progress is counted and succeeds with
+ * [EngagementResult.None] without being queued.
  */
-interface EngagementUseCase : SuspendUseCase<EngagementUseCase.Params, Boolean> {
+interface EngagementUseCase : SuspendUseCase<EngagementUseCase.Params, EngagementResult> {
 
+    /** @property origin name of the trigger point; occurrences and milestones are tracked per origin. */
     data class Params(val origin: String)
 }
 
-class EngagementUseCaseImpl(
+internal class EngagementUseCaseImpl(
     private val rateAppUseCase: RateAppUseCase,
     private val shareAppUseCase: ShareAppUseCase,
     private val engagementDataRepository: EngagementDataRepository,
@@ -37,26 +39,28 @@ class EngagementUseCaseImpl(
 
     private val mutex = Mutex()
 
-    override suspend fun invoke(params: EngagementUseCase.Params): Answer<Boolean, Failure> {
-        if (!mutex.tryLock()) return Answer.Success(false)
+    override suspend fun invoke(params: EngagementUseCase.Params): Answer<EngagementResult, Failure> =
+        track(params.origin).coFlatMap { engagementData -> engageExclusively(engagementData, params.origin) }
+
+    private suspend fun engageExclusively(
+        engagementData: EngagementData,
+        origin: String,
+    ): Answer<EngagementResult, Failure> {
+        if (!mutex.tryLock()) return Answer.Success(EngagementResult.None)
         return try {
-            track(params.origin).coFlatMap { engagementData ->
-                engage(
-                    engagementData,
-                    params.origin,
-                )
-            }
+            engage(engagementData, origin)
         } finally {
             mutex.unlock()
         }
     }
 
-    private suspend fun engage(engagementData: EngagementData, origin: String): Answer<Boolean, Failure> = when {
-        !engagementData.isEligible(origin) -> Answer.Success(false)
-        !engagementData.hasRated -> rate()
-        !engagementData.hasShared -> share(engagementData)
-        else -> Answer.Success(false)
-    }
+    private suspend fun engage(engagementData: EngagementData, origin: String): Answer<EngagementResult, Failure> =
+        when {
+            !engagementData.isEligible(origin) -> Answer.Success(EngagementResult.None)
+            !engagementData.hasRated -> rateOrShare(engagementData)
+            !engagementData.hasShared -> share()
+            else -> Answer.Success(EngagementResult.None)
+        }
 
     private suspend fun track(origin: String): Answer<EngagementData, Failure> =
         engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
@@ -70,17 +74,32 @@ class EngagementUseCaseImpl(
     private fun EngagementData.isEligible(origin: String): Boolean =
         engagementEligibility.isEligible(origin, counts[origin] ?: 0)
 
-    private suspend fun rate(): Answer<Boolean, Failure> = rateAppUseCase(RateAppUseCase.Params)
-
-    private suspend fun share(engagementData: EngagementData): Answer<Boolean, Failure> =
-        when (shareAppUseCase(ShareAppUseCase.Params(withPrompt = true)).getValueOrNull()) {
-            is InAppShareResult.TargetChosen -> markAsShared(engagementData)
-
-            // Declined (prompt rejected) or Dismissed (sheet closed) retry on the next milestone.
-            InAppShareResult.Dismissed, InAppShareResult.Declined, null -> Answer.Success(false)
+    private suspend fun rateOrShare(engagementData: EngagementData): Answer<EngagementResult, Failure> =
+        rateAppUseCase(RateAppUseCase.Params).coFlatMap { reviewUnavailable ->
+            when {
+                !reviewUnavailable -> Answer.Success(EngagementResult.ReviewLaunched)
+                !engagementData.hasShared -> share().then { it.orReviewUnavailable() }
+                else -> Answer.Success(EngagementResult.ReviewUnavailable)
+            }
         }
 
-    private suspend fun markAsShared(engagementData: EngagementData): Answer<Boolean, Failure> =
-        engagementDataRepository.updateEngagementData(engagementData.copy(hasShared = true))
-            .then { false }
+    private fun EngagementResult.orReviewUnavailable(): EngagementResult = when (this) {
+        EngagementResult.ShareNotChosen, EngagementResult.None -> EngagementResult.ReviewUnavailable
+        else -> this
+    }
+
+    private suspend fun share(): Answer<EngagementResult, Failure> =
+        when (shareAppUseCase(ShareAppUseCase.Params(withPrompt = true)).getValueOrNull()) {
+            is InAppShareResult.TargetChosen -> markAsShared()
+
+            // Declined (prompt rejected) or Dismissed (sheet closed) retry on the next milestone.
+            InAppShareResult.Dismissed, InAppShareResult.Declined, null ->
+                Answer.Success(EngagementResult.ShareNotChosen)
+        }
+
+    private suspend fun markAsShared(): Answer<EngagementResult, Failure> =
+        engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
+            engagementDataRepository.updateEngagementData(engagementData.copy(hasShared = true))
+                .then { EngagementResult.ShareChosen }
+        }
 }

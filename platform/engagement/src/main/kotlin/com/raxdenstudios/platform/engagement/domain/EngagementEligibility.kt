@@ -7,21 +7,26 @@ package com.raxdenstudios.platform.engagement.domain
  */
 interface EngagementEligibility {
 
+    /**
+     * Returns `true` when [count] reaches a milestone that justifies prompting.
+     *
+     * @param origin the tracked origin, as passed to [EngagementUseCase.Params.origin].
+     * @param count occurrences already recorded for [origin], including the current call.
+     */
     fun isEligible(origin: String, count: Int): Boolean
 }
 
 /**
- * Applies the same generic milestone thresholds to any origin: eligible on the first occurrence
- * and then every fixed number of occurrences afterwards.
+ * Applies the same generic milestone thresholds to any origin: eligible on the third occurrence
+ * and then every tenth occurrence afterwards.
  */
 internal class DefaultEngagementEligibility : EngagementEligibility {
 
     override fun isEligible(origin: String, count: Int): Boolean =
-        count == FIRST_OCCURRENCE || (count >= STEP_START && count % STEP == 0)
+        count == FIRST_MILESTONE || (count >= STEP && count % STEP == 0)
 
     private companion object {
-        const val FIRST_OCCURRENCE = 3
-        const val STEP_START = 10
+        const val FIRST_MILESTONE = 3
         const val STEP = 10
     }
 }
