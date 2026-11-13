@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="engagement_share_subject">Check out %1$s!</string>
+    <string name="engagement_share_text">I\'m using %1$s. Download it now! %2$s</string>
+</resources>

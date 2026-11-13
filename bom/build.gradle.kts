@@ -33,6 +33,7 @@ dependencies {
         api(projects.platform.core)
         api(projects.platform.ui)
         api(projects.platform.device)
+        api(projects.platform.engagement)
         api(projects.platform.network)
     }
 }

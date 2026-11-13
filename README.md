@@ -23,6 +23,7 @@ Android Platform is a multi-module library that provides a curated set of platfo
 | `platform-core` | Core utilities, DI setup, Room, and Compose base | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-core.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-core) |
 | `platform-ui` | Jetpack Compose UI components and navigation utilities | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-ui.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-ui) |
 | `platform-device` | Device-level abstractions (location, Firebase, permissions) | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-device.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-device) |
+| `platform-engagement` | In-app review and share prompts driven by per-origin occurrence milestones | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-engagement.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-engagement) |
 | `platform-network` | Network layer with OkHttp/Retrofit, Chucker debug support | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-network.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-network) |
 
 ## 🚀 Getting Started
@@ -45,6 +46,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-core")
     implementation("com.raxdenstudios:platform-ui")
     implementation("com.raxdenstudios:platform-device")
+    implementation("com.raxdenstudios:platform-engagement")
     implementation("com.raxdenstudios:platform-network")
 }
 ```
@@ -56,6 +58,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-core:<version>")
     implementation("com.raxdenstudios:platform-ui:<version>")
     implementation("com.raxdenstudios:platform-device:<version>")
+    implementation("com.raxdenstudios:platform-engagement:<version>")
     implementation("com.raxdenstudios:platform-network:<version>")
 }
 ```
