@@ -64,6 +64,12 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
 
+            // Package native debug symbols into the AAB so Google Play can symbolicate
+            // native crashes and ANRs (BUNDLE-METADATA/com.android.tools.build.debugsymbols)
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
