@@ -10,6 +10,7 @@ import com.raxdenstudios.platform.device.inapp.InAppShareResult
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
 import kotlinx.coroutines.sync.Mutex
+import java.util.concurrent.TimeUnit
 
 /**
  * Registers an occurrence of [Params.origin] and, when it reaches a milestone accepted by
@@ -20,6 +21,10 @@ import kotlinx.coroutines.sync.Mutex
  * been rated, the share prompt ([ShareAppUseCase] with `withPrompt = true`). When the review
  * cannot be launched the share prompt is tried in the same call, so it never stays unreachable.
  * Once both have happened, subsequent calls only count occurrences.
+ *
+ * The share prompt is rate-limited: after being shown it stays silent for
+ * [SHARE_PROMPT_COOLDOWN_MILLIS] even if further milestones are reached, and once the user
+ * declines it ("Not now") [MAX_SHARE_DECLINES] times it is never shown again.
  *
  * A concurrent call made while a flow is in progress is counted and succeeds with
  * [EngagementResult.None] without being queued.
@@ -35,6 +40,7 @@ internal class EngagementUseCaseImpl(
     private val shareAppUseCase: ShareAppUseCase,
     private val engagementDataRepository: EngagementDataRepository,
     private val engagementEligibility: EngagementEligibility,
+    private val currentTimeMillis: () -> Long = System::currentTimeMillis,
 ) : EngagementUseCase {
 
     private val mutex = Mutex()
@@ -58,7 +64,7 @@ internal class EngagementUseCaseImpl(
         when {
             !engagementData.isEligible(origin) -> Answer.Success(EngagementResult.None)
             !engagementData.hasRated -> rateOrShare(engagementData)
-            !engagementData.hasShared -> share()
+            engagementData.canPromptShare() -> share()
             else -> Answer.Success(EngagementResult.None)
         }
 
@@ -78,7 +84,7 @@ internal class EngagementUseCaseImpl(
         rateAppUseCase(RateAppUseCase.Params).coFlatMap { reviewUnavailable ->
             when {
                 !reviewUnavailable -> Answer.Success(EngagementResult.ReviewLaunched)
-                !engagementData.hasShared -> share().then { it.orReviewUnavailable() }
+                engagementData.canPromptShare() -> share().then { it.orReviewUnavailable() }
                 else -> Answer.Success(EngagementResult.ReviewUnavailable)
             }
         }
@@ -88,18 +94,45 @@ internal class EngagementUseCaseImpl(
         else -> this
     }
 
+    private fun EngagementData.canPromptShare(): Boolean =
+        !hasShared && !hasReachedShareDeclinesLimit() && hasShareCooldownElapsed()
+
+    private fun EngagementData.hasReachedShareDeclinesLimit(): Boolean = shareDeclines >= MAX_SHARE_DECLINES
+
+    private fun EngagementData.hasShareCooldownElapsed(): Boolean =
+        lastSharePromptAt?.let { currentTimeMillis() - it >= SHARE_PROMPT_COOLDOWN_MILLIS } ?: true
+
     private suspend fun share(): Answer<EngagementResult, Failure> =
         when (shareAppUseCase(ShareAppUseCase.Params(withPrompt = true)).getValueOrNull()) {
-            is InAppShareResult.TargetChosen -> markAsShared()
+            is InAppShareResult.TargetChosen -> recordSharePrompt(EngagementResult.ShareChosen) {
+                copy(hasShared = true)
+            }
 
-            // Declined (prompt rejected) or Dismissed (sheet closed) retry on the next milestone.
-            InAppShareResult.Dismissed, InAppShareResult.Declined, null ->
-                Answer.Success(EngagementResult.ShareNotChosen)
+            // "Not now": counts towards the declines cap and waits for the cooldown.
+            InAppShareResult.Declined -> recordSharePrompt(EngagementResult.ShareNotChosen) {
+                copy(shareDeclines = shareDeclines + 1)
+            }
+
+            // Prompt accepted but sheet closed: waits for the cooldown without counting as a decline.
+            InAppShareResult.Dismissed -> recordSharePrompt(EngagementResult.ShareNotChosen) { this }
+
+            // The prompt could not be shown: retried on the next milestone.
+            null -> Answer.Success(EngagementResult.ShareNotChosen)
         }
 
-    private suspend fun markAsShared(): Answer<EngagementResult, Failure> =
-        engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-            engagementDataRepository.updateEngagementData(engagementData.copy(hasShared = true))
-                .then { EngagementResult.ShareChosen }
-        }
+    private suspend fun recordSharePrompt(
+        result: EngagementResult,
+        update: EngagementData.() -> EngagementData,
+    ): Answer<EngagementResult, Failure> = engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
+        val updated = engagementData.update().copy(lastSharePromptAt = currentTimeMillis())
+        engagementDataRepository.updateEngagementData(updated).then { result }
+    }
+
+    internal companion object {
+        /** "Not now" answers after which the share prompt is never shown again. */
+        const val MAX_SHARE_DECLINES = 3
+
+        /** Minimum time between two share prompts. */
+        val SHARE_PROMPT_COOLDOWN_MILLIS: Long = TimeUnit.DAYS.toMillis(7)
+    }
 }
