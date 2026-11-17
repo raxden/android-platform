@@ -14,7 +14,8 @@ import kotlinx.serialization.Serializable
  * @property counts recorded occurrences per `EngagementUseCase.Params.origin`; each origin
  *   follows its own milestone progression.
  * @property shareDeclines times the user answered the share prompt with "Not now" (back press or
- *   tap outside count too); closing the share sheet after accepting does not. Once it reaches the cap, the share prompt is never shown again.
+ *   tap outside count too); closing the share sheet after accepting does not. Once it reaches
+ *   the cap, the share prompt is never shown again.
  * @property lastSharePromptAt epoch millis of the last time the share prompt was shown, or `null`
  *   if never shown; used to enforce a cooldown between prompts.
  */
