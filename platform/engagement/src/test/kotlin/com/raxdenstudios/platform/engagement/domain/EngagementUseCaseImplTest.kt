@@ -58,6 +58,7 @@ internal class EngagementUseCaseImplTest {
             shareAppUseCase = shareAppUseCase,
             engagementDataRepository = engagementDataRepository,
             engagementEligibility = engagementEligibility,
+            currentTimeMillis = { NOW },
         )
     }
 
@@ -237,8 +238,9 @@ internal class EngagementUseCaseImplTest {
     }
 
     @Test
-    fun `Given share fails When invoked Then it is swallowed and app is not marked as shared`() = runTest {
-        storedData = EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))
+    fun `Given share fails When invoked Then it is swallowed and nothing is persisted`() = runTest {
+        val initial = EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))
+        storedData = initial
         every { engagementEligibility.isEligible(any(), any()) } returns true
         coEvery { shareAppUseCase(any()) } returns Answer.Failure(failure)
 
@@ -246,6 +248,8 @@ internal class EngagementUseCaseImplTest {
 
         assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
         assertFalse(storedData.hasShared)
+        assertEquals(initial.copy(counts = mapOf("app_opened" to 3)), storedData)
+        coVerify(exactly = 1) { engagementDataRepository.updateEngagementData(any()) }
     }
 
     @Test
@@ -271,4 +275,115 @@ internal class EngagementUseCaseImplTest {
             assertEquals(Answer.Success(EngagementResult.ReviewLaunched), first.await())
             coVerify(exactly = 1) { rateAppUseCase(any()) }
         }
+
+    @Test
+    fun `Given share is declined When invoked Then declines are incremented and timestamp is stored`() = runTest {
+        storedData = EngagementData(hasRated = true, shareDeclines = 1, counts = mapOf("app_opened" to 2))
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { shareAppUseCase(any()) } returns Answer.Success(InAppShareResult.Declined)
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(2, storedData.shareDeclines)
+        assertEquals(NOW, storedData.lastSharePromptAt)
+        assertFalse(storedData.hasShared)
+    }
+
+    @Test
+    fun `Given share is dismissed When invoked Then only timestamp is stored`() = runTest {
+        storedData = EngagementData(hasRated = true, shareDeclines = 1, counts = mapOf("app_opened" to 2))
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { shareAppUseCase(any()) } returns Answer.Success(InAppShareResult.Dismissed)
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(1, storedData.shareDeclines)
+        assertEquals(NOW, storedData.lastSharePromptAt)
+        assertFalse(storedData.hasShared)
+    }
+
+    @Test
+    fun `Given target chosen When invoked Then timestamp is stored`() = runTest {
+        storedData = EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { shareAppUseCase(any()) } returns
+            Answer.Success(InAppShareResult.TargetChosen("com.whatsapp"))
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(NOW, storedData.lastSharePromptAt)
+        assertEquals(0, storedData.shareDeclines)
+    }
+
+    @Test
+    fun `Given share prompted within cooldown When invoked Then share is not prompted`() = runTest {
+        storedData = EngagementData(
+            hasRated = true,
+            lastSharePromptAt = NOW - COOLDOWN + 1,
+            counts = mapOf("app_opened" to 2),
+        )
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.None), result)
+        assertEquals(NOW - COOLDOWN + 1, storedData.lastSharePromptAt)
+        coVerify(exactly = 0) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given cooldown elapsed When invoked Then share is prompted again`() = runTest {
+        storedData = EngagementData(
+            hasRated = true,
+            lastSharePromptAt = NOW - COOLDOWN,
+            counts = mapOf("app_opened" to 2),
+        )
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
+        assertEquals(NOW, storedData.lastSharePromptAt)
+        coVerify(exactly = 1) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given max declines reached When invoked Then share is never prompted`() = runTest {
+        storedData = EngagementData(hasRated = true, shareDeclines = 3, counts = mapOf("app_opened" to 2))
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.None), result)
+        coVerify(exactly = 0) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review unavailable and max declines reached When invoked Then share is skipped`() = runTest {
+        storedData = EngagementData(shareDeclines = 3)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { rateAppUseCase(any()) } returns Answer.Success(true)
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewUnavailable), result)
+        coVerify(exactly = 0) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review unavailable and share within cooldown When invoked Then share is skipped`() = runTest {
+        storedData = EngagementData(lastSharePromptAt = NOW - 1)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { rateAppUseCase(any()) } returns Answer.Success(true)
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewUnavailable), result)
+        coVerify(exactly = 0) { shareAppUseCase(any()) }
+    }
+
+    private companion object {
+        const val NOW = 1_000_000_000_000L
+        val COOLDOWN = EngagementUseCaseImpl.SHARE_PROMPT_COOLDOWN_MILLIS
+    }
 }

@@ -3,7 +3,10 @@ package com.raxdenstudios.platform.engagement.domain
 /** Outcome of an [EngagementUseCase] call. */
 sealed interface EngagementResult {
 
-    /** Nothing was shown: not a milestone, already engaged, or another flow in progress. */
+    /**
+     * Nothing was shown: not a milestone, already engaged, share prompt in cooldown or declined
+     * too many times, or another flow in progress.
+     */
     data object None : EngagementResult
 
     /** The in-app review flow was launched and the app is now marked as rated. */
@@ -18,6 +21,9 @@ sealed interface EngagementResult {
     /** The user picked a share target and the app is now marked as shared. */
     data object ShareChosen : EngagementResult
 
-    /** The share prompt was declined, dismissed or could not be shown; it is retried later. */
+    /**
+     * The share prompt was declined, dismissed or could not be shown; it is retried on a later
+     * milestone once its cooldown elapses, unless it has been declined too many times.
+     */
     data object ShareNotChosen : EngagementResult
 }
