@@ -15,7 +15,9 @@ interface ShareContentProvider {
     fun provide(): InAppShareContent
 }
 
-internal class DefaultShareContentProvider(private val context: Context) : ShareContentProvider {
+internal class DefaultShareContentProvider(
+    private val context: Context,
+) : ShareContentProvider {
 
     override fun provide(): InAppShareContent {
         val appName = context.applicationInfo.loadLabel(context.packageManager).toString()

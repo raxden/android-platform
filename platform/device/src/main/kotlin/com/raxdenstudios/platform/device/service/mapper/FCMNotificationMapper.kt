@@ -7,12 +7,16 @@ import com.raxdenstudios.commons.core.ext.EMPTY
 import com.raxdenstudios.platform.device.domain.model.NotificationData
 
 interface FCMNotificationMapper {
-    fun map(message: RemoteMessage): NotificationData?
+    fun map(
+        message: RemoteMessage,
+    ): NotificationData?
 }
 
 internal class FCMNotificationMapperImpl : FCMNotificationMapper {
 
-    override fun map(message: RemoteMessage): NotificationData = NotificationData(
+    override fun map(
+        message: RemoteMessage,
+    ): NotificationData = NotificationData(
         channel = NotificationChannel(
             CHANNEL_ID,
             CHANNEL_NAME,

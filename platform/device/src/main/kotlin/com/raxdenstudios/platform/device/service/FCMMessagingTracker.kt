@@ -4,7 +4,9 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.logEvent
 
 interface FCMMessagingTracker {
-    fun topicSubscribed(topic: String)
+    fun topicSubscribed(
+        topic: String,
+    )
     fun tokenRefreshed()
     fun messageReceived()
     fun messagesDeleted()
@@ -12,9 +14,13 @@ interface FCMMessagingTracker {
     fun tokenSendFailed()
 }
 
-class FCMMessagingTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : FCMMessagingTracker {
+class FCMMessagingTrackerImpl(
+    private val firebaseAnalytics: FirebaseAnalytics,
+) : FCMMessagingTracker {
 
-    override fun topicSubscribed(topic: String) {
+    override fun topicSubscribed(
+        topic: String,
+    ) {
         firebaseAnalytics.logEvent(FCM_TOPIC_SUBSCRIBED) {
             param("topic", topic)
         }

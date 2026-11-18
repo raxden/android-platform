@@ -99,9 +99,9 @@ runs:
 
     - name: Push changes
       if: inputs.push == 'true' && steps.bump_modules.outputs.committed == 'true'
-      uses: ad-m/github-push-action@master
-      with:
-        branch: ${{ inputs.git-branch }}
-        ssh: true
-        force: false
-        tags: true
+      # Plain git push: the caller's checkout (ssh-key + persist-credentials) already
+      # configured git, so no third-party action needs access to the SSH key.
+      shell: bash
+      env:
+        GIT_BRANCH: ${{ inputs.git-branch }}
+      run: git push origin "HEAD:refs/heads/${GIT_BRANCH}" --follow-tags --tags

@@ -45,7 +45,7 @@ open class DownloadGithubActions : DefaultTask() {
 
     companion object {
 
-        private const val TASK_NAME = "downloadGithubActions"
+        const val TASK_NAME = "downloadGithubActions"
         private const val GROUP_TASK_NAME = "dependencies"
         private const val GIT_GITHUB_ACTIONS_SOURCE =
             "https://github.com/raxden/android-github-actions/archive/refs/heads/master.zip"

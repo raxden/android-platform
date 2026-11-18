@@ -28,11 +28,11 @@ class FeatureScreen<UIS, UIE>(
     var screenState: ScreenState,
     private val viewModel: ViewModel,
 ) where UIS : UIState,
-        UIE : UIEvent {
+          UIE : UIEvent {
 
     val navigator: Navigator
         get() = DefaultNavigator(
-            screenState.navController
+            screenState.navController,
         )
 
     val context: Context

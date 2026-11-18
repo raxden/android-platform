@@ -11,18 +11,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface FCMLocalDataSource {
-    suspend fun saveToken(token: String): Answer<Unit, Failure>
+    suspend fun saveToken(
+        token: String,
+    ): Answer<Unit, Failure>
     suspend fun getToken(): Answer<String, Failure>
     suspend fun clearToken(): Answer<Unit, Failure>
 }
 
-internal class FCMLocalDataSourceImpl(private val context: Context) : FCMLocalDataSource {
+internal class FCMLocalDataSourceImpl(
+    private val context: Context,
+) : FCMLocalDataSource {
 
     private val sharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    override suspend fun saveToken(token: String): Answer<Unit, Failure> = withContext(Dispatchers.IO) {
+    override suspend fun saveToken(
+        token: String,
+    ): Answer<Unit, Failure> = withContext(Dispatchers.IO) {
         coRunCatching {
             sharedPreferences.edit { putString(KEY_FCM_TOKEN, token) }
         }.thenFailure { error ->

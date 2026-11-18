@@ -20,11 +20,11 @@ abstract class Component<UIS, UIE>(
     val screenState: ScreenState,
     private val viewModel: ViewModel,
 ) where UIS : UIState,
-        UIE : UIEvent {
+          UIE : UIEvent {
 
     val navigator: Navigator
         get() = DefaultNavigator(
-            screenState.navController
+            screenState.navController,
         )
 
     val context: Context
@@ -71,14 +71,18 @@ abstract class Component<UIS, UIE>(
         val uiState by stateDelegate.uiState.collectAsStateWithLifecycle()
 
         Column(
-            modifier = modifier
+            modifier = modifier,
         ) {
             Content(uiState)
         }
     }
 
     @Composable
-    abstract fun Content(uiState: UIS)
+    abstract fun Content(
+        uiState: UIS,
+    )
 
-    abstract suspend fun handleUIEvent(uiEvent: UIE)
+    abstract suspend fun handleUIEvent(
+        uiEvent: UIE,
+    )
 }

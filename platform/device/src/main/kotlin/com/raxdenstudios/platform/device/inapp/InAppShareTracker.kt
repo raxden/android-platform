@@ -33,7 +33,9 @@ internal interface InAppShareTracker {
      * system did not report the chosen component. Like [InAppShareResult.TargetChosen], this
      * only means a target was picked — not that the content was sent.
      */
-    fun targetChosen(packageName: String?)
+    fun targetChosen(
+        packageName: String?,
+    )
 
     /**
      * Fires `in_app_share_dismissed` when the user closes the share sheet without picking a
@@ -45,7 +47,9 @@ internal interface InAppShareTracker {
      * Fires `in_app_share_failed` when [InAppShare.launch] returns a failure. The [reason] is
      * sent lowercase as the `reason` param.
      */
-    fun failed(reason: Reason)
+    fun failed(
+        reason: Reason,
+    )
 
     /**
      * Why the share sheet could not be shown; fixed codes reported as the `reason` param of
@@ -65,7 +69,9 @@ internal interface InAppShareTracker {
 }
 
 /** [InAppShareTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppShareTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppShareTracker {
+internal class InAppShareTrackerImpl(
+    private val firebaseAnalytics: FirebaseAnalytics,
+) : InAppShareTracker {
 
     override fun promptShown() {
         firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_SHOWN) {}
@@ -79,7 +85,9 @@ internal class InAppShareTrackerImpl(private val firebaseAnalytics: FirebaseAnal
         firebaseAnalytics.logEvent(IN_APP_SHARE_PROMPT_DECLINED) {}
     }
 
-    override fun targetChosen(packageName: String?) {
+    override fun targetChosen(
+        packageName: String?,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_SHARE_TARGET_CHOSEN) {
             packageName?.let { param("package_name", it) }
         }
@@ -89,7 +97,9 @@ internal class InAppShareTrackerImpl(private val firebaseAnalytics: FirebaseAnal
         firebaseAnalytics.logEvent(IN_APP_SHARE_DISMISSED) {}
     }
 
-    override fun failed(reason: InAppShareTracker.Reason) {
+    override fun failed(
+        reason: InAppShareTracker.Reason,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_SHARE_FAILED) {
             param("reason", reason.name.lowercase())
         }

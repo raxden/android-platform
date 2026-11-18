@@ -53,7 +53,7 @@ object Item {
                     .padding(horizontal = Spacing.large),
                 border = BorderStroke(0.5.dp, borderColor),
                 colors = CardDefaults.cardColors(
-                    containerColor = containerColor
+                    containerColor = containerColor,
                 ),
             ) {
                 Column(
@@ -88,7 +88,7 @@ object Item {
                         .fillMaxWidth()
                         .padding(
                             horizontal = Spacing.large,
-                            vertical = Spacing.medium
+                            vertical = Spacing.medium,
                         ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -130,7 +130,7 @@ object Item {
                 trailingContent = trailingContent,
                 bottomContent = bottomContent,
                 selected = selected,
-                onClick = onClick
+                onClick = onClick,
             ) {
                 Label.BodyMedium(text = title)
                 if (description.toText().isNotEmpty()) {
@@ -158,7 +158,7 @@ object Item {
                         contentDescription = "back",
                     )
                 },
-                onClick = onClick
+                onClick = onClick,
             )
         }
 
@@ -211,7 +211,7 @@ object Item {
                 trailingContent = {
                     RadioButton(
                         selected = selected,
-                        onClick = null
+                        onClick = null,
                     )
                 },
                 onClick = onClick,
@@ -255,7 +255,7 @@ object Item {
                     Checkbox(
                         modifier = Modifier.size(20.dp),
                         checked = checked,
-                        onCheckedChange = null
+                        onCheckedChange = null,
                     )
                 },
             )
@@ -283,15 +283,15 @@ fun ListItemsPreview() {
                 title = PlainText("Item Text"),
                 description = PlainText(
                     "Item Description Item Description Item Description Item Description" +
-                            " Item Description Item Description"
-                )
+                        " Item Description Item Description",
+                ),
             ) {}
             Item.Card.RadioButton(
                 title = PlainText("Item Text"),
                 description = PlainText(
                     "Item Description Item Description Item Description Item Description" +
-                            " Item Description Item Description"
-                )
+                        " Item Description Item Description",
+                ),
             ) {}
             Item.Card.RadioButton(
                 title = PlainText("Item Text"),
@@ -300,8 +300,8 @@ fun ListItemsPreview() {
                 title = PlainText("Item Text"),
                 description = PlainText(
                     "Item Description Item Description Item Description Item Description" +
-                            " Item Description Item Description"
-                )
+                        " Item Description Item Description",
+                ),
             ) {}
         }
     }

@@ -15,7 +15,9 @@ import com.raxdenstudios.platform.device.inapp.InAppShareResult
  */
 interface ShareAppUseCase : SuspendUseCase<ShareAppUseCase.Params, InAppShareResult> {
 
-    data class Params(val withPrompt: Boolean = false)
+    data class Params(
+        val withPrompt: Boolean = false,
+    )
 }
 
 internal class ShareAppUseCaseImpl(
@@ -23,10 +25,13 @@ internal class ShareAppUseCaseImpl(
     private val inAppShare: InAppShare,
 ) : ShareAppUseCase {
 
-    override suspend fun invoke(params: ShareAppUseCase.Params): Answer<InAppShareResult, Failure> =
-        share(params.withPrompt)
+    override suspend fun invoke(
+        params: ShareAppUseCase.Params,
+    ): Answer<InAppShareResult, Failure> = share(params.withPrompt)
 
-    private suspend fun share(withPrompt: Boolean): Answer<InAppShareResult, Failure> {
+    private suspend fun share(
+        withPrompt: Boolean,
+    ): Answer<InAppShareResult, Failure> {
         val content = shareContentProvider.provide()
         return if (withPrompt) inAppShare.launch(content) else inAppShare.share(content)
     }

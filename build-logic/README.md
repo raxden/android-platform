@@ -274,7 +274,7 @@ Thin wrapper — applies `android-compose-library-conventions`. Use it for featu
 Root-project only. Configures:
 - Code coverage aggregation via [`rootcoverage`](https://github.com/NeoTech-Software/Android-Root-Coverage-Plugin) (HTML + XML reports, unit + Android test results), with sensible `excludes` for DI, generated, Compose and Android-framework classes
 - `project-report` plugin on all subprojects
-- Registers the [`downloadGradleDependencies`](#tasks) and [`downloadGithubActions`](#tasks) tasks
+- Registers the [`downloadGradleDependencies`](#tasks), [`downloadGithubActions`](#tasks), [`downloadCheckStyles`](#tasks) and [`downloadDependencies`](#tasks) tasks
 
 > The build variant used by coverage is controlled by the `buildType` Gradle property (defaults to `debug`).
 
@@ -314,10 +314,14 @@ Registered by `android-project-conventions` under the `dependencies` group:
 |------|-------------|
 | `downloadGradleDependencies` | Downloads the latest `android-convention` archive into `build-logic/`, refreshing the convention plugins. |
 | `downloadGithubActions` | Downloads the shared [`android-github-actions`](https://github.com/raxden/android-github-actions) repo and syncs its contents into the host project's `.github/`. |
+| `downloadCheckStyles` | Downloads the shared checkstyle config (`config/detekt`) from `android-convention` into the host project's `config/`. |
+| `downloadDependencies` | Runs `downloadGradleDependencies`, `downloadGithubActions` and `downloadCheckStyles` in one go. |
 
 ```sh
 ./gradlew downloadGradleDependencies
 ./gradlew downloadGithubActions
+./gradlew downloadCheckStyles
+./gradlew downloadDependencies   # all of the above
 ```
 
 > Coverage report (from the `rootcoverage` plugin):

@@ -10,8 +10,11 @@ interface GetAppVersionUseCase : SuspendUseCase<GetAppVersionUseCase.Params, Str
     data object Params
 }
 
-class GetAppVersionUseCaseImpl(private val settingsRepository: AppRepository) : GetAppVersionUseCase {
+class GetAppVersionUseCaseImpl(
+    private val settingsRepository: AppRepository,
+) : GetAppVersionUseCase {
 
-    override suspend fun invoke(params: GetAppVersionUseCase.Params): Answer<String, Failure> =
-        settingsRepository.getAppVersion()
+    override suspend fun invoke(
+        params: GetAppVersionUseCase.Params,
+    ): Answer<String, Failure> = settingsRepository.getAppVersion()
 }

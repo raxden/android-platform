@@ -30,7 +30,9 @@ interface LocationDataSource {
     )
     suspend fun getLastLocation(): Answer<Location, Failure>
 
-    suspend fun getCountryCode(location: Location): Answer<String, Failure>
+    suspend fun getCountryCode(
+        location: Location,
+    ): Answer<String, Failure>
 
     @RequiresPermission(
         anyOf = [
@@ -87,7 +89,9 @@ internal class LocationDataSourceImpl(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun getCountryCode(location: Location): Answer<String, Failure> {
+    override suspend fun getCountryCode(
+        location: Location,
+    ): Answer<String, Failure> {
         val latitude = location.latitude
         val longitude = location.longitude
         return withContext(dispatcherProvider.io) {
@@ -134,11 +138,15 @@ internal class LocationDataSourceImpl(
             longitude,
             1,
             object : Geocoder.GeocodeListener {
-                override fun onGeocode(addresses: MutableList<Address>) {
+                override fun onGeocode(
+                    addresses: MutableList<Address>,
+                ) {
                     if (continuation.isActive) continuation.resume(countryCodeFrom(addresses))
                 }
 
-                override fun onError(errorMessage: String?) {
+                override fun onError(
+                    errorMessage: String?,
+                ) {
                     if (continuation.isActive) {
                         continuation.resume(
                             Answer.Failure(
@@ -153,7 +161,9 @@ internal class LocationDataSourceImpl(
         )
     }
 
-    private fun countryCodeFrom(addresses: List<Address>?): Answer<String, Failure> {
+    private fun countryCodeFrom(
+        addresses: List<Address>?,
+    ): Answer<String, Failure> {
         val address = addresses?.firstOrNull()
         val countryCode = address?.countryCode?.takeIf { it.isNotBlank() }
         return when {
@@ -167,7 +177,9 @@ internal class LocationDataSourceImpl(
         }
     }
 
-    private fun Exception.toFailure(fallbackMessage: String): Failure = when (this) {
+    private fun Exception.toFailure(
+        fallbackMessage: String,
+    ): Failure = when (this) {
         is SecurityException -> Failure.Unauthorized(message ?: fallbackMessage)
         else -> Failure.Unknown(message ?: fallbackMessage)
     }

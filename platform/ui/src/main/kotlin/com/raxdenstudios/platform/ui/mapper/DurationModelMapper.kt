@@ -6,19 +6,24 @@ import com.raxdenstudios.platform.ui.R
 import org.threeten.bp.Duration
 
 interface DurationModelMapper {
-    fun transform(source: Duration): String
+    fun transform(
+        source: Duration,
+    ): String
 }
 
 class DurationModelMapperImpl(
     private val stringProvider: StringProvider,
-) : DataMapper<Duration, String>(), DurationModelMapper {
+) : DataMapper<Duration, String>(),
+    DurationModelMapper {
 
-    override fun transform(source: Duration): String = when {
+    override fun transform(
+        source: Duration,
+    ): String = when {
         source.toHours() > 1 && source.toMinutesPart() > 0 ->
             stringProvider.getString(
                 R.string.hours_minutes,
                 source.toHours(),
-                source.toMinutesPart()
+                source.toMinutesPart(),
             )
 
         source.toHours() > 1 ->
@@ -28,7 +33,7 @@ class DurationModelMapperImpl(
             stringProvider.getString(
                 R.string.hour_minutes,
                 source.toHours(),
-                source.toMinutesPart()
+                source.toMinutesPart(),
             )
 
         source.toHours() >= 1 ->

@@ -4,7 +4,9 @@ import android.content.Context
 
 interface DIApp {
 
-    fun initialize(context: Context)
+    fun initialize(
+        context: Context,
+    )
 
     fun provideLibs(): List<DILibrary>
 }

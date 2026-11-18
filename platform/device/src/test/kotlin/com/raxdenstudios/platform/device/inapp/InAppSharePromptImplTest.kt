@@ -178,6 +178,7 @@ internal class InAppSharePromptImplTest {
             }
         }
 
-    private fun capturedObserver(index: Int = observers.lastIndex): DefaultLifecycleObserver =
-        observers[index] as DefaultLifecycleObserver
+    private fun capturedObserver(
+        index: Int = observers.lastIndex,
+    ): DefaultLifecycleObserver = observers[index] as DefaultLifecycleObserver
 }

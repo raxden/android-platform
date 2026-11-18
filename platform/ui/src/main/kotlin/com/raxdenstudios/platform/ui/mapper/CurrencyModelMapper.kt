@@ -5,12 +5,18 @@ import java.text.NumberFormat
 import java.util.Currency
 
 interface CurrencyModelMapper {
-    fun transform(source: Double): String
+    fun transform(
+        source: Double,
+    ): String
 }
 
-class CurrencyModelMapperImpl : DataMapper<Double, String>(), CurrencyModelMapper {
+class CurrencyModelMapperImpl :
+    DataMapper<Double, String>(),
+    CurrencyModelMapper {
 
-    override fun transform(source: Double): String {
+    override fun transform(
+        source: Double,
+    ): String {
         if (source == 0.0) return ""
         val currencyFormat = NumberFormat.getCurrencyInstance()
         currencyFormat.currency = Currency.getInstance("USD")

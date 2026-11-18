@@ -8,8 +8,12 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 
 sealed interface ImageResource {
-    data class Drawable(@DrawableRes val image: Int) : ImageResource
-    data class Vector(val image: ImageVector) : ImageResource
+    data class Drawable(
+        @DrawableRes val image: Int,
+    ) : ImageResource
+    data class Vector(
+        val image: ImageVector,
+    ) : ImageResource
 
     @Composable
     fun toPainter(): Painter = when (this) {

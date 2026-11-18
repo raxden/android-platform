@@ -13,14 +13,20 @@ import com.raxdenstudios.platform.device.domain.model.NotificationData
 
 interface NotificationDataSource {
 
-    suspend fun send(notification: NotificationData): Answer<Unit, Failure>
+    suspend fun send(
+        notification: NotificationData,
+    ): Answer<Unit, Failure>
 }
 
-internal class NotificationDataSourceImpl(private val context: Context, private val tracker: NotificationTracker) :
-    NotificationDataSource {
+internal class NotificationDataSourceImpl(
+    private val context: Context,
+    private val tracker: NotificationTracker,
+) : NotificationDataSource {
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun send(notification: NotificationData): Answer<Unit, Failure> = try {
+    override suspend fun send(
+        notification: NotificationData,
+    ): Answer<Unit, Failure> = try {
         val notificationManager = getNotificationManager()
         ensureChannel(notificationManager, notification.channel)
 
@@ -71,7 +77,10 @@ internal class NotificationDataSourceImpl(private val context: Context, private 
     private fun getNotificationManager(): NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    private fun ensureChannel(notificationManager: NotificationManager, channel: NotificationChannel) {
+    private fun ensureChannel(
+        notificationManager: NotificationManager,
+        channel: NotificationChannel,
+    ) {
         if (notificationManager.getNotificationChannel(channel.id) != null) return
         notificationManager.createNotificationChannel(channel)
         tracker.channelCreated()

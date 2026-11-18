@@ -83,7 +83,9 @@ interface InAppUpdate : DefaultLifecycleObserver {
      * after recreation. The activity is held weakly and released when it is destroyed.
      */
     @MainThread
-    fun attach(activity: ComponentActivity)
+    fun attach(
+        activity: ComponentActivity,
+    )
 
     /**
      * Queries Play for a pending update without showing any UI.
@@ -107,7 +109,10 @@ interface InAppUpdate : DefaultLifecycleObserver {
  * @property minPriority minimum `updatePriority` (0..5) set when releasing in Play Console.
  * @property minStalenessDays minimum days since the update became available to this device.
  */
-data class InAppUpdateConfig(val minPriority: Int = 0, val minStalenessDays: Int = 0)
+data class InAppUpdateConfig(
+    val minPriority: Int = 0,
+    val minStalenessDays: Int = 0,
+)
 
 /**
  * Snapshot of the update Play currently offers, without exposing Play types.
@@ -151,7 +156,9 @@ sealed interface InAppUpdateState {
     data object Idle : InAppUpdateState
 
     /** An update is pending and satisfies the configured [InAppUpdateConfig]. */
-    data class Available(val info: InAppUpdateInfo) : InAppUpdateState
+    data class Available(
+        val info: InAppUpdateInfo,
+    ) : InAppUpdateState
 
     /** A Play immediate update is currently running. */
     data object InProgress : InAppUpdateState
@@ -169,7 +176,9 @@ internal class DebugInAppUpdate : InAppUpdate {
     override val state: StateFlow<InAppUpdateState> =
         MutableStateFlow<InAppUpdateState>(InAppUpdateState.Idle).asStateFlow()
 
-    override fun attach(activity: ComponentActivity) = Unit
+    override fun attach(
+        activity: ComponentActivity,
+    ) = Unit
 
     override suspend fun check(): Answer<InAppUpdateInfo?, Failure> = Answer.Success(null)
 
@@ -190,7 +199,9 @@ internal class InAppUpdateImpl(
     private var launcher: ActivityResultLauncher<IntentSenderRequest>? = null
     private var launching = false
 
-    override fun attach(activity: ComponentActivity) {
+    override fun attach(
+        activity: ComponentActivity,
+    ) {
         if (activityHolder.activity === activity) return
 
         check(!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
@@ -201,29 +212,32 @@ internal class InAppUpdateImpl(
         activity.lifecycle.addObserver(this)
     }
 
-    private fun registerInAppUpdateLauncher(activity: ComponentActivity): ActivityResultLauncher<IntentSenderRequest> =
-        activity.activityResultRegistry.register(
-            LAUNCHER_KEY,
-            activity,
-            ActivityResultContracts.StartIntentSenderForResult(),
-        ) { result ->
-            launching = false
-            when (result.resultCode) {
-                Activity.RESULT_OK -> tracker.accepted()
+    private fun registerInAppUpdateLauncher(
+        activity: ComponentActivity,
+    ): ActivityResultLauncher<IntentSenderRequest> = activity.activityResultRegistry.register(
+        LAUNCHER_KEY,
+        activity,
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        launching = false
+        when (result.resultCode) {
+            Activity.RESULT_OK -> tracker.accepted()
 
-                Activity.RESULT_CANCELED -> {
-                    tracker.declined()
-                    mutableState.value = InAppUpdateState.Declined
-                }
+            Activity.RESULT_CANCELED -> {
+                tracker.declined()
+                mutableState.value = InAppUpdateState.Declined
+            }
 
-                else -> {
-                    tracker.flowFailed()
-                    mutableState.value = InAppUpdateState.Failed
-                }
+            else -> {
+                tracker.flowFailed()
+                mutableState.value = InAppUpdateState.Failed
             }
         }
+    }
 
-    override fun onResume(owner: LifecycleOwner) {
+    override fun onResume(
+        owner: LifecycleOwner,
+    ) {
         manager.appUpdateInfo
             .addOnSuccessListener { info -> refreshState(owner, info) }
             .addOnFailureListener { error -> logRefreshFailure(error) }
@@ -234,13 +248,18 @@ internal class InAppUpdateImpl(
      * user left the app during the download), relaunches it so the flow resumes where it
      * stopped instead of stalling in [InAppUpdateState.InProgress].
      */
-    private fun refreshState(owner: LifecycleOwner, info: AppUpdateInfo) {
+    private fun refreshState(
+        owner: LifecycleOwner,
+        info: AppUpdateInfo,
+    ) {
         if (activityHolder.activity !== owner) return
         mutableState.value = info.toState()
         if (info.isInProgress() && !launching && owner.isResumed()) resumeInProgressUpdate(info)
     }
 
-    private fun resumeInProgressUpdate(info: AppUpdateInfo) {
+    private fun resumeInProgressUpdate(
+        info: AppUpdateInfo,
+    ) {
         runCatching {
             launching = startFlow(info)
             if (launching) tracker.resumed()
@@ -251,7 +270,9 @@ internal class InAppUpdateImpl(
      * ERROR_APP_NOT_OWNED means the app was sideloaded or built locally rather than installed
      * from Play — an expected situation, so it is logged at debug level instead of warning.
      */
-    private fun logRefreshFailure(error: Exception) {
+    private fun logRefreshFailure(
+        error: Exception,
+    ) {
         if ((error as? InstallException)?.errorCode == InstallErrorCode.ERROR_APP_NOT_OWNED) {
             Timber.d("In-app update unavailable: app not installed from Play")
         } else {
@@ -259,7 +280,9 @@ internal class InAppUpdateImpl(
         }
     }
 
-    override fun onDestroy(owner: LifecycleOwner) {
+    override fun onDestroy(
+        owner: LifecycleOwner,
+    ) {
         if (activityHolder.activity === owner) detach()
     }
 
@@ -296,7 +319,9 @@ internal class InAppUpdateImpl(
      * and is cleared by the activity-result callback; when the flow never starts, `finally`
      * resets it so a later call can try again.
      */
-    private suspend fun start(activity: ComponentActivity): InAppUpdateLaunchResult {
+    private suspend fun start(
+        activity: ComponentActivity,
+    ): InAppUpdateLaunchResult {
         check(activity.isResumed()) { "Activity is not resumed" }
         if (launching) return InAppUpdateLaunchResult.AlreadyInProgress
         launching = true
@@ -317,7 +342,9 @@ internal class InAppUpdateImpl(
      * `startUpdateFlowForResult` returning false means Play refused to launch the flow, so the
      * fall-through maps to [InAppUpdateLaunchResult.NotAllowed] rather than a failure.
      */
-    private fun resolveLaunchResult(info: AppUpdateInfo): InAppUpdateLaunchResult = when {
+    private fun resolveLaunchResult(
+        info: AppUpdateInfo,
+    ): InAppUpdateLaunchResult = when {
         info.isInProgress() -> InAppUpdateLaunchResult.AlreadyInProgress
 
         info.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE ->
@@ -330,7 +357,9 @@ internal class InAppUpdateImpl(
         else -> InAppUpdateLaunchResult.NotAllowed
     }
 
-    private fun startFlow(info: AppUpdateInfo): Boolean = manager.startUpdateFlowForResult(
+    private fun startFlow(
+        info: AppUpdateInfo,
+    ): Boolean = manager.startUpdateFlowForResult(
         info,
         checkNotNull(launcher) { "InAppUpdate not attached" },
         buildImmediateUpdateOptions(),

@@ -30,54 +30,137 @@ runs:
           | jq -R . \
           | jq -s -c .)
 
-        module_patterns=$(echo "$modules" \
-          | jq -r '.[]' \
-          | sed 's|^:||' \
-          | sed 's|:|/|g' \
-          | sed 's|$|/**|')
-
         echo "modules=$modules" >> "$GITHUB_OUTPUT"
-
-        {
-          echo 'patterns<<EOF'
-          echo "$module_patterns"
-          echo 'EOF'
-        } >> "$GITHUB_OUTPUT"
 
     - name: Detect changed files
       id: changed
       if: ${{ inputs.modules == '' }}
-      uses: tj-actions/changed-files@v45
-      with:
-        files: ${{ steps.extract_modules.outputs.patterns }}
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+        PUSH_FORCED: ${{ github.event.forced }}
+      run: |
+        set -euo pipefail
+
+        # Changed files = added, copied, modified, renamed (new path); no
+        # deletions. Plain git; requires a full-history checkout
+        # (fetch-depth: 0).
+        zero_sha="0000000000000000000000000000000000000000"
+
+        emit() {
+          local any="$1" files="$2" delim
+          delim="EOF_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+          {
+            echo "any_changed=$any"
+            echo "all_changed_files<<${delim}"
+            printf '%s\n' "$files"
+            echo "${delim}"
+          } >> "$GITHUB_OUTPUT"
+        }
+
+        parent_sha() {
+          git rev-parse --verify --quiet 'HEAD^{commit}^' 2>/dev/null || true
+        }
+
+        current_sha=$(git rev-parse HEAD)
+
+        if [[ -n "$PR_BASE_REF" ]]; then
+          # Pull request: PR base...PR head (merge base to head).
+          echo "Running on a $EVENT_NAME event..."
+          previous="$PR_BASE_SHA"
+          current="$PR_HEAD_SHA"
+          if [[ -z "$current" ]] || ! git cat-file -e "${current}^{commit}" 2>/dev/null; then
+            current="$current_sha"
+          fi
+          if [[ -z "$previous" ]] || ! git cat-file -e "${previous}^{commit}" 2>/dev/null; then
+            echo "::error::Pull request base commit '$previous' is not in the local history. Use actions/checkout with fetch-depth: 0."
+            exit 1
+          fi
+          range="${previous}...${current}"
+        else
+          # Push / workflow_dispatch / others: previous remote commit..HEAD,
+          # falling back to the parent commit.
+          echo "Running on a ${EVENT_NAME:-push} event..."
+          previous=""
+          if [[ "$PUSH_FORCED" != "true" ]]; then
+            previous="$PUSH_BEFORE"
+          fi
+
+          if [[ -z "$previous" || "$previous" == "$zero_sha" ]]; then
+            previous=$(parent_sha)
+          elif ! git cat-file -e "${previous}^{commit}" 2>/dev/null; then
+            echo "::warning::Previous commit $previous is not valid. Using parent commit."
+            previous=$(parent_sha)
+          fi
+
+          if [[ -z "$previous" || "$previous" == "$current_sha" ]]; then
+            previous=$(parent_sha)
+          fi
+
+          if [[ -z "$previous" ]]; then
+            if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+              echo "::error::Unable to locate the previous commit in a shallow clone. Use actions/checkout with fetch-depth: 0."
+              exit 1
+            fi
+            echo "Initial commit detected, no previous commit found."
+            emit false ""
+            exit 0
+          fi
+
+          current="$current_sha"
+          range="${previous}..${current}"
+        fi
+
+        echo "Retrieving changes for $range"
+
+        if ! files=$(git -c core.quotepath=off diff --name-only -M \
+              --ignore-submodules=all --diff-filter=ACMR "$range" --); then
+          echo "::error::Unable to determine the changed files for $range."
+          exit 1
+        fi
+
+        if [[ -n "$files" ]]; then
+          emit true "$files"
+        else
+          emit false ""
+        fi
 
     - name: Resolve modules
       id: resolve
       shell: bash
+      env:
+        INPUT_MODULES: ${{ inputs.modules }}
+        ALL_MODULES: ${{ steps.extract_modules.outputs.modules }}
+        ANY_CHANGED: ${{ steps.changed.outputs.any_changed }}
+        CHANGED_FILES: ${{ steps.changed.outputs.all_changed_files }}
       run: |
         set -euo pipefail
 
-        if [[ -n '${{ inputs.modules }}' ]]; then
-          input_modules='${{ inputs.modules }}'
-
-          if [[ "$input_modules" == "all" ]]; then
-            modules='${{ steps.extract_modules.outputs.modules }}'
+        if [[ -n "$INPUT_MODULES" ]]; then
+          if [[ "$INPUT_MODULES" == "all" ]]; then
+            modules="$ALL_MODULES"
           else
-            modules="$input_modules"
+            modules="$INPUT_MODULES"
             echo "$modules" | jq empty
           fi
         else
-          if [[ "${{ steps.changed.outputs.any_changed }}" != "true" ]]; then
+          if [[ "$ANY_CHANGED" != "true" ]]; then
             modules="[]"
           else
-            files_raw='${{ steps.changed.outputs.all_changed_files }}'
-            files_list=$(printf "%s" "$files_raw" | tr ' \n' '\n' | sed '/^$/d')
-            all_modules='${{ steps.extract_modules.outputs.modules }}'
+            module_list=()
+            while IFS= read -r module; do
+              module_list+=("$module")
+            done < <(echo "$ALL_MODULES" | jq -r '.[]')
 
-            modules=$(printf "%s\n" "$files_list" | while read -r file; do
-              echo "$all_modules" | jq -r '.[]' | while read -r module; do
+            modules=$(printf '%s\n' "$CHANGED_FILES" | while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+              for module in "${module_list[@]}"; do
                 path="${module#:}"
-                path="${path//:/\/}"
+                path="${path//://}"
 
                 if [[ "$file" == "$path/"* ]]; then
                   echo "$module"
@@ -95,12 +178,15 @@ runs:
 
     - name: Write modules to job summary
       shell: bash
+      env:
+        MATRIX: ${{ steps.resolve.outputs.value }}
+        INPUT_MODULES: ${{ inputs.modules }}
       run: |
         set -euo pipefail
 
-        matrix='${{ steps.resolve.outputs.value }}'
+        matrix="$MATRIX"
         count=$(echo "$matrix" | jq 'length')
-        input_modules='${{ inputs.modules }}'
+        input_modules="$INPUT_MODULES"
 
         {
           if [[ "$input_modules" == "all" ]]; then

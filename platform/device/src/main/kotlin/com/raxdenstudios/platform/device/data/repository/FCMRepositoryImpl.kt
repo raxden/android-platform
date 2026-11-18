@@ -15,10 +15,13 @@ internal class FCMRepositoryImpl(
     private val firebaseMessagingProvider: FirebaseMessagingProvider,
 ) : FCMRepository {
 
-    override suspend fun subscribeToTopic(topic: String): Answer<Unit, Failure> =
-        firebaseMessagingProvider.subscribeToTopic(topic)
+    override suspend fun subscribeToTopic(
+        topic: String,
+    ): Answer<Unit, Failure> = firebaseMessagingProvider.subscribeToTopic(topic)
 
-    override suspend fun saveToken(token: String): Answer<Unit, Failure> = fcmLocalDataSource.saveToken(token)
+    override suspend fun saveToken(
+        token: String,
+    ): Answer<Unit, Failure> = fcmLocalDataSource.saveToken(token)
 
     override suspend fun getToken(): Answer<String, Failure> = fcmLocalDataSource.getToken()
         .coThen { token -> token.ifEmpty { getTokenFromFirebaseAndUpdate() } }

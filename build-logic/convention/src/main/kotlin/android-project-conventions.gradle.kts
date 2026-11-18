@@ -4,6 +4,7 @@ import extension.libs
 import org.neotech.plugin.rootcoverage.rootCoverage
 import task.DownloadGradleDependencies
 import task.DownloadCheckStyles
+import task.DownloadDependencies
 import task.DownloadGithubActions
 
 plugins {
@@ -85,4 +86,5 @@ tasks {
     DownloadGradleDependencies.register(project)
     DownloadGithubActions.register(project)
     DownloadCheckStyles.register(project)
+    DownloadDependencies.register(project)
 }

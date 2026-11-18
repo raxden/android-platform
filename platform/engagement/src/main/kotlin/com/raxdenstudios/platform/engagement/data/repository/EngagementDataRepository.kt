@@ -12,11 +12,14 @@ internal interface EngagementDataRepository {
 
     suspend fun getEngagementData(): Answer<EngagementData, Failure>
 
-    suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure>
+    suspend fun updateEngagementData(
+        engagementData: EngagementData,
+    ): Answer<Unit, Failure>
 }
 
-internal class EngagementDataRepositoryImpl(private val engagementDataLocalDataSource: EngagementDataLocalDataSource) :
-    EngagementDataRepository {
+internal class EngagementDataRepositoryImpl(
+    private val engagementDataLocalDataSource: EngagementDataLocalDataSource,
+) : EngagementDataRepository {
 
     override fun observeEngagementData(): Flow<Answer<EngagementData, Failure>> =
         engagementDataLocalDataSource.observeEngagementData()
@@ -24,6 +27,7 @@ internal class EngagementDataRepositoryImpl(private val engagementDataLocalDataS
     override suspend fun getEngagementData(): Answer<EngagementData, Failure> =
         engagementDataLocalDataSource.getEngagementData()
 
-    override suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure> =
-        engagementDataLocalDataSource.updateEngagementData(engagementData)
+    override suspend fun updateEngagementData(
+        engagementData: EngagementData,
+    ): Answer<Unit, Failure> = engagementDataLocalDataSource.updateEngagementData(engagementData)
 }

@@ -7,12 +7,16 @@ import com.raxdenstudios.platform.device.domain.model.NotificationData
 import com.raxdenstudios.platform.device.domain.repository.NotificationRepository
 
 interface SendNotificationUseCase : SuspendUseCase<SendNotificationUseCase.Params, Unit> {
-    data class Params(val notificationData: NotificationData)
+    data class Params(
+        val notificationData: NotificationData,
+    )
 }
 
-class SendNotificationUseCaseImpl(private val notificationRepository: NotificationRepository) :
-    SendNotificationUseCase {
+class SendNotificationUseCaseImpl(
+    private val notificationRepository: NotificationRepository,
+) : SendNotificationUseCase {
 
-    override suspend fun invoke(params: SendNotificationUseCase.Params): Answer<Unit, Failure> =
-        notificationRepository.send(params.notificationData)
+    override suspend fun invoke(
+        params: SendNotificationUseCase.Params,
+    ): Answer<Unit, Failure> = notificationRepository.send(params.notificationData)
 }

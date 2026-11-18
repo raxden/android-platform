@@ -11,7 +11,9 @@ sealed interface StringResource {
         val params: List<String> = emptyList(),
     ) : StringResource
 
-    data class PlainText(val value: String) : StringResource
+    data class PlainText(
+        val value: String,
+    ) : StringResource
 
     data object Empty : StringResource
 
@@ -27,6 +29,7 @@ sealed interface StringResource {
         }
 
         is PlainText -> value
+
         is Empty -> String.EMPTY
     }
 }

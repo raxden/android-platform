@@ -10,11 +10,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 interface AppAccessLocalDataSource {
     suspend fun getLastAccess(): Answer<Long, Failure>
-    suspend fun saveLastAccess(timestamp: Long): Answer<Unit, Failure>
+    suspend fun saveLastAccess(
+        timestamp: Long,
+    ): Answer<Unit, Failure>
 }
 
-internal class AppAccessLocalDataSourceImpl(private val sharedPreferences: SharedPreferences) :
-    AppAccessLocalDataSource {
+internal class AppAccessLocalDataSourceImpl(
+    private val sharedPreferences: SharedPreferences,
+) : AppAccessLocalDataSource {
 
     private val _lastAccess = MutableStateFlow(load())
 
@@ -23,7 +26,9 @@ internal class AppAccessLocalDataSourceImpl(private val sharedPreferences: Share
             error.toUnknownError("Error to get last access")
         }
 
-    override suspend fun saveLastAccess(timestamp: Long): Answer<Unit, Failure> = coRunCatching {
+    override suspend fun saveLastAccess(
+        timestamp: Long,
+    ): Answer<Unit, Failure> = coRunCatching {
         sharedPreferences.persist(timestamp)
         _lastAccess.value = timestamp
     }.thenFailure { error ->
@@ -32,12 +37,15 @@ internal class AppAccessLocalDataSourceImpl(private val sharedPreferences: Share
 
     private fun load(): Long = sharedPreferences.getLong(LAST_ACCESS_KEY, System.currentTimeMillis())
 
-    private fun SharedPreferences.persist(timestamp: Long) {
+    private fun SharedPreferences.persist(
+        timestamp: Long,
+    ) {
         edit { putLong(LAST_ACCESS_KEY, timestamp) }
     }
 
-    private fun Throwable.toUnknownError(errorMessage: String): Failure.Unknown =
-        Failure.Unknown("$errorMessage: $message")
+    private fun Throwable.toUnknownError(
+        errorMessage: String,
+    ): Failure.Unknown = Failure.Unknown("$errorMessage: $message")
 
     companion object {
         private const val LAST_ACCESS_KEY = "last_access"

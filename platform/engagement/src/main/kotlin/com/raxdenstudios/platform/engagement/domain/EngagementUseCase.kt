@@ -32,7 +32,9 @@ import java.util.concurrent.TimeUnit
 interface EngagementUseCase : SuspendUseCase<EngagementUseCase.Params, EngagementResult> {
 
     /** @property origin name of the trigger point; occurrences and milestones are tracked per origin. */
-    data class Params(val origin: String)
+    data class Params(
+        val origin: String,
+    )
 }
 
 internal class EngagementUseCaseImpl(
@@ -45,7 +47,9 @@ internal class EngagementUseCaseImpl(
 
     private val mutex = Mutex()
 
-    override suspend fun invoke(params: EngagementUseCase.Params): Answer<EngagementResult, Failure> =
+    override suspend fun invoke(
+        params: EngagementUseCase.Params,
+    ): Answer<EngagementResult, Failure> =
         track(params.origin).coFlatMap { engagementData -> engageExclusively(engagementData, params.origin) }
 
     private suspend fun engageExclusively(
@@ -60,34 +64,40 @@ internal class EngagementUseCaseImpl(
         }
     }
 
-    private suspend fun engage(engagementData: EngagementData, origin: String): Answer<EngagementResult, Failure> =
+    private suspend fun engage(
+        engagementData: EngagementData,
+        origin: String,
+    ): Answer<EngagementResult, Failure> = when {
+        !engagementData.isEligible(origin) -> Answer.Success(EngagementResult.None)
+        !engagementData.hasRated -> rateOrShare(engagementData)
+        engagementData.canPromptShare() -> share()
+        else -> Answer.Success(EngagementResult.None)
+    }
+
+    private suspend fun track(
+        origin: String,
+    ): Answer<EngagementData, Failure> = engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
+        val incremented = engagementData.increment(origin)
+        engagementDataRepository.updateEngagementData(incremented).then { incremented }
+    }
+
+    private fun EngagementData.increment(
+        origin: String,
+    ): EngagementData = copy(counts = counts + (origin to (counts[origin] ?: 0) + 1))
+
+    private fun EngagementData.isEligible(
+        origin: String,
+    ): Boolean = engagementEligibility.isEligible(origin, counts[origin] ?: 0)
+
+    private suspend fun rateOrShare(
+        engagementData: EngagementData,
+    ): Answer<EngagementResult, Failure> = rateAppUseCase(RateAppUseCase.Params).coFlatMap { reviewUnavailable ->
         when {
-            !engagementData.isEligible(origin) -> Answer.Success(EngagementResult.None)
-            !engagementData.hasRated -> rateOrShare(engagementData)
-            engagementData.canPromptShare() -> share()
-            else -> Answer.Success(EngagementResult.None)
+            !reviewUnavailable -> Answer.Success(EngagementResult.ReviewLaunched)
+            engagementData.canPromptShare() -> share().then { it.orReviewUnavailable() }
+            else -> Answer.Success(EngagementResult.ReviewUnavailable)
         }
-
-    private suspend fun track(origin: String): Answer<EngagementData, Failure> =
-        engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-            val incremented = engagementData.increment(origin)
-            engagementDataRepository.updateEngagementData(incremented).then { incremented }
-        }
-
-    private fun EngagementData.increment(origin: String): EngagementData =
-        copy(counts = counts + (origin to (counts[origin] ?: 0) + 1))
-
-    private fun EngagementData.isEligible(origin: String): Boolean =
-        engagementEligibility.isEligible(origin, counts[origin] ?: 0)
-
-    private suspend fun rateOrShare(engagementData: EngagementData): Answer<EngagementResult, Failure> =
-        rateAppUseCase(RateAppUseCase.Params).coFlatMap { reviewUnavailable ->
-            when {
-                !reviewUnavailable -> Answer.Success(EngagementResult.ReviewLaunched)
-                engagementData.canPromptShare() -> share().then { it.orReviewUnavailable() }
-                else -> Answer.Success(EngagementResult.ReviewUnavailable)
-            }
-        }
+    }
 
     private fun EngagementResult.orReviewUnavailable(): EngagementResult = when (this) {
         EngagementResult.ShareNotChosen, EngagementResult.None -> EngagementResult.ReviewUnavailable

@@ -21,7 +21,9 @@ internal interface InAppReviewTracker {
      * Fires `in_app_review_failed` when [InAppReview.launch] returns a failure. The [reason] is
      * sent lowercase as the `reason` param.
      */
-    fun failed(reason: Reason)
+    fun failed(
+        reason: Reason,
+    )
 
     /**
      * Why the review flow could not be launched; fixed codes reported as the `reason` param of
@@ -38,13 +40,17 @@ internal interface InAppReviewTracker {
 }
 
 /** [InAppReviewTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppReviewTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppReviewTracker {
+internal class InAppReviewTrackerImpl(
+    private val firebaseAnalytics: FirebaseAnalytics,
+) : InAppReviewTracker {
 
     override fun launched() {
         firebaseAnalytics.logEvent(IN_APP_REVIEW_LAUNCHED) {}
     }
 
-    override fun failed(reason: InAppReviewTracker.Reason) {
+    override fun failed(
+        reason: InAppReviewTracker.Reason,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_REVIEW_FAILED) {
             param("reason", reason.name.lowercase())
         }

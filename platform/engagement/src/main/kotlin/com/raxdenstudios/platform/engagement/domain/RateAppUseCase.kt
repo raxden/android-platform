@@ -25,7 +25,9 @@ internal class RateAppUseCaseImpl(
     private val engagementDataRepository: EngagementDataRepository,
 ) : RateAppUseCase {
 
-    override suspend fun invoke(params: RateAppUseCase.Params): Answer<Boolean, Failure> = when {
+    override suspend fun invoke(
+        params: RateAppUseCase.Params,
+    ): Answer<Boolean, Failure> = when {
         inAppReview.launch().isSuccess -> markAsRated()
         else -> Answer.Success(true)
     }

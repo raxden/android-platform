@@ -544,7 +544,9 @@ internal class InAppUpdateImplTest {
         verify { tracker.failed(InAppUpdateTracker.Reason.NO_ACTIVITY) }
     }
 
-    private fun createInAppUpdate(config: InAppUpdateConfig = InAppUpdateConfig()) = InAppUpdateImpl(
+    private fun createInAppUpdate(
+        config: InAppUpdateConfig = InAppUpdateConfig(),
+    ) = InAppUpdateImpl(
         manager = manager,
         tracker = tracker,
         config = config,
@@ -583,7 +585,9 @@ internal class InAppUpdateImplTest {
      * for the listener-based `onResume` path because `addOnSuccessListener` posts through
      * `Handler(Looper.getMainLooper())`, which does not exist in local unit tests.
      */
-    private fun completedUpdateInfoTask(info: AppUpdateInfo): Task<AppUpdateInfo> {
+    private fun completedUpdateInfoTask(
+        info: AppUpdateInfo,
+    ): Task<AppUpdateInfo> {
         val task = mockk<Task<AppUpdateInfo>>()
         every { task.isComplete } returns true
         every { task.isSuccessful } returns true
@@ -598,7 +602,9 @@ internal class InAppUpdateImplTest {
         return task
     }
 
-    private fun failedUpdateInfoTask(error: Exception): Task<AppUpdateInfo> {
+    private fun failedUpdateInfoTask(
+        error: Exception,
+    ): Task<AppUpdateInfo> {
         val task = mockk<Task<AppUpdateInfo>>()
         every { task.isComplete } returns true
         every { task.isSuccessful } returns false

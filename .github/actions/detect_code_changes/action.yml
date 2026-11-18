@@ -1,0 +1,141 @@
+name: 'Detect code changes'
+description: 'Classifies the files changed by the current pull request or push as code / non-code so callers can skip heavy jobs (build, tests, lint). Requires a prior actions/checkout with fetch-depth: 0 (or at least 2). Fails safe: whenever the diff is empty or unavailable the result is code=true.'
+
+inputs:
+  non-code-paths:
+    description: 'Newline-separated bash glob patterns of files that are NOT code (* also matches /). Blank lines and lines starting with # are ignored. A change touching only these files yields code=false'
+    required: false
+    default: |
+      docs/*
+      marketing/*
+      .devin/*
+      app/src/main/play/*
+      *.md
+      .gitignore
+      LICENSE
+
+  base-ref:
+    description: 'Optional base revision to diff against HEAD (diff "<base-ref> HEAD"). When empty it is inferred from the event: pull_request uses HEAD^1, push uses github.event.before'
+    required: false
+    default: ''
+
+outputs:
+  code:
+    description: "'true' when at least one changed file is code (or the diff is empty/unavailable), 'false' when every changed file matches non-code-paths"
+    value: ${{ steps.detect.outputs.code }}
+  files:
+    description: 'Newline-separated list of changed files'
+    value: ${{ steps.detect.outputs.files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Detect code changes
+      id: detect
+      shell: bash
+      env:
+        NON_CODE_PATHS: ${{ inputs.non-code-paths }}
+        BASE_REF: ${{ inputs.base-ref }}
+        EVENT_NAME: ${{ github.event_name }}
+        PUSH_BEFORE: ${{ github.event.before }}
+        HEAD_SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+
+        # ------------------------------------------------------------
+        # 1️⃣ Resolve the diff range (empty range => unavailable)
+        # ------------------------------------------------------------
+        range=()
+        if [[ -n "$BASE_REF" ]]; then
+          range=("$BASE_REF" HEAD)
+        elif [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_target" ]]; then
+          # The checkout is the merge commit: first parent = base branch.
+          range=("HEAD^1" HEAD)
+        elif [[ "$EVENT_NAME" == "push" ]]; then
+          if [[ -n "$PUSH_BEFORE" && ! "$PUSH_BEFORE" =~ ^0+$ ]] \
+            && git cat-file -e "${PUSH_BEFORE}^{commit}" 2>/dev/null; then
+            range=("${PUSH_BEFORE}..${HEAD_SHA}")
+          fi
+        fi
+
+        # ------------------------------------------------------------
+        # 2️⃣ Changed files (a failing git diff must not abort: fail safe)
+        # ------------------------------------------------------------
+        files=""
+        available=false
+        if [[ ${#range[@]} -gt 0 ]] && files=$(git diff --name-only "${range[@]}" 2>/dev/null); then
+          available=true
+        else
+          files=""
+        fi
+
+        # ------------------------------------------------------------
+        # 3️⃣ Classify
+        # ------------------------------------------------------------
+        patterns=()
+        while IFS= read -r pattern || [[ -n "$pattern" ]]; do
+          pattern="${pattern%$'\r'}"
+          [[ -z "${pattern//[[:space:]]/}" || "$pattern" == \#* ]] && continue
+          patterns+=("$pattern")
+        done <<< "$NON_CODE_PATHS"
+
+        code=true
+        if [[ "$available" == "true" && -n "$files" ]]; then
+          code=false
+          while IFS= read -r file; do
+            matched=false
+            for pattern in "${patterns[@]}"; do
+              # Unquoted pattern on purpose: glob matching ('*' also matches '/').
+              # shellcheck disable=SC2053
+              if [[ $file == $pattern ]]; then
+                matched=true
+                break
+              fi
+            done
+            if [[ "$matched" == "false" ]]; then
+              code=true
+            fi
+          done <<< "$files"
+          list="$files"
+        else
+          list="(empty or unavailable diff)"
+        fi
+
+        echo "Diff range: ${range[*]:-(none)}"
+        echo "Changed files:"
+        printf '%s\n' "$list"
+        echo "code=$code"
+
+        # ------------------------------------------------------------
+        # 4️⃣ Outputs + summary
+        # ------------------------------------------------------------
+        # Heredoc-style outputs with a random delimiter: a stray newline in any
+        # value can never break the GITHUB_OUTPUT file command format.
+        write_output() {
+          local name="$1" value="$2" delim
+          delim="EOF_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+          {
+            echo "${name}<<${delim}"
+            printf '%s\n' "$value"
+            echo "${delim}"
+          } >> "$GITHUB_OUTPUT"
+        }
+
+        write_output code "$code"
+        write_output files "$files"
+
+        {
+          echo "## 🔎 Code changes"
+          echo ""
+          echo "- Code changed: \`${code}\`"
+          echo "- Diff range: \`${range[*]:-n/a}\`"
+          echo ""
+          echo "<details><summary>Changed files</summary>"
+          echo ""
+          echo '```'
+          printf '%s\n' "$list"
+          echo '```'
+          echo ""
+          echo "</details>"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"

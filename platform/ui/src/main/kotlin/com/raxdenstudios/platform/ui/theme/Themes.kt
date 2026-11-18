@@ -27,7 +27,7 @@ fun AppComposeTheme(
         colorScheme = colorScheme,
         typography = Typography,
         shapes = Shapes,
-        content = content
+        content = content,
     )
 }
 
@@ -43,11 +43,11 @@ fun PreviewTheme(
         content = {
             Column(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.background),
             ) {
                 content()
             }
-        }
+        },
     )
 }
 

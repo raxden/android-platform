@@ -10,7 +10,9 @@ import org.koin.core.module.Module
 
 abstract class KoinDIApp : DIApp {
 
-    override fun initialize(context: Context) {
+    override fun initialize(
+        context: Context,
+    ) {
         provideLibs().forEach { it.initialize() }
 
         startKoin {
