@@ -25,11 +25,15 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    #    - name: Detekt
-    #      shell: bash
-    #      run: |
-    #        set -euo pipefail
-    #        ./gradlew detekt --stacktrace ${{ inputs.gradle-args }}
+    - name: Detekt
+      id: detekt
+      shell: bash
+      env:
+        GRADLE_ARGS: ${{ inputs.gradle-args }}
+      run: |
+        set -euo pipefail
+        # shellcheck disable=SC2086
+        ./gradlew detekt --stacktrace $GRADLE_ARGS
 
     - name: Upload Detekt reports
       id: upload_reports
@@ -48,16 +52,23 @@ runs:
     - name: Summary
       if: always()
       shell: bash
+      env:
+        DETEKT_OUTCOME: ${{ steps.detekt.outcome }}
+        UPLOAD_ON_SUCCESS: ${{ inputs.upload-on-success }}
+        REPORTS_URL: ${{ steps.upload_reports.outputs.artifact-url }}
+        REPORTS_ID: ${{ inputs.id }}
+        REPOSITORY: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id }}
       run: |
-        status="${{ job.status }}"
+        status="$DETEKT_OUTCOME"
         show_reports="false"
 
-        if [[ "$status" != "success" || "${{ inputs.upload-on-success }}" == "true" ]]; then
+        if [[ "$status" != "success" || "$UPLOAD_ON_SUCCESS" == "true" ]]; then
           show_reports="true"
         fi
 
-        reports_url="${{ steps.upload_reports.outputs.artifact-url }}"
-        artifacts_fallback="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+        reports_url="$REPORTS_URL"
+        artifacts_fallback="https://github.com/$REPOSITORY/actions/runs/$RUN_ID#artifacts"
 
         {
           echo "## Detekt"
@@ -66,7 +77,7 @@ runs:
           if [[ "$show_reports" == "true" ]]; then
             echo "- Reports path: \`**/build/reports/detekt/**\`"
             if [[ -n "$reports_url" ]]; then
-              echo "- Reports: [detekt-reports-${{ inputs.id }}]($reports_url)"
+              echo "- Reports: [detekt-reports-$REPORTS_ID]($reports_url)"
             else
               echo "- Reports: [artifacts]($artifacts_fallback)"
             fi

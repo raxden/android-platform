@@ -76,9 +76,14 @@ runs:
         # ------------------------------------------------------------
         if [[ -z "$title" ]]; then
           echo "Falling back to commit message"
-          title="${COMMIT_MESSAGE}"
+          # Only the subject (first line): the body is multi-line and must never
+          # reach the single-line title output.
+          title="${COMMIT_MESSAGE%%$'\n'*}"
           source="commit"
         fi
+
+        # Whatever the source, the title is a single line (no CR / LF).
+        title="$(printf '%s' "$title" | tr '\r\n' '  ' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
 
         # ------------------------------------------------------------
         # 4️⃣ Detectar tipo de bump
@@ -99,7 +104,19 @@ runs:
         echo "Resolved number: $number"
         echo "Resolved bump: $bump"
 
-        echo "title=$title" >> "$GITHUB_OUTPUT"
-        echo "number=$number" >> "$GITHUB_OUTPUT"
-        echo "source=$source" >> "$GITHUB_OUTPUT"
-        echo "bump=$bump" >> "$GITHUB_OUTPUT"
+        # Heredoc-style outputs with a random delimiter: a stray newline in any
+        # value can never break the GITHUB_OUTPUT file command format.
+        write_output() {
+          local name="$1" value="$2" delim
+          delim="EOF_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+          {
+            echo "${name}<<${delim}"
+            printf '%s\n' "$value"
+            echo "${delim}"
+          } >> "$GITHUB_OUTPUT"
+        }
+
+        write_output title "$title"
+        write_output number "$number"
+        write_output source "$source"
+        write_output bump "$bump"

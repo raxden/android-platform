@@ -45,7 +45,7 @@ open class DownloadCheckStyles : DefaultTask() {
 
     companion object {
 
-        private const val TASK_NAME = "downloadCheckStyles"
+        const val TASK_NAME = "downloadCheckStyles"
         private const val GROUP_TASK_NAME = "dependencies"
         private const val GIT_CONVENTIONS_SOURCE =
             "https://github.com/raxden/android-convention/archive/refs/heads/master.zip"

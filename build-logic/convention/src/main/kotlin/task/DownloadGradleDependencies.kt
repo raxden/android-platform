@@ -55,7 +55,7 @@ open class DownloadGradleDependencies : DefaultTask() {
 
     companion object {
 
-        private const val TASK_NAME = "downloadGradleDependencies"
+        const val TASK_NAME = "downloadGradleDependencies"
         private const val GROUP_TASK_NAME = "dependencies"
         private const val GIT_CONVENTIONS_SOURCE =
             "https://github.com/raxden/android-convention/archive/refs/heads/master.zip"
