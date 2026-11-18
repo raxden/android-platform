@@ -24,9 +24,6 @@ runs:
       run: |
         set -euo pipefail
 
-        echo "DEBUG: Using project ID: ${FIREBASE_PROJECT_ID}"
-        echo "DEBUG: Message payload: ${MESSAGE}"
-
         RESPONSE="$(curl --silent --show-error --write-out "\n%{http_code}" \
           --request POST \
           --header "Authorization: Bearer ${ACCESS_TOKEN}" \
