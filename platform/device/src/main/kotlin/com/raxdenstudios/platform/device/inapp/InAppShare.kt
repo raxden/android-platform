@@ -72,7 +72,9 @@ interface InAppShare : DefaultLifecycleObserver {
      * after recreation. The activity is held weakly and released when it is destroyed.
      */
     @MainThread
-    fun attach(activity: ComponentActivity)
+    fun attach(
+        activity: ComponentActivity,
+    )
 
     /**
      * Shows a native modal asking the user whether they want to share the app and, only if they
@@ -83,7 +85,9 @@ interface InAppShare : DefaultLifecycleObserver {
      * not be shown (no activity attached, a share already in progress or the system rejected the
      * intent).
      */
-    suspend fun launch(content: InAppShareContent): Answer<InAppShareResult, Failure>
+    suspend fun launch(
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure>
 
     /**
      * Shows the system share sheet directly on the attached activity, skipping the modal shown
@@ -92,7 +96,9 @@ interface InAppShare : DefaultLifecycleObserver {
      * [Answer.Failure] means the sheet could not be shown (no activity attached, a share already
      * in progress or the system rejected the intent).
      */
-    suspend fun share(content: InAppShareContent): Answer<InAppShareResult, Failure>
+    suspend fun share(
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure>
 }
 
 /**
@@ -100,7 +106,11 @@ interface InAppShare : DefaultLifecycleObserver {
  * @property text plain text to share, typically including the Play Store link.
  * @property chooserTitle optional title of the share sheet.
  */
-data class InAppShareContent(val subject: String, val text: String, val chooserTitle: String? = null)
+data class InAppShareContent(
+    val subject: String,
+    val text: String,
+    val chooserTitle: String? = null,
+)
 
 /**
  * How the share sheet ended. The system never confirms the content was actually sent by the
@@ -109,7 +119,9 @@ data class InAppShareContent(val subject: String, val text: String, val chooserT
 sealed interface InAppShareResult {
 
     /** The user picked a destination app. [packageName] is null when the system did not report it. */
-    data class TargetChosen(val packageName: String?) : InAppShareResult
+    data class TargetChosen(
+        val packageName: String?,
+    ) : InAppShareResult
 
     /** The user closed the share sheet without picking anything. */
     data object Dismissed : InAppShareResult
@@ -132,7 +144,9 @@ internal class InAppShareImpl(
     private var launcher: ActivityResultLauncher<Intent>? = null
     private var pending: PendingShare? = null
 
-    override fun attach(activity: ComponentActivity) {
+    override fun attach(
+        activity: ComponentActivity,
+    ) {
         if (activityHolder.activity === activity) return
 
         // A new activity replaces the previous one: release its launcher and close any
@@ -143,30 +157,34 @@ internal class InAppShareImpl(
         activity.lifecycle.addObserver(this)
     }
 
-    override fun onDestroy(owner: LifecycleOwner) {
+    override fun onDestroy(
+        owner: LifecycleOwner,
+    ) {
         if (activityHolder.activity === owner) detach()
     }
 
-    override suspend fun launch(content: InAppShareContent): Answer<InAppShareResult, Failure> =
-        withContext(mainDispatcher) {
-            val activity = activityHolder.activity
-            val currentLauncher = launcher
-            when {
-                activity == null || currentLauncher == null -> noActivityFailure()
-                pending != null -> alreadyInProgressFailure()
-                else -> launchWithPrompt(activity, currentLauncher, content)
-            }
+    override suspend fun launch(
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure> = withContext(mainDispatcher) {
+        val activity = activityHolder.activity
+        val currentLauncher = launcher
+        when {
+            activity == null || currentLauncher == null -> noActivityFailure()
+            pending != null -> alreadyInProgressFailure()
+            else -> launchWithPrompt(activity, currentLauncher, content)
         }
+    }
 
-    override suspend fun share(content: InAppShareContent): Answer<InAppShareResult, Failure> =
-        withContext(mainDispatcher) {
-            val currentLauncher = launcher
-            when {
-                activityHolder.activity == null || currentLauncher == null -> noActivityFailure()
-                pending != null -> alreadyInProgressFailure()
-                else -> shareWithTracking(currentLauncher, content)
-            }
+    override suspend fun share(
+        content: InAppShareContent,
+    ): Answer<InAppShareResult, Failure> = withContext(mainDispatcher) {
+        val currentLauncher = launcher
+        when {
+            activityHolder.activity == null || currentLauncher == null -> noActivityFailure()
+            pending != null -> alreadyInProgressFailure()
+            else -> shareWithTracking(currentLauncher, content)
         }
+    }
 
     /**
      * Marks a share in progress for the whole modal + sheet flow so a concurrent [launch] or
@@ -218,7 +236,9 @@ internal class InAppShareImpl(
         .onSuccess(::trackShareResult)
         .onFailure { tracker.failed(InAppShareTracker.Reason.ERROR) }
 
-    private fun trackShareResult(result: InAppShareResult) {
+    private fun trackShareResult(
+        result: InAppShareResult,
+    ) {
         when (result) {
             is InAppShareResult.TargetChosen -> tracker.targetChosen(result.packageName)
 
@@ -230,7 +250,10 @@ internal class InAppShareImpl(
         }
     }
 
-    private suspend fun share(launcher: ActivityResultLauncher<Intent>, content: InAppShareContent): InAppShareResult {
+    private suspend fun share(
+        launcher: ActivityResultLauncher<Intent>,
+        content: InAppShareContent,
+    ): InAppShareResult {
         val share = PendingShare().also { pending = it }
         val receiver = registerChosenTargetReceiver(share)
         try {
@@ -242,29 +265,33 @@ internal class InAppShareImpl(
         }
     }
 
-    private fun registerInAppShareLauncher(activity: ComponentActivity): ActivityResultLauncher<Intent> =
-        activity.activityResultRegistry.register(
-            LAUNCHER_KEY,
-            activity,
-            ActivityResultContracts.StartActivityForResult(),
-        ) { pending?.markClosed() }
+    private fun registerInAppShareLauncher(
+        activity: ComponentActivity,
+    ): ActivityResultLauncher<Intent> = activity.activityResultRegistry.register(
+        LAUNCHER_KEY,
+        activity,
+        ActivityResultContracts.StartActivityForResult(),
+    ) { pending?.markClosed() }
 
     /**
      * Each launch registers a fresh receiver bound to its own [PendingShare]; NOT_EXPORTED so
      * only the system chooser can deliver the broadcast. It is unregistered when the sheet
      * closes.
      */
-    private fun registerChosenTargetReceiver(share: PendingShare): BroadcastReceiver =
-        ChosenTargetReceiver(share).also {
-            ContextCompat.registerReceiver(
-                appContext,
-                it,
-                IntentFilter(chosenAction),
-                ContextCompat.RECEIVER_NOT_EXPORTED,
-            )
-        }
+    private fun registerChosenTargetReceiver(
+        share: PendingShare,
+    ): BroadcastReceiver = ChosenTargetReceiver(share).also {
+        ContextCompat.registerReceiver(
+            appContext,
+            it,
+            IntentFilter(chosenAction),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
 
-    private fun buildChooser(content: InAppShareContent): Intent {
+    private fun buildChooser(
+        content: InAppShareContent,
+    ): Intent {
         val shareIntent = intentFactory.build(IntentType.ShareText(content.subject, content.text))
         return Intent.createChooser(shareIntent, content.chooserTitle, buildChosenTargetSender())
     }
@@ -305,7 +332,9 @@ internal class InAppShareImpl(
             closed.complete(Unit)
         }
 
-        fun markChosen(packageName: String?) {
+        fun markChosen(
+            packageName: String?,
+        ) {
             chosen.complete(InAppShareResult.TargetChosen(packageName))
         }
 
@@ -317,9 +346,14 @@ internal class InAppShareImpl(
     }
 
     /** Delivers the chooser's [Intent.EXTRA_CHOSEN_COMPONENT] broadcast to the in-flight share. */
-    private class ChosenTargetReceiver(private val share: PendingShare) : BroadcastReceiver() {
+    private class ChosenTargetReceiver(
+        private val share: PendingShare,
+    ) : BroadcastReceiver() {
 
-        override fun onReceive(context: Context, intent: Intent) {
+        override fun onReceive(
+            context: Context,
+            intent: Intent,
+        ) {
             share.markChosen(intent.chosenComponent()?.packageName)
         }
 

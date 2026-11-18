@@ -1,19 +1,23 @@
 package com.raxdenstudios.platform.ui.mapper
 
-import com.raxdenstudios.platform.ui.model.ErrorModel
 import com.raxdenstudios.commons.android.provider.StringProvider
-import com.raxdenstudios.platform.ui.R
 import com.raxdenstudios.platform.core.domain.model.Failure
+import com.raxdenstudios.platform.ui.R
+import com.raxdenstudios.platform.ui.model.ErrorModel
 
 interface ErrorModelDataMapper {
-    fun toErrorModel(source: Failure): ErrorModel
+    fun toErrorModel(
+        source: Failure,
+    ): ErrorModel
 }
 
 class ErrorModelDataMapperImpl(
     private val stringProvider: StringProvider,
 ) : ErrorModelDataMapper {
 
-    override fun toErrorModel(source: Failure): ErrorModel = when (source) {
+    override fun toErrorModel(
+        source: Failure,
+    ): ErrorModel = when (source) {
         is Failure.Network.Client -> ErrorModel(
             title = stringProvider.getString(R.string.error_information),
             message = source.message,

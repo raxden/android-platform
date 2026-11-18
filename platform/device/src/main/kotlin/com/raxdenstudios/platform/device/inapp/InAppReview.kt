@@ -56,7 +56,9 @@ interface InAppReview : DefaultLifecycleObserver {
      * Binds this helper to [activity] and follows its lifecycle so a [ReviewInfo] is prefetched
      * on create, as Google recommends. The activity is held weakly, so no detach is required.
      */
-    fun attach(activity: ComponentActivity)
+    fun attach(
+        activity: ComponentActivity,
+    )
 
     /**
      * Launches the Google Play in-app review flow on the attached activity.
@@ -73,11 +75,15 @@ interface InAppReview : DefaultLifecycleObserver {
  * Debug builds are not installed through Play, so the review flow cannot run there; this
  * variant goes straight to the Play Store page so the entry point can still be exercised.
  */
-internal class DebugInAppReview(private val context: Context) : InAppReview {
+internal class DebugInAppReview(
+    private val context: Context,
+) : InAppReview {
 
     private val intentFactory = IntentFactoryImpl(context.applicationContext)
 
-    override fun attach(activity: ComponentActivity) = Unit
+    override fun attach(
+        activity: ComponentActivity,
+    ) = Unit
 
     override suspend fun launch(): Answer<Unit, Failure> = coRunCatching {
         Timber.d("Debug mode: Opening Play Store directly")
@@ -87,26 +93,35 @@ internal class DebugInAppReview(private val context: Context) : InAppReview {
     }
 }
 
-internal class ReleaseInAppReview(context: Context, private val tracker: InAppReviewTracker) : InAppReview {
+internal class ReleaseInAppReview(
+    context: Context,
+    private val tracker: InAppReviewTracker,
+) : InAppReview {
 
     private val activityHolder = ActivityHolder()
     private val manager = ReviewManagerFactory.create(context.applicationContext)
 
     private var reviewInfo: ReviewInfo? = null
 
-    override fun attach(activity: ComponentActivity) {
+    override fun attach(
+        activity: ComponentActivity,
+    ) {
         if (activityHolder.activity === activity) return
 
         activityHolder.attach(activity)
         activity.lifecycle.addObserver(this)
     }
 
-    override fun onCreate(owner: LifecycleOwner) {
+    override fun onCreate(
+        owner: LifecycleOwner,
+    ) {
         super.onCreate(owner)
         prefetchReviewInfo()
     }
 
-    override fun onDestroy(owner: LifecycleOwner) {
+    override fun onDestroy(
+        owner: LifecycleOwner,
+    ) {
         if (activityHolder.activity === owner) detach()
     }
 
@@ -128,14 +143,15 @@ internal class ReleaseInAppReview(context: Context, private val tracker: InAppRe
         return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
     }
 
-    private suspend fun launch(activity: ComponentActivity): Answer<Unit, Failure> =
-        coRunCatching { manager.launchReview(activity, consumeReviewInfo()) }
-            .thenFailure { error ->
-                Timber.e(error, "In-app review flow could not be launched")
-                Failure.Unknown("In-app review flow could not be launched: ${error.message}")
-            }
-            .onSuccess { tracker.launched() }
-            .onFailure { tracker.failed(InAppReviewTracker.Reason.ERROR) }
+    private suspend fun launch(
+        activity: ComponentActivity,
+    ): Answer<Unit, Failure> = coRunCatching { manager.launchReview(activity, consumeReviewInfo()) }
+        .thenFailure { error ->
+            Timber.e(error, "In-app review flow could not be launched")
+            Failure.Unknown("In-app review flow could not be launched: ${error.message}")
+        }
+        .onSuccess { tracker.launched() }
+        .onFailure { tracker.failed(InAppReviewTracker.Reason.ERROR) }
 
     /**
      * ReviewInfo is single-use and short-lived: returns the cached one (or requests a new one)

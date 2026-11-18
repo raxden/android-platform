@@ -7,15 +7,21 @@ import org.threeten.bp.format.DateTimeFormatter
 import org.threeten.bp.format.FormatStyle
 
 interface DateDataMapper {
-    fun toString(source: LocalDate): String
-    fun toHourMinutes(source: LocalDateTime): String
+    fun toString(
+        source: LocalDate,
+    ): String
+    fun toHourMinutes(
+        source: LocalDateTime,
+    ): String
 }
 
 class DateDataMapperImpl : DateDataMapper {
 
-    override fun toString(source: LocalDate): String =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(source)
+    override fun toString(
+        source: LocalDate,
+    ): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(source)
 
-    override fun toHourMinutes(source: LocalDateTime): String =
-        source.toFormat("HH:mm")
+    override fun toHourMinutes(
+        source: LocalDateTime,
+    ): String = source.toFormat("HH:mm")
 }

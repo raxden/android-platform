@@ -19,7 +19,7 @@ abstract class GraphProviderImpl : GraphProvider {
     ) {
         navGraphBuilder.navigation(
             route = graph::class,
-            startDestination = startDestination::class
+            startDestination = startDestination::class,
         ) {
             content(paddingValues, screenState)
         }

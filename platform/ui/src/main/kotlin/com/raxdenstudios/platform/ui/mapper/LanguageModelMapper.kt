@@ -4,12 +4,16 @@ import com.raxdenstudios.commons.core.util.DataMapper
 import java.util.Locale
 
 interface LanguageModelMapper {
-    fun transform(source: Locale): String
+    fun transform(
+        source: Locale,
+    ): String
 }
 
-class LanguageModelMapperImpl : DataMapper<Locale, String>(), LanguageModelMapper {
+class LanguageModelMapperImpl :
+    DataMapper<Locale, String>(),
+    LanguageModelMapper {
 
-    override fun transform(source: Locale): String {
-        return source.getDisplayLanguage(Locale.getDefault())
-    }
+    override fun transform(
+        source: Locale,
+    ): String = source.getDisplayLanguage(Locale.getDefault())
 }

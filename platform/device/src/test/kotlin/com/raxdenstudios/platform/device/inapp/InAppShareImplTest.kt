@@ -363,7 +363,9 @@ internal class InAppShareImplTest {
     }
 
     @Suppress("DEPRECATION")
-    private fun chosenTarget(targetPackage: String?) {
+    private fun chosenTarget(
+        targetPackage: String?,
+    ) {
         val component: ComponentName? = targetPackage?.let { pkg ->
             mockk { every { packageName } returns pkg }
         }

@@ -11,6 +11,6 @@ class NetworkDILibrary : DILibrary {
     }
 
     override fun getModules(): List<DIModule> = listOf(
-        NetworkDIModule()
+        NetworkDIModule(),
     )
 }

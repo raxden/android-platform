@@ -16,7 +16,12 @@ internal interface InAppUpdateTracker {
      * update, `priority` (0..5 from Play Console) and `staleness_days` — the latter omitted when
      * Play does not report it.
      */
-    fun checked(available: Boolean, versionCode: Long, priority: Long, stalenessDays: Long?)
+    fun checked(
+        available: Boolean,
+        versionCode: Long,
+        priority: Long,
+        stalenessDays: Long?,
+    )
 
     /**
      * Fires `in_app_update_launched` whenever [InAppUpdate.launch] returns an outcome. The
@@ -25,13 +30,17 @@ internal interface InAppUpdateTracker {
      * decision inside Play's UI is reported separately via [accepted], [declined] or
      * [flowFailed].
      */
-    fun launched(result: InAppUpdateLaunchResult)
+    fun launched(
+        result: InAppUpdateLaunchResult,
+    )
 
     /**
      * Fires `in_app_update_failed` when [InAppUpdate.check] or [InAppUpdate.launch] returns a
      * failure. The [reason] is sent lowercase as the `reason` param.
      */
-    fun failed(reason: Reason)
+    fun failed(
+        reason: Reason,
+    )
 
     /** Fires `in_app_update_accepted` when Play's update UI returns `Activity.RESULT_OK`. */
     fun accepted()
@@ -67,9 +76,16 @@ internal interface InAppUpdateTracker {
 }
 
 /** [InAppUpdateTracker] backed by [FirebaseAnalytics]; reason codes are sent lowercase. */
-internal class InAppUpdateTrackerImpl(private val firebaseAnalytics: FirebaseAnalytics) : InAppUpdateTracker {
+internal class InAppUpdateTrackerImpl(
+    private val firebaseAnalytics: FirebaseAnalytics,
+) : InAppUpdateTracker {
 
-    override fun checked(available: Boolean, versionCode: Long, priority: Long, stalenessDays: Long?) {
+    override fun checked(
+        available: Boolean,
+        versionCode: Long,
+        priority: Long,
+        stalenessDays: Long?,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_UPDATE_CHECKED) {
             param("available", available.toString())
             param("version_code", versionCode)
@@ -78,13 +94,17 @@ internal class InAppUpdateTrackerImpl(private val firebaseAnalytics: FirebaseAna
         }
     }
 
-    override fun launched(result: InAppUpdateLaunchResult) {
+    override fun launched(
+        result: InAppUpdateLaunchResult,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_UPDATE_LAUNCHED) {
             param("result", result.toTrackingName())
         }
     }
 
-    override fun failed(reason: InAppUpdateTracker.Reason) {
+    override fun failed(
+        reason: InAppUpdateTracker.Reason,
+    ) {
         firebaseAnalytics.logEvent(IN_APP_UPDATE_FAILED) {
             param("reason", reason.name.lowercase())
         }

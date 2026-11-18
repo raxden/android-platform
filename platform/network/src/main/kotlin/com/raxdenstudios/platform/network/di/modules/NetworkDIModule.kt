@@ -6,14 +6,14 @@ import com.chuckerteam.chucker.api.RetentionManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
-import com.raxdenstudios.platform.core.di.DIModule
-import com.raxdenstudios.platform.network.HttpClientFactory
-import com.raxdenstudios.platform.network.DefaultHttpClientFactory
 import com.raxdenstudios.commons.android.util.Network
 import com.raxdenstudios.commons.network.interceptor.CacheLoggerInterceptor
 import com.raxdenstudios.commons.network.interceptor.CacheNetworkInterceptor
 import com.raxdenstudios.commons.network.interceptor.CacheOfflineInterceptor
 import com.raxdenstudios.commons.network.interceptor.RetryInterceptor
+import com.raxdenstudios.platform.core.di.DIModule
+import com.raxdenstudios.platform.network.DefaultHttpClientFactory
+import com.raxdenstudios.platform.network.HttpClientFactory
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -44,11 +44,13 @@ internal class NetworkDIModule : DIModule {
         }
         single {
             ChuckerInterceptor.Builder(androidContext())
-                .collector(ChuckerCollector(
-                    context = androidContext(),
-                    showNotification = true,
-                    retentionPeriod = RetentionManager.Period.ONE_HOUR
-                ))
+                .collector(
+                    ChuckerCollector(
+                        context = androidContext(),
+                        showNotification = true,
+                        retentionPeriod = RetentionManager.Period.ONE_HOUR,
+                    ),
+                )
                 .alwaysReadResponseBody(true)
                 .build()
         }
@@ -80,6 +82,6 @@ internal class NetworkDIModule : DIModule {
 
     private companion object {
         const val CACHE_DIRECTORY = "responses"
-        const val CACHE_SIZE = 50 * 1024 * 1024  // 50 MiB
+        const val CACHE_SIZE = 50 * 1024 * 1024 // 50 MiB
     }
 }

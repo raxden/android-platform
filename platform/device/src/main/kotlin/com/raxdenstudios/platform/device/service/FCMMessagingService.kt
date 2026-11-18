@@ -17,7 +17,9 @@ class FCMMessagingService : FirebaseMessagingService() {
     private val fcmNotificationMapper: FCMNotificationMapper by inject()
     private val tracker: FCMMessagingTracker by inject()
 
-    override fun onNewToken(token: String) {
+    override fun onNewToken(
+        token: String,
+    ) {
         super.onNewToken(token)
         tracker.tokenRefreshed()
 
@@ -25,13 +27,17 @@ class FCMMessagingService : FirebaseMessagingService() {
     }
 
     // FCM callbacks run on a worker thread; finish local work before returning.
-    private fun saveFCMToken(token: String) {
+    private fun saveFCMToken(
+        token: String,
+    ) {
         runBlocking(dispatcherProvider.io) {
             saveFCMTokenUseCase(SaveFCMTokenUseCase.Params(token))
         }
     }
 
-    override fun onMessageReceived(message: RemoteMessage) {
+    override fun onMessageReceived(
+        message: RemoteMessage,
+    ) {
         super.onMessageReceived(message)
         tracker.messageReceived()
 

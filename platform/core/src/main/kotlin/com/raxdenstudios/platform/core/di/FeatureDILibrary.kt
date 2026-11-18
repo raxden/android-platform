@@ -1,9 +1,8 @@
 package com.raxdenstudios.platform.core.di
 
-abstract class FeatureDILibrary: DILibrary {
+abstract class FeatureDILibrary : DILibrary {
 
-    override fun getModules(): List<DIModule> =
-        getDataModules() + getUIModules()
+    override fun getModules(): List<DIModule> = getDataModules() + getUIModules()
 
     abstract fun getDataModules(): List<DIModule>
 

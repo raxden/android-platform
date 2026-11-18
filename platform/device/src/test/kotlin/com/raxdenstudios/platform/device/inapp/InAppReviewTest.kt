@@ -182,7 +182,9 @@ internal class InAppReviewTest {
         return DebugInAppReview(context)
     }
 
-    private fun attachActivity(inAppReview: InAppReview): ComponentActivity {
+    private fun attachActivity(
+        inAppReview: InAppReview,
+    ): ComponentActivity {
         val lifecycle: Lifecycle = mockk()
         val activity: ComponentActivity = mockk()
         every { lifecycle.addObserver(any()) } just Runs
@@ -197,7 +199,9 @@ internal class InAppReviewTest {
      * for the listener-based prefetch path because `addOnCompleteListener` posts through
      * `Handler(Looper.getMainLooper())`, which does not exist in local unit tests.
      */
-    private fun completedReviewTask(info: ReviewInfo = mockk()): Task<ReviewInfo> {
+    private fun completedReviewTask(
+        info: ReviewInfo = mockk(),
+    ): Task<ReviewInfo> {
         val task = mockk<Task<ReviewInfo>>()
         every { task.isComplete } returns true
         every { task.isSuccessful } returns true
@@ -214,7 +218,9 @@ internal class InAppReviewTest {
         return task
     }
 
-    private fun failedReviewTask(error: Exception): Task<ReviewInfo> {
+    private fun failedReviewTask(
+        error: Exception,
+    ): Task<ReviewInfo> {
         val task = mockk<Task<ReviewInfo>>()
         every { task.isComplete } returns true
         every { task.isSuccessful } returns false
@@ -236,7 +242,9 @@ internal class InAppReviewTest {
         return task
     }
 
-    private fun failedLaunchTask(error: Exception): Task<Void> {
+    private fun failedLaunchTask(
+        error: Exception,
+    ): Task<Void> {
         val task = mockk<Task<Void>>()
         every { task.isComplete } returns true
         every { task.isSuccessful } returns false

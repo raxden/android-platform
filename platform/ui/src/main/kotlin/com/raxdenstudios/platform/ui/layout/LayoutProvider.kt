@@ -44,7 +44,7 @@ class DefaultLayoutProvider<UIS : UIState>(
         themeProvider.Apply {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = backgroundColor
+                color = backgroundColor,
             ) {
                 contentProvider?.Apply(paddingValues, screenState, uiState, onAction)
                 dialogProvider?.Apply(paddingValues, screenState, uiState, onAction)

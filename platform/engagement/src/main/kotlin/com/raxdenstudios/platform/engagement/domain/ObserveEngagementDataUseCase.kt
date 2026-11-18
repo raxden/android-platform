@@ -13,9 +13,11 @@ interface ObserveEngagementDataUseCase : FlowUseCase<ObserveEngagementDataUseCas
     data object Params
 }
 
-internal class ObserveEngagementDataUseCaseImpl(private val engagementDataRepository: EngagementDataRepository) :
-    ObserveEngagementDataUseCase {
+internal class ObserveEngagementDataUseCaseImpl(
+    private val engagementDataRepository: EngagementDataRepository,
+) : ObserveEngagementDataUseCase {
 
-    override fun invoke(params: ObserveEngagementDataUseCase.Params): Flow<Answer<EngagementData, Failure>> =
-        engagementDataRepository.observeEngagementData()
+    override fun invoke(
+        params: ObserveEngagementDataUseCase.Params,
+    ): Flow<Answer<EngagementData, Failure>> = engagementDataRepository.observeEngagementData()
 }

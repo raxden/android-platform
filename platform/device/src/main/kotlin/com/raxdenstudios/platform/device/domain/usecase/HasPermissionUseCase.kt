@@ -8,12 +8,16 @@ import com.raxdenstudios.platform.device.data.repository.PermissionRepository
 
 interface HasPermissionUseCase : SuspendUseCase<HasPermissionUseCase.Params, Boolean> {
 
-    data class Params(val permission: Permission)
+    data class Params(
+        val permission: Permission,
+    )
 }
 
-internal class HasPermissionUseCaseImpl(private val permissionRepository: PermissionRepository) :
-    HasPermissionUseCase {
+internal class HasPermissionUseCaseImpl(
+    private val permissionRepository: PermissionRepository,
+) : HasPermissionUseCase {
 
-    override suspend fun invoke(params: HasPermissionUseCase.Params): Answer<Boolean, Failure> =
-        permissionRepository.hasPermission(params.permission)
+    override suspend fun invoke(
+        params: HasPermissionUseCase.Params,
+    ): Answer<Boolean, Failure> = permissionRepository.hasPermission(params.permission)
 }

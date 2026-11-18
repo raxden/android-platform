@@ -13,4 +13,3 @@ object Spacing {
     val xLarge: Dp = 24.dp
     val xxLarge: Dp = 48.dp
 }
-

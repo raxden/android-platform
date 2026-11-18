@@ -44,7 +44,6 @@ object Dialog {
     }
 }
 
-
 @SuppressLint("VisibleForTests")
 @DevicePreviews
 @Composable
@@ -54,7 +53,7 @@ fun ErrorDialogPreview() {
             title = PlainText("Lorem Ipsum"),
             message = PlainText(
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod " +
-                        "tempor incididunt ut labore et dolore magna aliqua."
+                    "tempor incididunt ut labore et dolore magna aliqua.",
             ),
             confirmButton = PlainText("ok") to {},
             onDismissRequest = {},

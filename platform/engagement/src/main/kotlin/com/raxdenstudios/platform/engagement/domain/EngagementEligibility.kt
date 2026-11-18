@@ -13,7 +13,10 @@ interface EngagementEligibility {
      * @param origin the tracked origin, as passed to [EngagementUseCase.Params.origin].
      * @param count occurrences already recorded for [origin], including the current call.
      */
-    fun isEligible(origin: String, count: Int): Boolean
+    fun isEligible(
+        origin: String,
+        count: Int,
+    ): Boolean
 }
 
 /**
@@ -22,8 +25,10 @@ interface EngagementEligibility {
  */
 internal class DefaultEngagementEligibility : EngagementEligibility {
 
-    override fun isEligible(origin: String, count: Int): Boolean =
-        count == FIRST_MILESTONE || (count >= STEP && count % STEP == 0)
+    override fun isEligible(
+        origin: String,
+        count: Int,
+    ): Boolean = count == FIRST_MILESTONE || (count >= STEP && count % STEP == 0)
 
     private companion object {
         const val FIRST_MILESTONE = 3

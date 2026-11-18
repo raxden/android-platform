@@ -32,12 +32,14 @@ abstract class AbstractThemeProvider : ThemeProvider {
                 is Theme.App -> theme.dark
                 Theme.Device -> isSystemInDarkTheme()
             },
-            content = content
+            content = content,
         )
     }
 
     @Composable
-    abstract fun getColorScheme(theme: Theme): ColorScheme
+    abstract fun getColorScheme(
+        theme: Theme,
+    ): ColorScheme
 }
 
 class DefaultThemeProvider : AbstractThemeProvider() {
@@ -51,7 +53,9 @@ class DefaultThemeProvider : AbstractThemeProvider() {
 //    else -> lightScheme
 
     @Composable
-    override fun getColorScheme(theme: Theme): ColorScheme = when (theme) {
+    override fun getColorScheme(
+        theme: Theme,
+    ): ColorScheme = when (theme) {
         is Theme.App -> when (theme.dark) {
             true -> darkColorScheme()
             false -> lightColorScheme()
@@ -67,6 +71,7 @@ class DefaultThemeProvider : AbstractThemeProvider() {
 sealed class Theme {
 
     data object Device : Theme()
-    data class App(val dark: Boolean) : Theme()
+    data class App(
+        val dark: Boolean,
+    ) : Theme()
 }
-

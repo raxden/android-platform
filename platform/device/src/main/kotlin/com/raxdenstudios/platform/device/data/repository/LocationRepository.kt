@@ -18,7 +18,9 @@ interface LocationRepository {
     suspend fun getLastLocation(): Answer<Location, Failure>
 }
 
-internal class LocationRepositoryImpl(private val locationDataSource: LocationDataSource) : LocationRepository {
+internal class LocationRepositoryImpl(
+    private val locationDataSource: LocationDataSource,
+) : LocationRepository {
 
     @RequiresPermission(
         anyOf = [

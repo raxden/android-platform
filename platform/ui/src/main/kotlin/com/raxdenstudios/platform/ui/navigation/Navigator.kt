@@ -8,7 +8,7 @@ interface Navigator {
 
     fun navigate(
         destination: Destination,
-        navOptions: NavOptionsBuilder.() -> Unit = {}
+        navOptions: NavOptionsBuilder.() -> Unit = {},
     )
 
     fun navigate(
@@ -18,19 +18,24 @@ interface Navigator {
     fun navigateUp()
 
     fun navigateToTopLevelDestination(
-        destination: Destination
+        destination: Destination,
     )
 }
 
 class DefaultNavigator(
-    private val navController: NavHostController
-): Navigator {
+    private val navController: NavHostController,
+) : Navigator {
 
-    override fun navigate(intent: Intent) {
+    override fun navigate(
+        intent: Intent,
+    ) {
         navController.context.startActivity(intent)
     }
 
-    override fun navigate(destination: Destination, navOptions: NavOptionsBuilder.() -> Unit) {
+    override fun navigate(
+        destination: Destination,
+        navOptions: NavOptionsBuilder.() -> Unit,
+    ) {
         navController.navigate(destination, navOptions)
     }
 
@@ -38,7 +43,9 @@ class DefaultNavigator(
         navController.navigateUp()
     }
 
-    override fun navigateToTopLevelDestination(destination: Destination) {
+    override fun navigateToTopLevelDestination(
+        destination: Destination,
+    ) {
         navController.navigateToTopLevelDestination(destination)
     }
 }

@@ -61,7 +61,9 @@ internal interface InAppSharePrompt {
      *
      * Must be called on the main thread.
      */
-    suspend fun show(activity: ComponentActivity): Boolean
+    suspend fun show(
+        activity: ComponentActivity,
+    ): Boolean
 }
 
 /**
@@ -81,9 +83,13 @@ internal interface InAppSharePrompt {
  * on view removal and would leave the window blocking the activity. The answer is emitted when
  * the hide animation finishes or is cancelled, so [show] always resumes its caller.
  */
-internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : InAppSharePrompt {
+internal class InAppSharePromptImpl(
+    private val themeProvider: ThemeProvider,
+) : InAppSharePrompt {
 
-    override suspend fun show(activity: ComponentActivity): Boolean {
+    override suspend fun show(
+        activity: ComponentActivity,
+    ): Boolean {
         val answer = CompletableDeferred<Boolean>()
         val composeView = buildComposeView(activity, answer)
         val observer = closeOnDestroy(answer)
@@ -97,21 +103,26 @@ internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : 
         }
     }
 
-    private fun buildComposeView(activity: ComponentActivity, answer: CompletableDeferred<Boolean>): ComposeView =
-        ComposeView(activity).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                themeProvider.Apply {
-                    InAppSharePromptSheet(
-                        activity = activity,
-                        onShare = { answer.complete(true) },
-                        onDismiss = { answer.complete(false) },
-                    )
-                }
+    private fun buildComposeView(
+        activity: ComponentActivity,
+        answer: CompletableDeferred<Boolean>,
+    ): ComposeView = ComposeView(activity).apply {
+        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        setContent {
+            themeProvider.Apply {
+                InAppSharePromptSheet(
+                    activity = activity,
+                    onShare = { answer.complete(true) },
+                    onDismiss = { answer.complete(false) },
+                )
             }
         }
+    }
 
-    private fun attach(activity: ComponentActivity, composeView: ComposeView) {
+    private fun attach(
+        activity: ComponentActivity,
+        composeView: ComposeView,
+    ) {
         val content = activity.findViewById<ViewGroup>(android.R.id.content)
         content.addView(
             composeView,
@@ -125,23 +136,33 @@ internal class InAppSharePromptImpl(private val themeProvider: ThemeProvider) : 
      * disposes on lifecycle destruction, so without this the sheet's window would outlive the
      * modal and keep intercepting touches over the activity.
      */
-    private fun detach(activity: ComponentActivity, composeView: ComposeView) {
+    private fun detach(
+        activity: ComponentActivity,
+        composeView: ComposeView,
+    ) {
         composeView.disposeComposition()
         val content = activity.findViewById<ViewGroup>(android.R.id.content)
         content.removeView(composeView)
     }
 
-    private fun closeOnDestroy(answer: CompletableDeferred<Boolean>): DefaultLifecycleObserver =
-        object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                answer.complete(false)
-            }
+    private fun closeOnDestroy(
+        answer: CompletableDeferred<Boolean>,
+    ): DefaultLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onDestroy(
+            owner: LifecycleOwner,
+        ) {
+            answer.complete(false)
         }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Unit, onDismiss: () -> Unit) {
+private fun InAppSharePromptSheet(
+    activity: ComponentActivity,
+    onShare: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     // ModalBottomSheet keeps its own window open until it leaves the composition, so the sheet
     // is only composed while shown; once answered, hiding it removes the window for good.
     var isShowing by remember { mutableStateOf(true) }
@@ -151,7 +172,9 @@ private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Un
     val scope = rememberCoroutineScope()
     val appName = activity.applicationInfo.loadLabel(activity.packageManager).toString()
 
-    fun answerAndHide(onAnswered: () -> Unit) {
+    fun answerAndHide(
+        onAnswered: () -> Unit,
+    ) {
         scope.launch {
             sheetState.hide()
         }.invokeOnCompletion {
@@ -186,7 +209,9 @@ private fun InAppSharePromptSheet(activity: ComponentActivity, onShare: () -> Un
 }
 
 @Composable
-private fun InAppSharePromptHeader(activity: ComponentActivity) {
+private fun InAppSharePromptHeader(
+    activity: ComponentActivity,
+) {
     val packageManager = activity.packageManager
     val applicationInfo = activity.applicationInfo
     val appName = applicationInfo.loadLabel(packageManager).toString()

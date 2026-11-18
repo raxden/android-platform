@@ -25,7 +25,9 @@ internal interface EngagementDataLocalDataSource {
 
     suspend fun getEngagementData(): Answer<EngagementData, Failure>
 
-    suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure>
+    suspend fun updateEngagementData(
+        engagementData: EngagementData,
+    ): Answer<Unit, Failure>
 }
 
 internal class EngagementDataLocalDataSourceImpl(
@@ -44,7 +46,9 @@ internal class EngagementDataLocalDataSourceImpl(
     override suspend fun getEngagementData(): Answer<EngagementData, Failure> = coRunCatching { state().value }
         .thenFailure { error -> error.toUnknownError("Error to get engagement data") }
 
-    override suspend fun updateEngagementData(engagementData: EngagementData): Answer<Unit, Failure> = coRunCatching {
+    override suspend fun updateEngagementData(
+        engagementData: EngagementData,
+    ): Answer<Unit, Failure> = coRunCatching {
         val current = state()
         withContext(dispatcherProvider.io) { sharedPreferences.persist(engagementData) }
         current.value = engagementData
@@ -58,7 +62,9 @@ internal class EngagementDataLocalDataSourceImpl(
         ?.let { runCatching { json.decodeFromString<EngagementData>(it) }.getOrNull() }
         ?: EngagementData()
 
-    private fun SharedPreferences.persist(engagementData: EngagementData) {
+    private fun SharedPreferences.persist(
+        engagementData: EngagementData,
+    ) {
         edit { putString(ENGAGEMENT_DATA_KEY, json.encodeToString<EngagementData>(engagementData)) }
     }
 

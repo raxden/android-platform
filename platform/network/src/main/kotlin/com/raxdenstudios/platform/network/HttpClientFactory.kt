@@ -35,7 +35,7 @@ class DefaultHttpClientFactory(
 
     override fun create(
         sslSocketFactory: SSLSocketFactory,
-        x509TrustManager: X509TrustManager
+        x509TrustManager: X509TrustManager,
     ): OkHttpClient = initOkHttpClientBuilder()
         .sslSocketFactory(sslSocketFactory, x509TrustManager)
         .build()
@@ -57,7 +57,7 @@ class DefaultHttpClientFactory(
 
     companion object {
 
-        private const val TIMEOUT = 35                  // 35 sec
-        private const val CONNECTION_TIMEOUT = 15        // 15 sec
+        private const val TIMEOUT = 35 // 35 sec
+        private const val CONNECTION_TIMEOUT = 15 // 15 sec
     }
 }

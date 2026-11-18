@@ -23,13 +23,15 @@ interface ScreenState {
     val snackbarHostState: SnackbarHostState
     val orientation: Orientation
 
-    suspend fun showSnackBar(message: String) {
+    suspend fun showSnackBar(
+        message: String,
+    ) {
         snackbarHostState.showSnackbar(message)
     }
 
     enum class Orientation {
         PORTRAIT,
-        LANDSCAPE
+        LANDSCAPE,
     }
 }
 

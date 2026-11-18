@@ -10,8 +10,11 @@ interface UpdateLastAccessUseCase : SuspendUseCase<UpdateLastAccessUseCase.Param
     data object Params
 }
 
-internal class UpdateLastAccessUseCaseImpl(private val appRepository: AppRepository) : UpdateLastAccessUseCase {
+internal class UpdateLastAccessUseCaseImpl(
+    private val appRepository: AppRepository,
+) : UpdateLastAccessUseCase {
 
-    override suspend fun invoke(params: UpdateLastAccessUseCase.Params): Answer<Unit, Failure> =
-        appRepository.saveLastAccess(System.currentTimeMillis())
+    override suspend fun invoke(
+        params: UpdateLastAccessUseCase.Params,
+    ): Answer<Unit, Failure> = appRepository.saveLastAccess(System.currentTimeMillis())
 }

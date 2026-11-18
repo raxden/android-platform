@@ -42,11 +42,26 @@ object Input {
                     keyboardActions.onDone?.invoke(this)
                     keyboardController?.hide()
                 },
-                onGo = keyboardActions.onGo?.let { action -> { action(this); keyboardController?.hide() } },
+                onGo = keyboardActions.onGo?.let { action ->
+                    {
+                        action(this)
+                        keyboardController?.hide()
+                    }
+                },
                 onNext = keyboardActions.onNext?.let { action -> { action(this) } },
                 onPrevious = keyboardActions.onPrevious?.let { action -> { action(this) } },
-                onSearch = keyboardActions.onSearch?.let { action -> { action(this); keyboardController?.hide() } },
-                onSend = keyboardActions.onSend?.let { action -> { action(this); keyboardController?.hide() } },
+                onSearch = keyboardActions.onSearch?.let { action ->
+                    {
+                        action(this)
+                        keyboardController?.hide()
+                    }
+                },
+                onSend = keyboardActions.onSend?.let { action ->
+                    {
+                        action(this)
+                        keyboardController?.hide()
+                    }
+                },
             ),
         )
     }

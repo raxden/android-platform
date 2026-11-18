@@ -7,26 +7,29 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 interface FirebaseMessagingProvider {
-    suspend fun subscribeToTopic(topic: String): Answer<Unit, Failure>
+    suspend fun subscribeToTopic(
+        topic: String,
+    ): Answer<Unit, Failure>
     suspend fun getToken(): Answer<String, Failure>
 }
 
 internal class FirebaseMessagingProviderImpl : FirebaseMessagingProvider {
 
-    override suspend fun subscribeToTopic(topic: String): Answer<Unit, Failure> =
-        suspendCancellableCoroutine { continuation ->
-            FirebaseMessaging.getInstance().subscribeToTopic(topic)
-                .addOnSuccessListener {
-                    continuation.resume(Answer.Success(Unit))
-                }
-                .addOnFailureListener { exception ->
-                    continuation.resume(
-                        Answer.Failure(
-                            Failure.Unknown("Failed to subscribe to topic: ${exception.message}"),
-                        ),
-                    )
-                }
-        }
+    override suspend fun subscribeToTopic(
+        topic: String,
+    ): Answer<Unit, Failure> = suspendCancellableCoroutine { continuation ->
+        FirebaseMessaging.getInstance().subscribeToTopic(topic)
+            .addOnSuccessListener {
+                continuation.resume(Answer.Success(Unit))
+            }
+            .addOnFailureListener { exception ->
+                continuation.resume(
+                    Answer.Failure(
+                        Failure.Unknown("Failed to subscribe to topic: ${exception.message}"),
+                    ),
+                )
+            }
+    }
 
     override suspend fun getToken(): Answer<String, Failure> = suspendCancellableCoroutine { continuation ->
         FirebaseMessaging.getInstance().token

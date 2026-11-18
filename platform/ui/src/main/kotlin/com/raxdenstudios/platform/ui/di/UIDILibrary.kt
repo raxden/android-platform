@@ -11,6 +11,6 @@ class UIDILibrary : DILibrary {
     }
 
     override fun getModules(): List<DIModule> = listOf(
-        UIDIModule()
+        UIDIModule(),
     )
 }

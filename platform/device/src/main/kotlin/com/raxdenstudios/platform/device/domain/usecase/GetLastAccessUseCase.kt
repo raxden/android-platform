@@ -10,8 +10,11 @@ interface GetLastAccessUseCase : SuspendUseCase<GetLastAccessUseCase.Params, Lon
     data object Params
 }
 
-internal class GetLastAccessUseCaseImpl(private val appRepository: AppRepository) : GetLastAccessUseCase {
+internal class GetLastAccessUseCaseImpl(
+    private val appRepository: AppRepository,
+) : GetLastAccessUseCase {
 
-    override suspend fun invoke(params: GetLastAccessUseCase.Params): Answer<Long, Failure> =
-        appRepository.getLastAccess()
+    override suspend fun invoke(
+        params: GetLastAccessUseCase.Params,
+    ): Answer<Long, Failure> = appRepository.getLastAccess()
 }

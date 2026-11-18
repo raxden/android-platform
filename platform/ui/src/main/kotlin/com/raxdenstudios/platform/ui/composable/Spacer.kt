@@ -34,7 +34,9 @@ object Spacer {
         fun Large()
 
         @Composable
-        fun Custom(space: Dp)
+        fun Custom(
+            space: Dp,
+        )
     }
 
     object Vertical : Spacings {
@@ -55,7 +57,9 @@ object Spacer {
         }
 
         @Composable
-        override fun Custom(space: Dp) {
+        override fun Custom(
+            space: Dp,
+        ) {
             Spacer(modifier = Modifier.height(space))
         }
     }
@@ -78,7 +82,9 @@ object Spacer {
         }
 
         @Composable
-        override fun Custom(space: Dp) {
+        override fun Custom(
+            space: Dp,
+        ) {
             Spacer(modifier = Modifier.width(space))
         }
     }
@@ -93,7 +99,7 @@ object Spacer {
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsBottomHeight(WindowInsets.navigationBars)
-                    .background(color = background)
+                    .background(color = background),
             )
         }
 
@@ -105,7 +111,7 @@ object Spacer {
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(color = background)
+                    .background(color = background),
             )
         }
     }

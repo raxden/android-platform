@@ -44,7 +44,7 @@ class ScaffoldContentProvider<UIS : UIState>(
                 start = paddingValues.calculateStartPadding(layoutDirection),
                 end = paddingValues.calculateEndPadding(layoutDirection),
                 top = (paddingValues.calculateTopPadding() - statusBarPadding).coerceAtLeast(0.dp),
-                bottom = (paddingValues.calculateBottomPadding() - navigationBarPadding).coerceAtLeast(0.dp)
+                bottom = (paddingValues.calculateBottomPadding() - navigationBarPadding).coerceAtLeast(0.dp),
             )
         } else {
             paddingValues

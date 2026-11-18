@@ -10,19 +10,23 @@ import com.raxdenstudios.platform.device.domain.model.PermissionResult
 
 interface RequestPermissionUseCase : SuspendUseCase<RequestPermissionUseCase.Params, PermissionResult> {
 
-    data class Params(val permission: Permission)
+    data class Params(
+        val permission: Permission,
+    )
 }
 
-internal class RequestPermissionUseCaseImpl(private val permissionRepository: PermissionRepository) :
-    RequestPermissionUseCase {
+internal class RequestPermissionUseCaseImpl(
+    private val permissionRepository: PermissionRepository,
+) : RequestPermissionUseCase {
 
-    override suspend fun invoke(params: RequestPermissionUseCase.Params): Answer<PermissionResult, Failure> =
-        permissionRepository.hasPermission(params.permission)
-            .coFlatMap { hasPermission ->
-                if (hasPermission) {
-                    Answer.Success(PermissionResult.Granted(params.permission))
-                } else {
-                    permissionRepository.requestPermission(params.permission)
-                }
+    override suspend fun invoke(
+        params: RequestPermissionUseCase.Params,
+    ): Answer<PermissionResult, Failure> = permissionRepository.hasPermission(params.permission)
+        .coFlatMap { hasPermission ->
+            if (hasPermission) {
+                Answer.Success(PermissionResult.Granted(params.permission))
+            } else {
+                permissionRepository.requestPermission(params.permission)
             }
+        }
 }

@@ -2,6 +2,8 @@ package com.raxdenstudios.platform.ui.di.modules
 
 import com.raxdenstudios.commons.android.provider.StringProvider
 import com.raxdenstudios.platform.core.di.DIModule
+import com.raxdenstudios.platform.core.util.IntentFactory
+import com.raxdenstudios.platform.core.util.IntentFactoryImpl
 import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapper
 import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapperImpl
 import com.raxdenstudios.platform.ui.mapper.DateDataMapper
@@ -16,8 +18,6 @@ import com.raxdenstudios.platform.ui.theme.DefaultThemeProvider
 import com.raxdenstudios.platform.ui.theme.ThemeManager
 import com.raxdenstudios.platform.ui.theme.ThemeManagerImpl
 import com.raxdenstudios.platform.ui.theme.ThemeProvider
-import com.raxdenstudios.platform.core.util.IntentFactory
-import com.raxdenstudios.platform.core.util.IntentFactoryImpl
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
