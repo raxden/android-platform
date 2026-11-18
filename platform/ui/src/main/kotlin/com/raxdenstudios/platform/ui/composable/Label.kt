@@ -11,7 +11,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.raxdenstudios.platform.ui.model.StringResource
 
-/** Typography presets; fontWeight, when provided, overrides the weight in style. */
+/**
+ * Typography presets; fontWeight, when provided, overrides the weight in style, and minLines
+ * reserves the height of that many lines even when the text is shorter. Inside a visible
+ * [Skeleton.Container] each label draws a skeleton bar per line it takes.
+ */
 object Label {
 
     @Composable
@@ -24,8 +28,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -38,8 +43,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -52,8 +58,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -66,8 +73,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -80,8 +88,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -94,8 +103,9 @@ object Label {
         overflow: TextOverflow = TextOverflow.Clip,
         color: Color = Color.Unspecified,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -108,8 +118,9 @@ object Label {
         overflow: TextOverflow = TextOverflow.Clip,
         color: Color = Color.Unspecified,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -122,8 +133,9 @@ object Label {
         maxLines: Int = Int.MAX_VALUE,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -136,8 +148,9 @@ object Label {
         overflow: TextOverflow = TextOverflow.Clip,
         color: Color = Color.Unspecified,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -150,8 +163,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -164,8 +178,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -178,8 +193,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -192,8 +208,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -206,8 +223,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -220,8 +238,9 @@ object Label {
         color: Color = Color.Unspecified,
         overflow: TextOverflow = TextOverflow.Clip,
         fontWeight: FontWeight? = null,
+        minLines: Int = 1,
     ) {
-        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight)
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
 
     @Composable
@@ -234,15 +253,17 @@ object Label {
         color: Color,
         overflow: TextOverflow,
         fontWeight: FontWeight?,
+        minLines: Int,
     ) {
         Text(
             text = text.toText(),
-            modifier = modifier,
+            modifier = modifier.skeletonText(Skeleton.current, style.lineHeight),
             style = style,
             fontWeight = fontWeight,
             color = color,
             textAlign = textAlign,
             maxLines = maxLines,
+            minLines = minLines,
             overflow = overflow,
         )
     }
