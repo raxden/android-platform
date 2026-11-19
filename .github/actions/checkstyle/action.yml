@@ -33,7 +33,9 @@ runs:
       run: |
         set -euo pipefail
         # shellcheck disable=SC2086
+        echo "::group::./gradlew detekt"
         ./gradlew detekt --stacktrace $GRADLE_ARGS
+        echo "::endgroup::"
 
     - name: Upload Detekt reports
       id: upload_reports
@@ -70,12 +72,38 @@ runs:
         reports_url="$REPORTS_URL"
         artifacts_fallback="https://github.com/$REPOSITORY/actions/runs/$RUN_ID#artifacts"
 
+        # Issue count: prefer SARIF, fall back to checkstyle-style XML
+        issues=$(python3 -I - <<'PY'
+        import glob, json
+        import xml.etree.ElementTree as ET
+
+        total = None
+        for f in sorted(set(glob.glob("**/build/reports/**/detekt*.sarif", recursive=True))):
+            try:
+                data = json.load(open(f))
+            except Exception:
+                continue
+            total = (total or 0) + sum(len(r.get("results", [])) for r in data.get("runs", []))
+        if total is None:
+            for f in sorted(set(glob.glob("**/build/reports/**/detekt*.xml", recursive=True))):
+                try:
+                    root = ET.parse(f).getroot()
+                except ET.ParseError:
+                    continue
+                total = (total or 0) + len(list(root.iter("error")))
+        print("" if total is None else total)
+        PY
+        )
+
         {
           echo "## Detekt"
           echo ""
-          echo "- Result: **$status**"
+          if [[ -n "$issues" ]]; then
+            echo "- Result: **$status** — **$issues** issue(s)"
+          else
+            echo "- Result: **$status**"
+          fi
           if [[ "$show_reports" == "true" ]]; then
-            echo "- Reports path: \`**/build/reports/detekt/**\`"
             if [[ -n "$reports_url" ]]; then
               echo "- Reports: [detekt-reports-$REPORTS_ID]($reports_url)"
             else

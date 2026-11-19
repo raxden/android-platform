@@ -22,6 +22,16 @@ inputs:
     required: false
     default: "APK"
 
+  version-name:
+    description: 'Version name of the build (display only: summary and annotation)'
+    required: false
+    default: ""
+
+  version-code:
+    description: 'Version code of the build (display only: summary and annotation)'
+    required: false
+    default: ""
+
   service-credentials:
     description: 'Base64-encoded Firebase service account JSON used to authenticate with App Distribution'
     required: true
@@ -35,26 +45,50 @@ runs:
         name: build-${{ inputs.artifact-type }}-${{ inputs.build-type }}-${{ inputs.id }}
 
     - name: Decode service credentials
-      id: decode_firebase_credentials
-      uses: timheuer/base64-to-file@v1.2
-      with:
-        fileName: "service_firebase_credentials.json"
-        fileDir: "./config"
-        encodedString: ${{ inputs.service-credentials }}
+      shell: bash
+      env:
+        SERVICE_CREDENTIALS: ${{ inputs.service-credentials }}
+      run: |
+        set -euo pipefail
+        umask 077
+        mkdir -p ./config
+        printf '%s' "$SERVICE_CREDENTIALS" | base64 -d > ./config/service_firebase_credentials.json
+        chmod 600 ./config/service_firebase_credentials.json
 
     - name: Deploy in Firebase App Distribution
       shell: bash
       run: |
         set -euo pipefail
-        
         task=":app:appDistributionUpload${{ inputs.build-type }}"
-        echo "Running: ./gradlew $task ${{ inputs.gradle-args }}"
+        echo "::group::./gradlew $task"
+        # shellcheck disable=SC2086
         ./gradlew "$task" ${{ inputs.gradle-args }}
-        
+        echo "::endgroup::"
+
+    - name: Summary
+      shell: bash
+      env:
+        VERSION_NAME: ${{ inputs.version-name }}
+        VERSION_CODE: ${{ inputs.version-code }}
+        BUILD_TYPE: ${{ inputs.build-type }}
+        ARTIFACT_TYPE: ${{ inputs.artifact-type }}
+      run: |
+        set -euo pipefail
+
+        version=""
+        if [[ -n "$VERSION_NAME" ]]; then version="$VERSION_NAME"; fi
+        if [[ -n "$VERSION_CODE" ]]; then version="$version ($VERSION_CODE)"; fi
+        version="${version# }"
+
         {
-          echo "## 🚀 Firebase Deployment"
+          echo "## 🚀 Firebase App Distribution"
           echo ""
-          echo "- Build type: \`${{ inputs.build-type }}\`"
-          echo "- Artifact type: \`${{ inputs.artifact-type }}\`"
-          echo "- Status: **Success**"
+          if [[ -n "$version" ]]; then
+            echo "✅ Distributed **$version** (\`$BUILD_TYPE\`, $ARTIFACT_TYPE)"
+          else
+            echo "✅ Distributed \`$BUILD_TYPE\` ($ARTIFACT_TYPE)"
+          fi
+          echo ""
         } >> "$GITHUB_STEP_SUMMARY"
+
+        echo "::notice title=Firebase::Distributed ${version:-$BUILD_TYPE}"

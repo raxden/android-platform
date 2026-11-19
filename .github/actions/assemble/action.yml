@@ -36,25 +36,29 @@ inputs:
     required: false
     default: '1'
 
+outputs:
+  artifact-name:
+    description: 'Name of the uploaded workflow artifact (consumed by download-artifact in deploy jobs)'
+    value: build-${{ steps.artifact_type.outputs.artifact }}-${{ inputs.build-type }}-${{ inputs.id }}
+  files:
+    description: 'Newline-separated list of produced artifact files (AAB/APK/AAR paths relative to the workspace)'
+    value: ${{ steps.summary.outputs.files }}
+
 runs:
   using: 'composite'
   steps:
-    - name: Decode signing files
-      if: inputs.signing-files != ''
-      id: signing
-      uses: timheuer/base64-to-file@v1.2
-      with:
-        fileName: signing.tar.gz
-        fileDir: ./config
-        encodedString: ${{ inputs.signing-files }}
-
-    - name: Extract signing files
+    - name: Decode and extract signing files
       if: inputs.signing-files != ''
       shell: bash
+      env:
+        SIGNING_FILES: ${{ inputs.signing-files }}
       run: |
         set -euo pipefail
+        umask 077
         mkdir -p ./config
-        tar xf "${{ steps.signing.outputs.filePath }}" -C ./config
+        printf '%s' "$SIGNING_FILES" | base64 -d > ./config/signing.tar.gz
+        tar xf ./config/signing.tar.gz -C ./config
+        rm -f ./config/signing.tar.gz
 
     - name: Resolve artifact type
       id: artifact_type
@@ -119,8 +123,10 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        echo "Running: ./gradlew ${{ steps.plan.outputs.task }} --stacktrace ${{ inputs.gradle-args }}"
+        echo "::group::./gradlew ${{ steps.plan.outputs.task }}"
+        # shellcheck disable=SC2086
         ./gradlew "${{ steps.plan.outputs.task }}" --stacktrace ${{ inputs.gradle-args }}
+        echo "::endgroup::"
 
     - name: Upload outputs
       if: always() && inputs.upload-files == 'true'
@@ -132,22 +138,69 @@ runs:
         retention-days: ${{ inputs.retention-days }}
 
     - name: Summary
+      id: summary
       if: always()
       shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
+        ARTIFACT: ${{ steps.artifact_type.outputs.artifact }}
+        BUILD_TYPE: ${{ inputs.build-type }}
+        UPLOAD_FILES: ${{ inputs.upload-files }}
+        RETENTION_DAYS: ${{ inputs.retention-days }}
+        OUTPUT_PATHS: ${{ steps.plan.outputs.paths }}
       run: |
+        set -euo pipefail
+
+        case "$ARTIFACT" in
+          AAB) dir="bundle"; ext="aab" ;;
+          APK) dir="apk"; ext="apk" ;;
+          AAR) dir="aar"; ext="aar" ;;
+          *) dir=""; ext="" ;;
+        esac
+
+        files=""
+        if [[ -n "$ext" ]]; then
+          files=$(find . -type f -path "*/build/outputs/${dir}/*" -name "*.${ext}" | sed 's#^\./##' | sort)
+        fi
+
         {
-          echo "## Assemble"
+          echo "files<<EOF"
+          echo "$files"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        human_size() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "$1 B"; }
+
+        {
+          echo "## 📦 Assemble"
           echo ""
-          echo "- Result: **${{ job.status }}**"
-          echo "- Artifact: \`${{ steps.artifact_type.outputs.artifact }}\`"
-          echo "- Build type: \`${{ inputs.build-type }}\`"
-          echo "- Upload: \`${{ inputs.upload-files }}\`"
-          echo "- Retention days: \`${{ inputs.retention-days }}\`"
+          if [[ "$JOB_STATUS" == "success" ]]; then
+            echo "✅ **${ARTIFACT:-?}** built"
+          else
+            echo "❌ Build **$JOB_STATUS**"
+          fi
           echo ""
-          echo "<details><summary>Outputs path</summary>"
+          if [[ -n "$files" ]]; then
+            echo "| File | Size | SHA256 |"
+            echo "|---|---|---|"
+            while IFS= read -r f; do
+              [[ -z "$f" ]] && continue
+              size=$(human_size "$(wc -c < "$f" | tr -d ' ')")
+              sha="—"
+              if [[ "$ext" == "aab" ]]; then
+                sha="\`$(sha256sum "$f" | cut -d' ' -f1)\`"
+              fi
+              echo "| \`$(basename "$f")\` | $size | $sha |"
+            done <<< "$files"
+            echo ""
+          fi
+          echo "<details><summary>Build details</summary>"
+          echo ""
+          echo "- Build type: \`$BUILD_TYPE\`"
+          echo "- Upload: \`$UPLOAD_FILES\` (retention \`$RETENTION_DAYS\` days)"
           echo ""
           echo '```'
-          echo "${{ steps.plan.outputs.paths }}"
+          echo "$OUTPUT_PATHS"
           echo '```'
           echo "</details>"
           echo ""

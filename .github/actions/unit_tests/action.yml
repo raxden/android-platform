@@ -27,7 +27,7 @@ inputs:
     required: false
     default: |
       **/build/reports/tests/**
-      **/build/test-results/test/**
+      **/build/test-results/**
       **/build/outputs/unit_test_code_coverage/**
 
   retention-days:
@@ -49,16 +49,10 @@ runs:
       run: |
         set -euo pipefail
         task="test${{ inputs.build-type }}UnitTest"
-        echo "Running: ./gradlew $task --stacktrace ${{ inputs.gradle-args }}"
+        echo "::group::./gradlew $task"
+        # shellcheck disable=SC2086
         ./gradlew "$task" --stacktrace ${{ inputs.gradle-args }}
-
-        {
-          echo "## 🧪 Unit tests"
-          echo ""
-          echo "- Task: \`$task\`"
-          echo "- Continue on error: \`${{ inputs.continue-on-error }}\`"
-          echo ""
-        } >> "$GITHUB_STEP_SUMMARY"
+        echo "::endgroup::"
 
     - name: Upload test outputs
       if: always() && inputs.upload == 'true'
@@ -72,13 +66,58 @@ runs:
     - name: Summary
       if: always()
       shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
       run: |
-        {
-          echo "### ✅ Result"
-          echo ""
-          echo "- Status: **${{ job.status }}**"
-          echo "- Build type: \`${{ inputs.build-type }}\`"
-          echo "- Upload reports: \`${{ inputs.upload }}\`"
-          echo "- Retention days: \`${{ inputs.retention-days }}\`"
-          echo ""
-        } >> "$GITHUB_STEP_SUMMARY"
+        set -euo pipefail
+        python3 -I - <<'PY'
+        import glob, os
+        import xml.etree.ElementTree as ET
+
+        MAX = 20
+        tests = failures = skipped = 0
+        failed = []
+        files = glob.glob("**/build/test-results/**/TEST-*.xml", recursive=True)
+
+        for f in files:
+            try:
+                root = ET.parse(f).getroot()
+            except ET.ParseError:
+                continue
+            for case in root.iter("testcase"):
+                tests += 1
+                cls = case.get("classname", "?")
+                name = case.get("name", "?")
+                bad = case.find("failure")
+                if bad is None:
+                    bad = case.find("error")
+                if bad is not None:
+                    failures += 1
+                    msg = (bad.get("message") or bad.text or "").strip().splitlines()
+                    failed.append((cls, name, msg[0] if msg else ""))
+                elif case.find("skipped") is not None:
+                    skipped += 1
+
+        def esc(t):
+            return t.replace("|", "\\|").replace("<", "&lt;").replace(">", "&gt;")
+
+        out = ["## 🧪 Unit tests", ""]
+        if not files:
+            out.append("No test results found (**%s**)." % os.environ.get("JOB_STATUS", "unknown"))
+        else:
+            icon = "❌" if failures else "✅"
+            out.append("%s **%d** tests, **%d** failed, **%d** skipped" % (icon, tests, failures, skipped))
+        out.append("")
+        if failed:
+            out += ["| Failing test | Message |", "|---|---|"]
+            for cls, name, msg in failed[:MAX]:
+                out.append("| `%s.%s` | %s |" % (cls, name, esc(msg[:200])))
+            if len(failed) > MAX:
+                out += ["", "_... and %d more_" % (len(failed) - MAX)]
+            out.append("")
+            for cls, name, _ in failed[:MAX]:
+                print("::error title=Test failed::%s.%s" % (cls, name))
+
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+            fh.write("\n".join(out) + "\n")
+        PY

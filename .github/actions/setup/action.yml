@@ -22,6 +22,21 @@ inputs:
     required: false
     default: "true"
 
+  gradle-cache-read-only:
+    description: 'Gradle cache read-only (true/false). Empty = setup-gradle default (write only on the default branch)'
+    required: false
+    default: ""
+
+  gradle-encryption-key:
+    description: 'Base64 key used by setup-gradle to encrypt/persist the configuration cache. Empty = configuration cache is not persisted'
+    required: false
+    default: ""
+
+  gradle-job-summary:
+    description: 'When setup-gradle adds its Gradle job summary table: always, on-failure or never'
+    required: false
+    default: "on-failure"
+
 runs:
   using: composite
   steps:
@@ -37,8 +52,12 @@ runs:
       with:
         cache-disabled: ${{ inputs.gradle-cache != 'true' }}
         gradle-home-cache-cleanup: ${{ inputs.gradle-cache-cleanup == 'true' }}
+        cache-read-only: ${{ inputs.gradle-cache-read-only != '' && inputs.gradle-cache-read-only == 'true' || (inputs.gradle-cache-read-only == '' && github.ref_name != github.event.repository.default_branch) }}
+        cache-encryption-key: ${{ inputs.gradle-encryption-key }}
+        add-job-summary: ${{ inputs.gradle-job-summary }}
 
     - name: Environment summary
+      if: runner.debug == '1'
       shell: bash
       run: |
         set -euo pipefail
@@ -51,6 +70,7 @@ runs:
           echo "- Java version: ${{ inputs.java-version }}"
           echo "- Gradle cache enabled: ${{ inputs.gradle-cache }}"
           echo "- Gradle cache cleanup: ${{ inputs.gradle-cache-cleanup }}"
+          echo "- Gradle cache read-only: ${{ inputs.gradle-cache-read-only || 'default' }}"
           echo ""
 
           echo "### Java"

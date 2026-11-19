@@ -26,6 +26,21 @@ inputs:
     required: false
     default: ""
 
+  version-name:
+    description: 'Version name of the build (display only: summary and annotation)'
+    required: false
+    default: ""
+
+  version-code:
+    description: 'Version code of the build (display only: summary and annotation)'
+    required: false
+    default: ""
+
+  track:
+    description: 'Play Store track the build is published to (display only: the real track is configured in Gradle)'
+    required: false
+    default: ""
+
   service-credentials:
     description: 'Base64-encoded Google service account JSON used to authenticate with the Play Developer API'
     required: true
@@ -37,31 +52,80 @@ runs:
       uses: actions/download-artifact@v8
       with:
         name: build-${{ inputs.artifact-type }}-${{ inputs.build-type }}-${{ inputs.id }}
-        path: app/build/outputs/
 
-    - name: Decode secret files
-      if: ${{ inputs.build-type == 'Release' && inputs.signing-files != '' }}
-      id: decode_secret_files
-      uses: timheuer/base64-to-file@v1.2
-      with:
-        fileName: 'signing.tar.gz'
-        fileDir: './config'
-        encodedString: ${{ inputs.signing-files }}
-
-    - name: Extract secret files
+    - name: Decode signing files
       if: ${{ inputs.build-type == 'Release' && inputs.signing-files != '' }}
       shell: bash
+      env:
+        SIGNING_FILES: ${{ inputs.signing-files }}
       run: |
-        tar xf ${{ steps.decode_secret_files.outputs.filePath }} --directory ./config
+        set -euo pipefail
+        umask 077
+        mkdir -p ./config
+        printf '%s' "$SIGNING_FILES" | base64 -d > ./config/signing.tar.gz
+        tar xf ./config/signing.tar.gz --directory ./config
+        rm -f ./config/signing.tar.gz
 
     - name: Decode service credentials
-      uses: timheuer/base64-to-file@v1.2
-      with:
-        fileName: "service_play_credentials.json"
-        fileDir: "./config"
-        encodedString: ${{ inputs.service-credentials }}
+      shell: bash
+      env:
+        SERVICE_CREDENTIALS: ${{ inputs.service-credentials }}
+      run: |
+        set -euo pipefail
+        umask 077
+        mkdir -p ./config
+        printf '%s' "$SERVICE_CREDENTIALS" | base64 -d > ./config/service_play_credentials.json
+        chmod 600 ./config/service_play_credentials.json
 
     - name: Deploy in Google Play Console
-      run: |
-        ./gradlew publishBundle ${{ inputs.gradle-args }}
       shell: bash
+      run: |
+        set -euo pipefail
+        echo "::group::./gradlew publishBundle"
+        # shellcheck disable=SC2086
+        ./gradlew publishBundle ${{ inputs.gradle-args }}
+        echo "::endgroup::"
+
+    - name: Summary
+      shell: bash
+      env:
+        VERSION_NAME: ${{ inputs.version-name }}
+        VERSION_CODE: ${{ inputs.version-code }}
+        TRACK: ${{ inputs.track }}
+        BUILD_TYPE: ${{ inputs.build-type }}
+        COMMIT_SHA: ${{ github.sha }}
+        REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        aab=$(find . -type f -name '*.aab' -not -path './.git/*' | sort | head -n 1)
+        short="${COMMIT_SHA:0:7}"
+
+        {
+          echo "## 🚀 Play Store"
+          echo ""
+          echo "| Item | Value |"
+          echo "|---|---|"
+          if [[ -n "$VERSION_NAME" ]]; then echo "| Version name | \`$VERSION_NAME\` |"; fi
+          if [[ -n "$VERSION_CODE" ]]; then echo "| Version code | \`$VERSION_CODE\` |"; fi
+          if [[ -n "$TRACK" ]]; then echo "| Track | \`$TRACK\` |"; fi
+          if [[ -n "$aab" ]]; then
+            size=$(wc -c < "$aab" | tr -d ' ')
+            size_h=$(numfmt --to=iec --suffix=B "$size" 2>/dev/null || echo "$size B")
+            echo "| AAB | \`$(basename "$aab")\` ($size_h) |"
+            echo "| SHA256 | \`$(sha256sum "$aab" | cut -d' ' -f1)\` |"
+          fi
+          echo "| Commit | [\`$short\`](https://github.com/$REPOSITORY/commit/$COMMIT_SHA) |"
+          echo ""
+          echo "<details><summary>Build details</summary>"
+          echo ""
+          echo "- Build type: \`$BUILD_TYPE\`"
+          echo "</details>"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        msg="Published"
+        if [[ -n "$VERSION_NAME" ]]; then msg="$msg $VERSION_NAME"; fi
+        if [[ -n "$VERSION_CODE" ]]; then msg="$msg ($VERSION_CODE)"; fi
+        if [[ -n "$TRACK" ]]; then msg="$msg to $TRACK"; fi
+        echo "::notice title=Play Store::$msg"
