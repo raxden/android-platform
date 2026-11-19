@@ -16,6 +16,8 @@ import com.raxdenstudios.platform.ui.model.StringResource
  * reserves the height of that many lines even when the text is shorter. Inside a visible
  * [Skeleton.Container] each label draws a skeleton bar per line it takes.
  */
+// One preset per typography style plus their hidden binary-compatibility overloads.
+@Suppress("TooManyFunctions")
 object Label {
 
     @Composable
@@ -242,6 +244,237 @@ object Label {
     ) {
         LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines)
     }
+
+    // region Binary compatibility
+    // Signatures before `minLines` was added (platform-ui <= 1.0.18). Hidden so new code cannot
+    // call them, kept so modules and apps compiled against the old signatures still link.
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun DisplayLarge(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.displayLarge,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun DisplayMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.displayMedium,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun DisplaySmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.displaySmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun TitleLarge(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.titleLarge,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun TitleMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.titleMedium,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun TitleSmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.titleSmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun HeadlineLarge(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.headlineLarge,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun HeadlineMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.headlineMedium,
+        color: Color = Color.Unspecified,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun HeadlineSmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.headlineSmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        overflow: TextOverflow = TextOverflow.Clip,
+        color: Color = Color.Unspecified,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun BodySmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.bodySmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun BodyMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.bodyMedium,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun BodyLarge(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.bodyLarge,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun LabelSmall(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.labelSmall,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun LabelLarge(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.labelLarge,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    @Deprecated("Binary compatibility", level = DeprecationLevel.HIDDEN)
+    @Composable
+    fun LabelMedium(
+        text: StringResource,
+        modifier: Modifier = Modifier,
+        style: TextStyle = MaterialTheme.typography.labelMedium,
+        textAlign: TextAlign = TextAlign.Start,
+        maxLines: Int = Int.MAX_VALUE,
+        color: Color = Color.Unspecified,
+        overflow: TextOverflow = TextOverflow.Clip,
+        fontWeight: FontWeight? = null,
+    ) {
+        LabelText(text, modifier, style, textAlign, maxLines, color, overflow, fontWeight, minLines = 1)
+    }
+
+    // endregion
 
     @Composable
     private fun LabelText(
