@@ -13,8 +13,9 @@ inputs:
     default: 'Debug'
 
   token:
-    description: 'Codecov upload token for the target repository'
-    required: true
+    description: 'Codecov upload token for the target repository. When empty the Codecov upload is skipped with a warning'
+    required: false
+    default: ''
 
   retention-days:
     description: 'Number of days before the uploaded JaCoCo artifact is removed'
@@ -24,18 +25,32 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # The unit_tests action only creates the artifact when Gradle produced
+    # test reports/coverage. Modules without unit tests (NO-SOURCE) produce
+    # none, so a missing artifact means "nothing to report", not a failure:
+    # real test failures already fail the Unit Tests job (reports needs it).
     - name: Download unit test outputs
+      id: download
+      continue-on-error: true
       uses: actions/download-artifact@v8
       with:
         name: unit-tests-${{ inputs.build-type }}-${{ inputs.id }}
 
+    - name: Skip reports (no unit test outputs)
+      if: steps.download.outcome != 'success'
+      shell: bash
+      run: |
+        echo "::notice title=Reports skipped::Artifact unit-tests-${{ inputs.build-type }}-${{ inputs.id }} not found: no unit tests or coverage were produced, nothing to report."
+
     - name: Generate JaCoCo reports
+      if: steps.download.outcome == 'success'
       shell: bash
       run: |
         set -euo pipefail
         ./gradlew coverageReport -PbuildType=${{ inputs.build-type }} --stacktrace
 
     - name: Upload JaCoCo reports
+      if: steps.download.outcome == 'success'
       uses: actions/upload-artifact@v6
       with:
         name: reports-jacoco-${{ inputs.id }}
@@ -46,7 +61,14 @@ runs:
         if-no-files-found: warn
         retention-days: ${{ inputs.retention-days }}
 
+    - name: Codecov token missing
+      if: steps.download.outcome == 'success' && inputs.token == ''
+      shell: bash
+      run: |
+        echo "::warning title=Codecov upload skipped::No Codecov token provided. Add the CODECOV_TOKEN repository secret to enable uploads (protected branches reject tokenless uploads)."
+
     - name: Upload to Codecov
+      if: steps.download.outcome == 'success' && inputs.token != ''
       uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
       with:
         token: ${{ inputs.token }}
