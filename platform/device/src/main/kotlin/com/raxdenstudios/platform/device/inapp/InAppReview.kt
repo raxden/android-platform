@@ -61,12 +61,14 @@ interface InAppReview : DefaultLifecycleObserver {
     )
 
     /**
-     * Launches the Google Play in-app review flow on the attached activity.
+     * Launches the Google Play in-app review flow on the attached activity, only while it is in
+     * the foreground (at least RESUMED).
      *
      * Play never reports whether the dialog was actually displayed (it may be skipped due to
      * quota), so [Answer.Success] only means the flow was invoked. [Answer.Failure] means it could
-     * not be invoked at all (no activity attached or request failure); callers may use it to fall
-     * back to opening the Play Store page.
+     * not be invoked at all (no resumed activity — an activity alive in the background counts as
+     * none — or request failure); callers may use it to fall back to opening the Play Store page
+     * or to retry later.
      */
     suspend fun launch(): Answer<Unit, Failure>
 }
@@ -74,22 +76,47 @@ interface InAppReview : DefaultLifecycleObserver {
 /**
  * Debug builds are not installed through Play, so the review flow cannot run there; this
  * variant goes straight to the Play Store page so the entry point can still be exercised.
+ * Like the release variant it only opens it from a resumed (foreground) activity, so callers
+ * get the same "no activity" failure while the app is in the background.
  */
 internal class DebugInAppReview(
-    private val context: Context,
+    context: Context,
 ) : InAppReview {
 
+    private val activityHolder = ActivityHolder()
     private val intentFactory = IntentFactoryImpl(context.applicationContext)
 
     override fun attach(
         activity: ComponentActivity,
-    ) = Unit
+    ) {
+        if (activityHolder.activity === activity) return
 
-    override suspend fun launch(): Answer<Unit, Failure> = coRunCatching {
-        Timber.d("Debug mode: Opening Play Store directly")
-        context.startActivity(intentFactory.build(IntentType.PlayStore))
-    }.thenFailure { error ->
-        Failure.Unknown("Play Store could not be opened: ${error.message}")
+        activityHolder.attach(activity)
+        activity.lifecycle.addObserver(this)
+    }
+
+    override fun onDestroy(
+        owner: LifecycleOwner,
+    ) {
+        if (activityHolder.activity === owner) detach()
+    }
+
+    private fun detach() {
+        activityHolder.activity?.let { activity ->
+            activity.lifecycle.removeObserver(this)
+            activityHolder.detach(activity)
+        }
+    }
+
+    override suspend fun launch(): Answer<Unit, Failure> {
+        val activity = activityHolder.resumedActivity()
+            ?: return Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY))
+        return coRunCatching {
+            Timber.d("Debug mode: Opening Play Store directly")
+            activity.startActivity(intentFactory.build(IntentType.PlayStore))
+        }.thenFailure { error ->
+            Failure.Unknown("Play Store could not be opened: ${error.message}")
+        }
     }
 }
 
@@ -133,14 +160,14 @@ internal class ReleaseInAppReview(
     }
 
     override suspend fun launch(): Answer<Unit, Failure> {
-        val activity = activityHolder.activity
+        val activity = activityHolder.resumedActivity()
             ?: return noActivityFailure()
         return launch(activity)
     }
 
     private fun noActivityFailure(): Answer<Unit, Failure> {
         tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY)
-        return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
+        return Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY))
     }
 
     private suspend fun launch(

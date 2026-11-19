@@ -82,8 +82,8 @@ interface InAppShare : DefaultLifecycleObserver {
      *
      * [Answer.Success] with [InAppShareResult.Declined] means the user rejected or dismissed the
      * modal without opening the share sheet. [Answer.Failure] means the modal or the sheet could
-     * not be shown (no activity attached, a share already in progress or the system rejected the
-     * intent).
+     * not be shown (no resumed activity, a share already in progress or the system rejected the
+     * intent). An activity alive but stopped in the background counts as no resumed activity.
      */
     suspend fun launch(
         content: InAppShareContent,
@@ -93,8 +93,9 @@ interface InAppShare : DefaultLifecycleObserver {
      * Shows the system share sheet directly on the attached activity, skipping the modal shown
      * by [launch], and suspends until it is closed.
      *
-     * [Answer.Failure] means the sheet could not be shown (no activity attached, a share already
-     * in progress or the system rejected the intent).
+     * [Answer.Failure] means the sheet could not be shown (no resumed activity, a share already
+     * in progress or the system rejected the intent). An activity alive but stopped in the
+     * background counts as no resumed activity.
      */
     suspend fun share(
         content: InAppShareContent,
@@ -166,7 +167,7 @@ internal class InAppShareImpl(
     override suspend fun launch(
         content: InAppShareContent,
     ): Answer<InAppShareResult, Failure> = withContext(mainDispatcher) {
-        val activity = activityHolder.activity
+        val activity = activityHolder.resumedActivity()
         val currentLauncher = launcher
         when {
             activity == null || currentLauncher == null -> noActivityFailure()
@@ -180,7 +181,7 @@ internal class InAppShareImpl(
     ): Answer<InAppShareResult, Failure> = withContext(mainDispatcher) {
         val currentLauncher = launcher
         when {
-            activityHolder.activity == null || currentLauncher == null -> noActivityFailure()
+            activityHolder.resumedActivity() == null || currentLauncher == null -> noActivityFailure()
             pending != null -> alreadyInProgressFailure()
             else -> shareWithTracking(currentLauncher, content)
         }
@@ -220,7 +221,7 @@ internal class InAppShareImpl(
 
     private fun noActivityFailure(): Answer<InAppShareResult, Failure> {
         tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY)
-        return Answer.Failure(Failure.ResourceNotFound("No activity attached"))
+        return Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY))
     }
 
     private fun alreadyInProgressFailure(): Answer<InAppShareResult, Failure> {

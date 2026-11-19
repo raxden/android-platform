@@ -51,7 +51,7 @@ internal class InAppReviewTest {
         val result = inAppReview.launch()
 
         assertThat(result).isEqualTo(
-            Answer.Failure(Failure.ResourceNotFound("No activity attached")),
+            Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
         )
         verify { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
     }
@@ -146,20 +146,91 @@ internal class InAppReviewTest {
     }
 
     @Test
-    fun `Given debug review When launch Then opens the play store`() = runTest {
+    fun `Given activity attached in CREATED state When launch Then returns no activity failure`() = runTest {
+        val inAppReview = createReleaseInAppReview()
+        attachActivity(inAppReview, Lifecycle.State.CREATED)
+
+        val result = inAppReview.launch()
+
+        assertThat(result).isEqualTo(
+            Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+        )
+        verify(exactly = 1) { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
+        verify(exactly = 0) { reviewManager.launchReviewFlow(any(), any()) }
+    }
+
+    @Test
+    fun `Given activity attached in STARTED state When launch Then returns no activity failure`() = runTest {
+        val inAppReview = createReleaseInAppReview()
+        attachActivity(inAppReview, Lifecycle.State.STARTED)
+
+        val result = inAppReview.launch()
+
+        assertThat(result).isEqualTo(
+            Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+        )
+        verify(exactly = 1) { tracker.failed(InAppReviewTracker.Reason.NO_ACTIVITY) }
+        verify(exactly = 0) { reviewManager.launchReviewFlow(any(), any()) }
+    }
+
+    @Test
+    fun `Given debug review and no activity attached When launch Then returns resource not found failure`() = runTest {
         val inAppReview = createDebugInAppReview()
-        every { context.startActivity(any()) } just Runs
+
+        val result = inAppReview.launch()
+
+        assertThat(result).isEqualTo(
+            Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
+        )
+    }
+
+    @Test
+    fun `Given debug review and activity not resumed When launch Then returns failure without starting activity`() =
+        runTest {
+            val inAppReview = createDebugInAppReview()
+            val activity = attachActivity(inAppReview, Lifecycle.State.STARTED)
+
+            val result = inAppReview.launch()
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
+            )
+            verify(exactly = 0) { activity.startActivity(any()) }
+        }
+
+    @Test
+    fun `Given debug review and resumed activity When launch Then opens the play store from the activity`() = runTest {
+        val inAppReview = createDebugInAppReview()
+        val activity = attachActivity(inAppReview)
+        every { activity.startActivity(any()) } just Runs
 
         val result = inAppReview.launch()
 
         assertThat(result).isEqualTo(Answer.Success(Unit))
-        verify { context.startActivity(any()) }
+        verify { activity.startActivity(any()) }
+        verify(exactly = 0) { context.startActivity(any()) }
     }
+
+    @Test
+    fun `Given debug review attached to a second activity When launch Then opens the play store from the new one`() =
+        runTest {
+            val inAppReview = createDebugInAppReview()
+            val firstActivity = attachActivity(inAppReview)
+            val secondActivity = attachActivity(inAppReview)
+            every { secondActivity.startActivity(any()) } just Runs
+
+            val result = inAppReview.launch()
+
+            assertThat(result).isEqualTo(Answer.Success(Unit))
+            verify(exactly = 1) { secondActivity.startActivity(any()) }
+            verify(exactly = 0) { firstActivity.startActivity(any()) }
+        }
 
     @Test
     fun `Given debug review and play store cannot be opened When launch Then returns unknown failure`() = runTest {
         val inAppReview = createDebugInAppReview()
-        every { context.startActivity(any()) } throws Exception("boom")
+        val activity = attachActivity(inAppReview)
+        every { activity.startActivity(any()) } throws Exception("boom")
 
         val result = inAppReview.launch()
 
@@ -169,6 +240,21 @@ internal class InAppReviewTest {
             ),
         )
     }
+
+    @Test
+    fun `Given debug review and attached activity destroyed When launch Then returns resource not found failure`() =
+        runTest {
+            val inAppReview = createDebugInAppReview()
+            val activity = attachActivity(inAppReview)
+            inAppReview.onDestroy(activity)
+
+            val result = inAppReview.launch()
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
+            )
+            verify(exactly = 0) { activity.startActivity(any()) }
+        }
 
     private fun createReleaseInAppReview(): ReleaseInAppReview {
         mockkStatic(ReviewManagerFactory::class)
@@ -184,9 +270,11 @@ internal class InAppReviewTest {
 
     private fun attachActivity(
         inAppReview: InAppReview,
+        state: Lifecycle.State = Lifecycle.State.RESUMED,
     ): ComponentActivity {
         val lifecycle: Lifecycle = mockk()
         val activity: ComponentActivity = mockk()
+        every { lifecycle.currentState } returns state
         every { lifecycle.addObserver(any()) } just Runs
         every { lifecycle.removeObserver(any()) } just Runs
         every { activity.lifecycle } returns lifecycle

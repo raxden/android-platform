@@ -37,7 +37,7 @@ flowchart TD
     D -- Yes --> E{"Review<br/>allowed?"}
     E -- Yes --> R["Launch in-app review"]
     R -- "Launched" --> RL["ReviewLaunched<br/>(attempt + 1, pending cleared)"]
-    R -- "Could not launch<br/>(no Activity)" --> F{"Share<br/>allowed?"}
+    R -- "Could not launch<br/>(no foreground Activity)" --> F{"Share<br/>allowed?"}
     F -- Yes --> S
     F -- No --> P2["Mark pending →<br/>ReviewUnavailable"]
     E -- No --> G{"Share<br/>allowed?"}
@@ -116,13 +116,15 @@ A user who reaches a milestone almost every day:
 
 Ana marks a station as favourite **from the player notification**, with the app in the background. It is a milestone, but there is no screen to show the review on.
 
+An Activity that is still alive but in the background (behind a notification action, the lock screen, background playback) counts as no Activity: review and share only launch on a resumed Activity, so the milestone stays pending.
+
 ```mermaid
 sequenceDiagram
     participant N as Notification
     participant E as Engine
     participant App as App (foreground)
     N->>E: engagement("favourite_added") — milestone
-    E->>E: review → no Activity
+    E->>E: review → no foreground (resumed) Activity
     E->>E: share → not possible either
     E-->>N: ReviewUnavailable, pendingPromptAt = now
     Note over E: The milestone is kept for 48 h

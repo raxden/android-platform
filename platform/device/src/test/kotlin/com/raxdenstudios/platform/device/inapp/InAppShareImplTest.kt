@@ -83,7 +83,7 @@ internal class InAppShareImplTest {
     fun `Given no activity attached When launch Then returns resource not found failure`() = runTest {
         val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
 
-        assertThat(result).isEqualTo(Answer.Failure(Failure.ResourceNotFound("No activity attached")))
+        assertThat(result).isEqualTo(Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")))
         verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
     }
 
@@ -91,9 +91,110 @@ internal class InAppShareImplTest {
     fun `Given no activity attached When share Then returns resource not found failure`() = runTest {
         val result = inAppShare.share(InAppShareContent(subject = "subject", text = "text"))
 
-        assertThat(result).isEqualTo(Answer.Failure(Failure.ResourceNotFound("No activity attached")))
+        assertThat(result).isEqualTo(Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")))
         verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
     }
+
+    @Test
+    fun `Given activity attached in CREATED state When launch Then returns no activity failure without prompt`() =
+        runTest {
+            attachActivity(Lifecycle.State.CREATED)
+
+            val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+            )
+            verify(exactly = 1) { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            coVerify(exactly = 0) { prompt.show(any()) }
+            verify(exactly = 0) { shareLauncher.launch(any()) }
+        }
+
+    @Test
+    fun `Given activity attached in STARTED state When launch Then returns no activity failure without prompt`() =
+        runTest {
+            attachActivity(Lifecycle.State.STARTED)
+
+            val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+            )
+            verify(exactly = 1) { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            coVerify(exactly = 0) { prompt.show(any()) }
+            verify(exactly = 0) { shareLauncher.launch(any()) }
+        }
+
+    @Test
+    fun `Given activity attached in CREATED state When share Then returns no activity failure without sheet`() =
+        runTest {
+            attachActivity(Lifecycle.State.CREATED)
+
+            val result = inAppShare.share(InAppShareContent(subject = "subject", text = "text"))
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+            )
+            verify(exactly = 1) { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            verify(exactly = 0) { shareLauncher.launch(any()) }
+        }
+
+    @Test
+    fun `Given activity attached in STARTED state When share Then returns no activity failure without sheet`() =
+        runTest {
+            attachActivity(Lifecycle.State.STARTED)
+
+            val result = inAppShare.share(InAppShareContent(subject = "subject", text = "text"))
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+            )
+            verify(exactly = 1) { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            verify(exactly = 0) { shareLauncher.launch(any()) }
+        }
+
+    @Test
+    fun `Given a share pending When activity is no longer resumed and launch requested Then returns no activity`() =
+        runTest {
+            stubShareFramework()
+            inAppShare = createInAppShare()
+            attachActivity()
+            val content = InAppShareContent(subject = "subject", text = "text")
+            val pending = launch { inAppShare.share(content) }
+            runCurrent()
+            every { lifecycle.currentState } returns Lifecycle.State.STARTED
+
+            val result = inAppShare.launch(content)
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound(NO_RESUMED_ACTIVITY)),
+            )
+            verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            verify(exactly = 0) { tracker.failed(InAppShareTracker.Reason.ALREADY_IN_PROGRESS) }
+            coVerify(exactly = 0) { prompt.show(any()) }
+            pending.cancel()
+        }
+
+    @Test
+    fun `Given a share pending When activity is no longer resumed and share requested Then returns no activity`() =
+        runTest {
+            stubShareFramework()
+            inAppShare = createInAppShare()
+            attachActivity()
+            val content = InAppShareContent(subject = "subject", text = "text")
+            val pending = launch { inAppShare.share(content) }
+            runCurrent()
+            every { lifecycle.currentState } returns Lifecycle.State.STARTED
+
+            val result = inAppShare.share(content)
+
+            assertThat(result).isEqualTo(
+                Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
+            )
+            verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
+            verify(exactly = 0) { tracker.failed(InAppShareTracker.Reason.ALREADY_IN_PROGRESS) }
+            pending.cancel()
+        }
 
     @Test
     fun `Given an attached activity When attach is called again with it Then it is a no-op`() {
@@ -123,7 +224,7 @@ internal class InAppShareImplTest {
         val result = inAppShare.launch(InAppShareContent(subject = "subject", text = "text"))
 
         assertThat(result).isEqualTo(
-            Answer.Failure(Failure.ResourceNotFound("No activity attached")),
+            Answer.Failure(Failure.ResourceNotFound("No resumed activity attached")),
         )
         verify { lifecycle.removeObserver(inAppShare) }
         verify { tracker.failed(InAppShareTracker.Reason.NO_ACTIVITY) }
@@ -351,10 +452,12 @@ internal class InAppShareImplTest {
     private fun TestScope.createInAppShare(): InAppShareImpl =
         InAppShareImpl(context, tracker, prompt, UnconfinedTestDispatcher(testScheduler))
 
-    private fun attachActivity() {
+    private fun attachActivity(
+        state: Lifecycle.State = Lifecycle.State.RESUMED,
+    ) {
         lifecycle = mockk()
         activity = mockk()
-        every { lifecycle.currentState } returns Lifecycle.State.INITIALIZED
+        every { lifecycle.currentState } returns state
         every { lifecycle.addObserver(any()) } just Runs
         every { lifecycle.removeObserver(any()) } just Runs
         every { activity.lifecycle } returns lifecycle
