@@ -5,11 +5,13 @@ import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.inapp.InAppReview
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -21,8 +23,8 @@ internal class RateAppUseCaseImplTest {
     private val failure = Failure.Network.Unknown("error")
 
     /**
-     * In-memory stand-in for the persisted state: the repository mock reads it back on
-     * `getEngagementData` and stores every update, like the real repository does.
+     * In-memory stand-in for the persisted state: the repository mock applies every update
+     * lambda to it and stores the result, like the real repository does.
      */
     private var storedData = EngagementData()
 
@@ -32,31 +34,52 @@ internal class RateAppUseCaseImplTest {
     fun setUp() {
         storedData = EngagementData()
         coEvery { inAppReview.launch() } returns Answer.Success(Unit)
-        coEvery { engagementDataRepository.getEngagementData() } answers {
-            Answer.Success(storedData)
-        }
         coEvery { engagementDataRepository.updateEngagementData(any()) } coAnswers {
-            storedData = firstArg()
-            Answer.Success(Unit)
+            storedData = firstArg<(EngagementData) -> EngagementData>().invoke(storedData)
+            Answer.Success(storedData)
         }
 
         useCase = RateAppUseCaseImpl(
             inAppReview = inAppReview,
             engagementDataRepository = engagementDataRepository,
+            currentTimeMillis = { NOW },
         )
     }
 
     @Test
-    fun `Given review launches successfully When invoked Then app is marked as rated`() = runTest {
-        storedData = EngagementData(counts = mapOf("app_opened" to 3))
+    fun `Given review launches successfully When invoked Then attempt is recorded and app is not marked as rated`() =
+        runTest {
+            storedData = EngagementData(counts = mapOf("app_opened" to 3))
 
-        val result = useCase(RateAppUseCase.Params)
+            val result = useCase(RateAppUseCase.Params)
 
-        assertEquals(Answer.Success(false), result)
-        assertEquals(
-            EngagementData(counts = mapOf("app_opened" to 3), hasRated = true),
-            storedData,
-        )
+            assertEquals(Answer.Success(false), result)
+            assertEquals(
+                EngagementData(
+                    counts = mapOf("app_opened" to 3),
+                    review = ReviewState(attempts = 1, lastAt = NOW),
+                ),
+                storedData,
+            )
+        }
+
+    @Test
+    fun `Given previous attempts When review launches Then attempts are incremented and timestamp updated`() = runTest {
+        storedData = EngagementData(review = ReviewState(attempts = 1, lastAt = NOW - 1))
+
+        useCase(RateAppUseCase.Params)
+
+        assertEquals(2, storedData.review.attempts)
+        assertEquals(NOW, storedData.review.lastAt)
+    }
+
+    @Test
+    fun `Given pending prompt When review launches Then pending prompt is cleared`() = runTest {
+        storedData = EngagementData(pendingPromptAt = NOW - 1)
+
+        useCase(RateAppUseCase.Params)
+
+        assertNull(storedData.pendingPromptAt)
     }
 
     @Test
@@ -66,7 +89,7 @@ internal class RateAppUseCaseImplTest {
         val result = useCase(RateAppUseCase.Params)
 
         assertEquals(Answer.Success(true), result)
-        coVerify(exactly = 0) { engagementDataRepository.getEngagementData() }
+        assertEquals(EngagementData(), storedData)
         coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
     }
 
@@ -77,5 +100,9 @@ internal class RateAppUseCaseImplTest {
         val result = useCase(RateAppUseCase.Params)
 
         assertEquals(Answer.Failure(failure), result)
+    }
+
+    private companion object {
+        const val NOW = 1_000_000_000_000L
     }
 }

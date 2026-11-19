@@ -4,6 +4,7 @@ import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,7 +21,7 @@ internal class ObserveEngagementDataUseCaseImplTest {
 
     @Test
     fun `Given repository emissions When invoked Then they are delegated`() = runTest {
-        val data = EngagementData(hasRated = true)
+        val data = EngagementData(review = ReviewState(ratedAt = 1L))
         val failure = Failure.Network.Unknown("error")
         every { engagementDataRepository.observeEngagementData() } returns
             flowOf(Answer.Success(data), Answer.Failure(failure))

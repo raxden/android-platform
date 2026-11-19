@@ -6,11 +6,15 @@ plugins {
     alias(libs.plugins.android.versioning)
     alias(libs.plugins.android.library.conventions)
     alias(libs.plugins.android.publish.library)
-    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.room)
 }
 
 android {
     namespace = "com.raxdenstudios.platform.engagement"
+
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
 }
 
 versioning {
@@ -37,10 +41,10 @@ dependencies {
     implementation(libs.commons.core)
     implementation(libs.commons.android)
     implementation(libs.commons.coroutines)
-
-    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.timber)
 
     implementationBundle(libs.bundles.koin)
+    implementationBundle(libs.bundles.room)
 
     testImplementation(libs.commons.coroutines.test)
     testImplementation(libs.truth)

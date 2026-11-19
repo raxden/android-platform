@@ -1,34 +1,43 @@
 package com.raxdenstudios.platform.engagement.data.datasource.local
 
-import android.content.SharedPreferences
+import androidx.room.InvalidationTracker
+import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.coroutines.DispatcherProvider
 import com.raxdenstudios.platform.core.domain.model.Failure
+import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
+import com.raxdenstudios.platform.engagement.data.database.dao.EngagementDao
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
+import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
-import io.mockk.Runs
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class EngagementDataLocalDataSourceImplTest {
 
-    /**
-     * In-memory SharedPreferences: reads resolve against [prefsStorage] and writes through the
-     * mocked editor land back in it, so persistence is exercised for real.
-     */
-    private val prefsStorage = mutableMapOf<String, String>()
-    private val editor: SharedPreferences.Editor = mockk()
-    private val sharedPreferences: SharedPreferences = mockk()
+    private val engagementDao: EngagementDao = mockk()
+    private val invalidationTracker: InvalidationTracker = mockk()
+    private val database: EngagementDatabase = mockk()
+    private val engagementEntityDataMapper: EngagementEntityDataMapper = mockk()
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private val dispatcherProvider = object : DispatcherProvider {
@@ -37,60 +46,69 @@ internal class EngagementDataLocalDataSourceImplTest {
         override val default: CoroutineDispatcher = testDispatcher
     }
 
+    private val stateEntity = EngagementStateEntity(
+        reviewAttempts = 0,
+        reviewLastAt = null,
+        reviewRatedAt = null,
+        shareDeclines = 0,
+        shareLastPromptAt = null,
+        shareSharedAt = null,
+        pendingPromptAt = null,
+    )
+    private val ratedStateEntity = stateEntity.copy(reviewRatedAt = 1L)
+    private val originCountEntities = listOf(EngagementOriginCountEntity(origin = "app_opened", occurrences = 3))
+    private val storedData = EngagementData(counts = mapOf("app_opened" to 3))
+    private val ratedData = storedData.copy(review = ReviewState(ratedAt = 1L))
+
     private lateinit var dataSource: EngagementDataLocalDataSourceImpl
 
     @Before
     fun setUp() {
-        prefsStorage.clear()
-        every { sharedPreferences.getString(any(), any()) } answers {
-            prefsStorage[firstArg()] ?: secondArg()
+        mockkStatic("androidx.room.RoomDatabaseKt")
+        coEvery { any<RoomDatabase>().withTransaction(any<suspend () -> Any?>()) } coAnswers {
+            secondArg<suspend () -> Any?>().invoke()
         }
-        every { sharedPreferences.edit() } returns editor
-        every { editor.putString(any(), any()) } answers {
-            prefsStorage[firstArg()] = requireNotNull(secondArg<String>())
-            editor
+        every { database.engagementDao() } returns engagementDao
+        every { database.invalidationTracker } returns invalidationTracker
+        every { invalidationTracker.createFlow(*anyVararg(), emitInitialState = any()) } returns flowOf(emptySet())
+        coEvery { engagementDao.getState() } returns stateEntity
+        coEvery { engagementDao.getOriginCounts() } returns originCountEntities
+        coEvery { engagementDao.upsertState(any()) } returns Unit
+        coEvery { engagementDao.upsertOriginCounts(any()) } returns Unit
+        coEvery { engagementDao.deleteOriginCounts(any()) } returns Unit
+        every { engagementEntityDataMapper.toEngagementData(any(), any()) } returns storedData
+        every { engagementEntityDataMapper.toStateEntity(storedData) } returns stateEntity
+        every { engagementEntityDataMapper.toStateEntity(ratedData) } returns ratedStateEntity
+        every { engagementEntityDataMapper.toOriginCountEntities(any()) } answers {
+            firstArg<Map<String, Int>>().map { (origin, occurrences) ->
+                EngagementOriginCountEntity(origin = origin, occurrences = occurrences)
+            }
         }
-        every { editor.apply() } just Runs
 
-        dataSource = newDataSource()
+        dataSource = EngagementDataLocalDataSourceImpl(
+            database = database,
+            engagementEntityDataMapper = engagementEntityDataMapper,
+            dispatcherProvider = dispatcherProvider,
+        )
+    }
+
+    @After
+    fun tearDown() {
+        unmockkStatic("androidx.room.RoomDatabaseKt")
     }
 
     @Test
-    fun `Given no persisted data When data is read Then default data is returned`() = runTest {
+    fun `Given stored data When data is read Then the mapped data is returned`() = runTest {
         val result = dataSource.getEngagementData()
 
-        assertEquals(Answer.Success(EngagementData()), result)
+        assertEquals(Answer.Success(storedData), result)
+        coVerify { engagementEntityDataMapper.toEngagementData(stateEntity, originCountEntities) }
     }
 
     @Test
-    fun `Given persisted data When data is read Then decoded data is returned`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"hasShared":false,"counts":{"app_opened":3}}"""
-
-        val result = dataSource.getEngagementData()
-
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 3))),
-            result,
-        )
-    }
-
-    @Test
-    fun `Given an update When data is read back by a new instance Then it round-trips through preferences`() = runTest {
-        val updated = dataSource.updateEngagementData(
-            EngagementData(hasRated = true, counts = mapOf("app_opened" to 1)),
-        )
-
-        assertEquals(Answer.Success(Unit), updated)
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 1))),
-            newDataSource().getEngagementData(),
-        )
-    }
-
-    @Test
-    fun `Given corrupt JSON When data is read Then it falls back to default data`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] = "{ not valid json"
+    fun `Given no stored state When data is read Then the mapper receives a null state`() = runTest {
+        coEvery { engagementDao.getState() } returns null
+        every { engagementEntityDataMapper.toEngagementData(null, any()) } returns EngagementData()
 
         val result = dataSource.getEngagementData()
 
@@ -98,43 +116,147 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     @Test
-    fun `Given JSON with unknown keys When data is read Then unknown keys are ignored`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"some_future_field":42,"counts":{"app_opened":2}}"""
+    fun `Given the dao throws When data is read Then Unknown failure is returned`() = runTest {
+        coEvery { engagementDao.getState() } throws IllegalStateException("boom")
 
         val result = dataSource.getEngagementData()
 
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))),
-            result,
-        )
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
     }
 
     @Test
-    fun `Given an observer When data is updated Then updates are emitted`() = runTest {
-        val emissions = mutableListOf<Answer<EngagementData, Failure>>()
-        val job = launch { dataSource.observeEngagementData().collect { emissions += it } }
-        runCurrent()
+    fun `Given an update that changes the state When applied Then only the state is written`() = runTest {
+        var received: EngagementData? = null
 
-        dataSource.updateEngagementData(EngagementData(hasRated = true))
-        runCurrent()
+        val result = dataSource.updateEngagementData { current ->
+            received = current
+            ratedData
+        }
 
-        assertEquals(
-            listOf(
-                Answer.Success(EngagementData()),
-                Answer.Success(EngagementData(hasRated = true)),
-            ),
-            emissions,
-        )
-        job.cancel()
+        assertEquals(Answer.Success(ratedData), result)
+        assertEquals(storedData, received)
+        coVerify(exactly = 1) { engagementDao.upsertState(ratedStateEntity) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
     }
 
-    private fun newDataSource() = EngagementDataLocalDataSourceImpl(
-        sharedPreferences = sharedPreferences,
-        dispatcherProvider = dispatcherProvider,
-    )
+    @Test
+    fun `Given an update that changes nothing When applied Then nothing is written`() = runTest {
+        val result = dataSource.updateEngagementData { it }
 
-    private companion object {
-        const val ENGAGEMENT_DATA_KEY = "engagement_data"
+        assertEquals(Answer.Success(storedData), result)
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
+    }
+
+    @Test
+    fun `Given an update that only changes counts When applied Then the state is not rewritten`() = runTest {
+        val updated = storedData.copy(counts = mapOf("app_opened" to 4))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 1) {
+            engagementDao.upsertOriginCounts(
+                listOf(EngagementOriginCountEntity(origin = "app_opened", occurrences = 4)),
+            )
+        }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
+    }
+
+    @Test
+    fun `Given an update that changes one of two origins When applied Then only the changed origin is upserted`() =
+        runTest {
+            val current = EngagementData(counts = mapOf("app_opened" to 3, "favourite_added" to 1))
+            every { engagementEntityDataMapper.toEngagementData(any(), any()) } returns current
+            val updated = current.copy(counts = mapOf("app_opened" to 3, "favourite_added" to 2))
+            every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+            dataSource.updateEngagementData { updated }
+
+            coVerify(exactly = 1) {
+                engagementDao.upsertOriginCounts(
+                    listOf(EngagementOriginCountEntity(origin = "favourite_added", occurrences = 2)),
+                )
+            }
+        }
+
+    @Test
+    fun `Given an update that adds an origin When applied Then the new origin is upserted`() = runTest {
+        val updated = storedData.copy(counts = mapOf("app_opened" to 3, "new_origin" to 1))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) {
+            engagementDao.upsertOriginCounts(
+                listOf(EngagementOriginCountEntity(origin = "new_origin", occurrences = 1)),
+            )
+        }
+    }
+
+    @Test
+    fun `Given an update that removes an origin When applied Then the removed origin is deleted`() = runTest {
+        val updated = storedData.copy(counts = emptyMap())
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) { engagementDao.deleteOriginCounts(listOf("app_opened")) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+    }
+
+    @Test
+    fun `Given no stored state row When an update changes data Then the state is inserted`() = runTest {
+        coEvery { engagementDao.getState() } returns null
+        every { engagementEntityDataMapper.toEngagementData(null, any()) } returns storedData
+        val updated = storedData.copy(counts = mapOf("app_opened" to 4))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) { engagementDao.upsertState(stateEntity) }
+    }
+
+    @Test
+    fun `Given the dao throws on write When data is updated Then Unknown failure is returned`() = runTest {
+        coEvery { engagementDao.upsertState(any()) } throws IllegalStateException("boom")
+
+        val result = dataSource.updateEngagementData { ratedData }
+
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
+    }
+
+    @Test
+    fun `Given the update lambda throws When data is updated Then Unknown failure is returned`() = runTest {
+        val result = dataSource.updateEngagementData { throw IllegalStateException("boom") }
+
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
+    }
+
+    @Test
+    fun `Given stored data When data is observed Then stored data is emitted`() = runTest {
+        val emissions = dataSource.observeEngagementData().toList()
+
+        assertEquals(listOf(Answer.Success(storedData)), emissions)
+    }
+
+    @Test
+    fun `Given the dao throws When data is observed Then Unknown failure is emitted`() = runTest {
+        coEvery { engagementDao.getState() } throws IllegalStateException("boom")
+
+        val emissions = dataSource.observeEngagementData().toList()
+
+        assertEquals(1, emissions.size)
+        assertTrue((emissions.single() as Answer.Failure).value is Failure.Unknown)
     }
 }

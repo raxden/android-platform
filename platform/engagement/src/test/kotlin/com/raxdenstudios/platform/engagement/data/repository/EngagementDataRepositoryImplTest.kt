@@ -4,6 +4,7 @@ import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDataLocalDataSource
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -24,7 +25,7 @@ internal class EngagementDataRepositoryImplTest {
 
     @Test
     fun `Given data source emissions When observing Then they are delegated`() = runTest {
-        val data = EngagementData(hasRated = true)
+        val data = EngagementData(review = ReviewState(ratedAt = 1L))
         every { engagementDataLocalDataSource.observeEngagementData() } returns
             flowOf(Answer.Success(data))
 
@@ -36,7 +37,7 @@ internal class EngagementDataRepositoryImplTest {
 
     @Test
     fun `Given stored data When data is read Then the data source answer is returned`() = runTest {
-        val data = EngagementData(hasRated = true, counts = mapOf("app_opened" to 3))
+        val data = EngagementData(review = ReviewState(ratedAt = 1L), counts = mapOf("app_opened" to 3))
         coEvery { engagementDataLocalDataSource.getEngagementData() } returns Answer.Success(data)
 
         val result = repository.getEngagementData()
@@ -46,15 +47,16 @@ internal class EngagementDataRepositoryImplTest {
     }
 
     @Test
-    fun `Given new data When data is updated Then it is delegated to the data source`() = runTest {
-        val data = EngagementData(hasRated = true)
+    fun `Given an update lambda When data is updated Then it is delegated and the stored result returned`() = runTest {
+        val updated = EngagementData(review = ReviewState(ratedAt = 1L))
+        val update: (EngagementData) -> EngagementData = { it.copy(review = ReviewState(ratedAt = 1L)) }
         coEvery { engagementDataLocalDataSource.updateEngagementData(any()) } returns
-            Answer.Success(Unit)
+            Answer.Success(updated)
 
-        val result = repository.updateEngagementData(data)
+        val result = repository.updateEngagementData(update)
 
-        assertEquals(Answer.Success(Unit), result)
-        coVerify { engagementDataLocalDataSource.updateEngagementData(data) }
+        assertEquals(Answer.Success(updated), result)
+        coVerify { engagementDataLocalDataSource.updateEngagementData(update) }
     }
 
     @Test
@@ -62,7 +64,7 @@ internal class EngagementDataRepositoryImplTest {
         coEvery { engagementDataLocalDataSource.updateEngagementData(any()) } returns
             Answer.Failure(failure)
 
-        val result = repository.updateEngagementData(EngagementData())
+        val result = repository.updateEngagementData { it }
 
         assertEquals(Answer.Failure(failure), result)
     }

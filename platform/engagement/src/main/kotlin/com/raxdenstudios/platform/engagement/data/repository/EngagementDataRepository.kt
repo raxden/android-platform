@@ -12,9 +12,13 @@ internal interface EngagementDataRepository {
 
     suspend fun getEngagementData(): Answer<EngagementData, Failure>
 
+    /**
+     * Atomically applies [update] to the latest stored data and persists the result, which is
+     * returned. Concurrent updates never overwrite each other.
+     */
     suspend fun updateEngagementData(
-        engagementData: EngagementData,
-    ): Answer<Unit, Failure>
+        update: (EngagementData) -> EngagementData,
+    ): Answer<EngagementData, Failure>
 }
 
 internal class EngagementDataRepositoryImpl(
@@ -28,6 +32,6 @@ internal class EngagementDataRepositoryImpl(
         engagementDataLocalDataSource.getEngagementData()
 
     override suspend fun updateEngagementData(
-        engagementData: EngagementData,
-    ): Answer<Unit, Failure> = engagementDataLocalDataSource.updateEngagementData(engagementData)
+        update: (EngagementData) -> EngagementData,
+    ): Answer<EngagementData, Failure> = engagementDataLocalDataSource.updateEngagementData(update)
 }

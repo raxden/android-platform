@@ -6,11 +6,17 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
 
 /**
  * DI entry point of the engagement module: in-app review and share prompts gated by
- * per-origin occurrence milestones.
+ * per-origin occurrence milestones, rate-limited by `EngagementPolicy`. With its defaults nothing
+ * is shown during the first 3 days after install; the review is requested at most 3 times, 90 days
+ * apart, and never again once the user rated the app manually; the share prompt is shown until
+ * the user shares or declines it twice (closing the share sheet without a target counts as a
+ * decline), 30 days apart; review and share prompts are at least 14 days apart. Milestones that
+ * could not show anything (e.g. reached from a notification action with no activity) are kept
+ * pending for the next call within 48 hours. See `EngagementUseCase` for the full policy.
  *
- * Progress is persisted in the module's own `SharedPreferences` file (`platform_engagement`,
- * key `engagement_data`) serialized with a private `Json` (`ignoreUnknownKeys`,
- * `encodeDefaults`), so consumers bind neither `SharedPreferences` nor `Json`.
+ * Progress is persisted in the module's own Room database (`platform_engagement.db`), so
+ * consumers bind nothing for it. Progress stored by older versions in the `platform_engagement`
+ * `SharedPreferences` file is not carried over: every install starts from zero.
  *
  * ## Setup
  *
@@ -47,6 +53,22 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  * }
  * ```
  *
+ * To change the rate limits, override the `EngagementPolicy` bound by this library with a
+ * `factory` in an app module loaded after it (listed after `EngagementDILibrary` in
+ * `provideLibs()`), e.g. from Remote Config. Unset properties keep their defaults. It is resolved
+ * once, when `EngagementUseCase` (a singleton) is first created:
+ *
+ * ```kotlin
+ * module {
+ *     factory {
+ *         EngagementPolicy(
+ *             shareCooldown = remoteConfig.getLong("engagement_share_cooldown_days").days,
+ *             minInstallAge = remoteConfig.getLong("engagement_min_install_age_days").days,
+ *         )
+ *     }
+ * }
+ * ```
+ *
  * ## Usage
  *
  * Call `EngagementUseCase` from each trigger point, giving every origin its own name:
@@ -58,8 +80,19 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  *             if (result == EngagementResult.ReviewUnavailable) {
  *                 // Optional: the review flow could not launch — offer the Play Store page.
  *                 context.startActivity(intentFactory.build(IntentType.PlayStore))
+ *                 markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
  *             }
  *         }
+ * }
+ * ```
+ *
+ * Whenever the user opens the Play Store rating page manually (e.g. a "Rate us" settings entry),
+ * call `MarkAppAsRatedUseCase` so the in-app review is never requested again:
+ *
+ * ```kotlin
+ * safeLaunch {
+ *     context.startActivity(intentFactory.build(IntentType.PlayStore))
+ *     markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
  * }
  * ```
  */
