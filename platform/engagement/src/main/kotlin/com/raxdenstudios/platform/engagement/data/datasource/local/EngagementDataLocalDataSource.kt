@@ -1,26 +1,27 @@
 package com.raxdenstudios.platform.engagement.data.datasource.local
 
-import android.content.SharedPreferences
-import androidx.core.content.edit
+import androidx.room.withTransaction
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.DispatcherProvider
+import com.raxdenstudios.commons.coroutines.ext.coFlatMap
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
+import com.raxdenstudios.commons.coroutines.ext.toAnswer
 import com.raxdenstudios.platform.core.domain.ext.toUnknownError
 import com.raxdenstudios.platform.core.domain.model.Failure
+import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
+import com.raxdenstudios.platform.engagement.data.database.dao.EngagementDao
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
+import com.raxdenstudios.platform.engagement.data.datasource.local.legacy.LegacyEngagementDataMigrator
+import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonObject
 
 internal interface EngagementDataLocalDataSource {
 
@@ -28,82 +29,84 @@ internal interface EngagementDataLocalDataSource {
 
     suspend fun getEngagementData(): Answer<EngagementData, Failure>
 
+    /**
+     * Atomically replaces the stored data with the result of [update] applied to its current
+     * value, and returns the stored result. Concurrent updates never overwrite each other.
+     */
     suspend fun updateEngagementData(
-        engagementData: EngagementData,
-    ): Answer<Unit, Failure>
+        update: (EngagementData) -> EngagementData,
+    ): Answer<EngagementData, Failure>
 }
 
 /**
- * Persists [EngagementData] as JSON in `SharedPreferences`.
+ * Persists [EngagementData] in [EngagementDatabase]: the scalar fields in the single-row
+ * `engagement_state` table and the per-origin counts in `engagement_origin_count`. Reads and
+ * read-modify-write updates run in a Room transaction, so they always see both tables
+ * consistently and concurrent updates are serialized.
  *
- * Legacy migration: payloads written before `reviewAttempts` existed used `hasRated = true` to
- * mean "the in-app review was launched once". They are loaded as `reviewAttempts = 1`,
- * `hasRated = false`, `lastReviewAt = null`, so the review can be requested again under the new
- * cooldown policy. Only payloads without a `reviewAttempts` key are migrated (current payloads
- * always encode it), so a `hasRated` set by `MarkAppAsRatedUseCase` is never undone. The migrated
- * value is kept in memory and persisted by the next write.
+ * Every access first runs [LegacyEngagementDataMigrator], which moves the progress stored by older
+ * versions in `SharedPreferences` into the database.
  */
 internal class EngagementDataLocalDataSourceImpl(
-    private val sharedPreferences: SharedPreferences,
-    private val json: Json = DEFAULT_JSON,
+    private val database: EngagementDatabase,
+    private val legacyEngagementDataMigrator: LegacyEngagementDataMigrator,
+    private val engagementEntityDataMapper: EngagementEntityDataMapper,
     private val dispatcherProvider: DispatcherProvider,
 ) : EngagementDataLocalDataSource {
 
-    private val initMutex = Mutex()
-    private var state: MutableStateFlow<EngagementData>? = null
+    private val engagementDao: EngagementDao
+        get() = database.engagementDao()
 
+    /** A failed legacy migration is emitted first; the stored data is observed regardless. */
     override fun observeEngagementData(): Flow<Answer<EngagementData, Failure>> = flow {
-        emitAll(state().map { Answer.Success(it) })
-    }
+        val migration = legacyEngagementDataMigrator.migrate()
+        if (migration is Answer.Failure) emit(migration)
+        emitAll(observeStoredEngagementData())
+    }.flowOn(dispatcherProvider.io)
 
-    override suspend fun getEngagementData(): Answer<EngagementData, Failure> = coRunCatching { state().value }
-        .thenFailure { error -> error.toUnknownError("Error to get engagement data") }
+    override suspend fun getEngagementData(): Answer<EngagementData, Failure> =
+        legacyEngagementDataMigrator.migrate().coFlatMap {
+            coRunCatching { database.withTransaction { readEngagementData() } }
+                .thenFailure { error -> error.toUnknownError("Error to get engagement data") }
+        }
 
     override suspend fun updateEngagementData(
+        update: (EngagementData) -> EngagementData,
+    ): Answer<EngagementData, Failure> = legacyEngagementDataMigrator.migrate().coFlatMap {
+        coRunCatching { updateStoredEngagementData(update) }
+            .thenFailure { error -> error.toUnknownError("Error to update engagement data") }
+    }
+
+    private fun observeStoredEngagementData(): Flow<Answer<EngagementData, Failure>> =
+        database.invalidationTracker.createFlow(*OBSERVED_TABLES)
+            .map { database.withTransaction { readEngagementData() } }
+            .distinctUntilChanged()
+            .toAnswer { error -> error.toUnknownError("Error to observe engagement data") }
+
+    private suspend fun updateStoredEngagementData(
+        update: (EngagementData) -> EngagementData,
+    ): EngagementData = database.withTransaction {
+        val updated = update(readEngagementData())
+        writeEngagementData(updated)
+        updated
+    }
+
+    private suspend fun readEngagementData(): EngagementData = engagementEntityDataMapper.toEngagementData(
+        state = engagementDao.getState(),
+        originCounts = engagementDao.getOriginCounts(),
+    )
+
+    private suspend fun writeEngagementData(
         engagementData: EngagementData,
-    ): Answer<Unit, Failure> = coRunCatching {
-        val current = state()
-        withContext(dispatcherProvider.io) { sharedPreferences.persist(engagementData) }
-        current.value = engagementData
-    }.thenFailure { error -> error.toUnknownError("Error to update engagement data") }
+    ) = engagementDao.replace(
+        state = engagementEntityDataMapper.toStateEntity(engagementData),
+        originCounts = engagementEntityDataMapper.toOriginCountEntities(engagementData),
+    )
 
-    private suspend fun state(): MutableStateFlow<EngagementData> = initMutex.withLock {
-        state ?: MutableStateFlow(withContext(dispatcherProvider.io) { load() }).also { state = it }
-    }
-
-    private fun load(): EngagementData = sharedPreferences.getString(ENGAGEMENT_DATA_KEY, null)
-        ?.let { runCatching { decode(it) }.getOrNull() }
-        ?: EngagementData()
-
-    private fun decode(
-        value: String,
-    ): EngagementData {
-        val jsonObject = json.parseToJsonElement(value).jsonObject
-        val engagementData = json.decodeFromJsonElement<EngagementData>(jsonObject)
-        return if (jsonObject.isLegacyPayload()) engagementData.migrateLegacyRating() else engagementData
-    }
-
-    private fun JsonObject.isLegacyPayload(): Boolean = REVIEW_ATTEMPTS_KEY !in this
-
-    /** Old engines set `hasRated` when the in-app review was launched: count it as one attempt. */
-    private fun EngagementData.migrateLegacyRating(): EngagementData = when {
-        hasRated && reviewAttempts == 0 -> copy(hasRated = false, reviewAttempts = 1, lastReviewAt = null)
-        else -> this
-    }
-
-    private fun SharedPreferences.persist(
-        engagementData: EngagementData,
-    ) {
-        edit { putString(ENGAGEMENT_DATA_KEY, json.encodeToString<EngagementData>(engagementData)) }
-    }
-
-    companion object {
-        const val PREFERENCES_NAME = "platform_engagement"
-        private const val ENGAGEMENT_DATA_KEY = "engagement_data"
-        private const val REVIEW_ATTEMPTS_KEY = "reviewAttempts"
-        private val DEFAULT_JSON = Json {
-            ignoreUnknownKeys = true
-            encodeDefaults = true
-        }
+    private companion object {
+        val OBSERVED_TABLES = arrayOf(
+            EngagementStateEntity.TABLE_NAME,
+            EngagementOriginCountEntity.TABLE_NAME,
+        )
     }
 }

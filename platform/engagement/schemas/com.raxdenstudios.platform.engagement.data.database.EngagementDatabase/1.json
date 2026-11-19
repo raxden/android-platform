@@ -1,0 +1,95 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "52cb1110362b3daa1e26dba2ce3eb9dd",
+    "entities": [
+      {
+        "tableName": "engagement_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `has_rated` INTEGER NOT NULL, `has_shared` INTEGER NOT NULL, `share_declines` INTEGER NOT NULL, `last_share_prompt_at` INTEGER, `review_attempts` INTEGER NOT NULL, `last_review_at` INTEGER, `pending_prompt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasRated",
+            "columnName": "has_rated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasShared",
+            "columnName": "has_shared",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shareDeclines",
+            "columnName": "share_declines",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSharePromptAt",
+            "columnName": "last_share_prompt_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reviewAttempts",
+            "columnName": "review_attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastReviewAt",
+            "columnName": "last_review_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pendingPrompt",
+            "columnName": "pending_prompt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "engagement_origin_count",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`origin` TEXT NOT NULL, `count` INTEGER NOT NULL, PRIMARY KEY(`origin`))",
+        "fields": [
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "count",
+            "columnName": "count",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "origin"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52cb1110362b3daa1e26dba2ce3eb9dd')"
+    ]
+  }
+}

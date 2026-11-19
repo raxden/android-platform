@@ -46,15 +46,16 @@ internal class EngagementDataRepositoryImplTest {
     }
 
     @Test
-    fun `Given new data When data is updated Then it is delegated to the data source`() = runTest {
-        val data = EngagementData(hasRated = true)
+    fun `Given an update lambda When data is updated Then it is delegated and the stored result returned`() = runTest {
+        val updated = EngagementData(hasRated = true)
+        val update: (EngagementData) -> EngagementData = { it.copy(hasRated = true) }
         coEvery { engagementDataLocalDataSource.updateEngagementData(any()) } returns
-            Answer.Success(Unit)
+            Answer.Success(updated)
 
-        val result = repository.updateEngagementData(data)
+        val result = repository.updateEngagementData(update)
 
-        assertEquals(Answer.Success(Unit), result)
-        coVerify { engagementDataLocalDataSource.updateEngagementData(data) }
+        assertEquals(Answer.Success(updated), result)
+        coVerify { engagementDataLocalDataSource.updateEngagementData(update) }
     }
 
     @Test
@@ -62,7 +63,7 @@ internal class EngagementDataRepositoryImplTest {
         coEvery { engagementDataLocalDataSource.updateEngagementData(any()) } returns
             Answer.Failure(failure)
 
-        val result = repository.updateEngagementData(EngagementData())
+        val result = repository.updateEngagementData { it }
 
         assertEquals(Answer.Failure(failure), result)
     }

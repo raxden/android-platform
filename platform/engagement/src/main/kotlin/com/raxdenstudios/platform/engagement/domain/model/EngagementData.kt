@@ -1,14 +1,13 @@
 package com.raxdenstudios.platform.engagement.domain.model
 
-import kotlinx.serialization.Serializable
-
 /**
- * Persisted engagement progress, serialized to the `platform_engagement` `SharedPreferences`
- * file under the `engagement_data` key. Unknown JSON keys are ignored on decode, so payloads
- * written by other versions still load.
+ * Persisted engagement progress, stored in the module's own Room database
+ * (`platform_engagement.db`).
  *
- * Payloads written before [reviewAttempts] existed used [hasRated] to mean "the in-app review
- * was launched once"; they are migrated on load to `reviewAttempts = 1`, `hasRated = false`.
+ * Older versions stored it as JSON in the `platform_engagement` `SharedPreferences` file; that
+ * payload is moved into the database on first access. Payloads written before [reviewAttempts]
+ * existed used [hasRated] to mean "the in-app review was launched once"; they are migrated to
+ * `reviewAttempts = 1`, `hasRated = false`.
  *
  * @property hasRated `true` once the user explicitly went to rate the app (e.g. opened the Play
  *   Store page from a settings entry, reported through `MarkAppAsRatedUseCase`). From then on the
@@ -32,7 +31,6 @@ import kotlinx.serialization.Serializable
  *   next engagement call is then eligible regardless of its milestone; it is cleared once a
  *   review is launched or the share prompt is shown, or when neither prompt is allowed anymore.
  */
-@Serializable
 data class EngagementData(
     val hasRated: Boolean = false,
     val hasShared: Boolean = false,

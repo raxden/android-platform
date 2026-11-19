@@ -2,7 +2,6 @@ package com.raxdenstudios.platform.engagement.domain
 
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.core.ext.then
-import com.raxdenstudios.commons.coroutines.ext.coFlatMap
 import com.raxdenstudios.platform.core.domain.SuspendUseCase
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.inapp.InAppReview
@@ -36,12 +35,11 @@ internal class RateAppUseCaseImpl(
     }
 
     private suspend fun recordReviewAttempt(): Answer<Boolean, Failure> =
-        engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-            val updated = engagementData.copy(
+        engagementDataRepository.updateEngagementData { engagementData ->
+            engagementData.copy(
                 reviewAttempts = engagementData.reviewAttempts + 1,
                 lastReviewAt = currentTimeMillis(),
                 pendingPrompt = false,
             )
-            engagementDataRepository.updateEngagementData(updated).then { false }
-        }
+        }.then { false }
 }

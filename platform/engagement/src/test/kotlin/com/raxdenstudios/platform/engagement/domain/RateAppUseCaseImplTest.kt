@@ -22,8 +22,8 @@ internal class RateAppUseCaseImplTest {
     private val failure = Failure.Network.Unknown("error")
 
     /**
-     * In-memory stand-in for the persisted state: the repository mock reads it back on
-     * `getEngagementData` and stores every update, like the real repository does.
+     * In-memory stand-in for the persisted state: the repository mock applies every update
+     * lambda to it and stores the result, like the real repository does.
      */
     private var storedData = EngagementData()
 
@@ -33,12 +33,9 @@ internal class RateAppUseCaseImplTest {
     fun setUp() {
         storedData = EngagementData()
         coEvery { inAppReview.launch() } returns Answer.Success(Unit)
-        coEvery { engagementDataRepository.getEngagementData() } answers {
-            Answer.Success(storedData)
-        }
         coEvery { engagementDataRepository.updateEngagementData(any()) } coAnswers {
-            storedData = firstArg()
-            Answer.Success(Unit)
+            storedData = firstArg<(EngagementData) -> EngagementData>().invoke(storedData)
+            Answer.Success(storedData)
         }
 
         useCase = RateAppUseCaseImpl(
@@ -89,7 +86,6 @@ internal class RateAppUseCaseImplTest {
 
         assertEquals(Answer.Success(true), result)
         assertEquals(EngagementData(), storedData)
-        coVerify(exactly = 0) { engagementDataRepository.getEngagementData() }
         coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
     }
 

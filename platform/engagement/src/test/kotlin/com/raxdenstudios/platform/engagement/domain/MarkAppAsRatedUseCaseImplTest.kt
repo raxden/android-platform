@@ -5,7 +5,6 @@ import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -25,10 +24,9 @@ internal class MarkAppAsRatedUseCaseImplTest {
     @Before
     fun setUp() {
         storedData = EngagementData()
-        coEvery { engagementDataRepository.getEngagementData() } answers { Answer.Success(storedData) }
         coEvery { engagementDataRepository.updateEngagementData(any()) } coAnswers {
-            storedData = firstArg()
-            Answer.Success(Unit)
+            storedData = firstArg<(EngagementData) -> EngagementData>().invoke(storedData)
+            Answer.Success(storedData)
         }
 
         useCase = MarkAppAsRatedUseCaseImpl(engagementDataRepository = engagementDataRepository)
@@ -53,21 +51,12 @@ internal class MarkAppAsRatedUseCaseImplTest {
     }
 
     @Test
-    fun `Given read fails When invoked Then failure is propagated and nothing is written`() = runTest {
-        coEvery { engagementDataRepository.getEngagementData() } returns Answer.Failure(failure)
-
-        val result = useCase(MarkAppAsRatedUseCase.Params)
-
-        assertEquals(Answer.Failure(failure), result)
-        coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
-    }
-
-    @Test
     fun `Given update fails When invoked Then failure is propagated`() = runTest {
         coEvery { engagementDataRepository.updateEngagementData(any()) } returns Answer.Failure(failure)
 
         val result = useCase(MarkAppAsRatedUseCase.Params)
 
         assertEquals(Answer.Failure(failure), result)
+        assertEquals(EngagementData(), storedData)
     }
 }

@@ -1,7 +1,7 @@
 package com.raxdenstudios.platform.engagement.domain
 
 import com.raxdenstudios.commons.core.Answer
-import com.raxdenstudios.commons.coroutines.ext.coFlatMap
+import com.raxdenstudios.commons.core.ext.then
 import com.raxdenstudios.platform.core.domain.SuspendUseCase
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
@@ -23,7 +23,7 @@ internal class MarkAppAsRatedUseCaseImpl(
 
     override suspend fun invoke(
         params: MarkAppAsRatedUseCase.Params,
-    ): Answer<Unit, Failure> = engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-        engagementDataRepository.updateEngagementData(engagementData.copy(hasRated = true))
-    }
+    ): Answer<Unit, Failure> = engagementDataRepository.updateEngagementData { engagementData ->
+        engagementData.copy(hasRated = true)
+    }.then { }
 }

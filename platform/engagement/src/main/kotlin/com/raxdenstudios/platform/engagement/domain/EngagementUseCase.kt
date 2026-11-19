@@ -110,9 +110,8 @@ internal class EngagementUseCaseImpl(
 
     private suspend fun track(
         origin: String,
-    ): Answer<EngagementData, Failure> = engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-        val incremented = engagementData.increment(origin)
-        engagementDataRepository.updateEngagementData(incremented).then { incremented }
+    ): Answer<EngagementData, Failure> = engagementDataRepository.updateEngagementData { engagementData ->
+        engagementData.increment(origin)
     }
 
     private fun EngagementData.increment(
@@ -175,11 +174,11 @@ internal class EngagementUseCaseImpl(
     private suspend fun clearPending(): Answer<EngagementResult, Failure> =
         updateEngagementData { copy(pendingPrompt = false) }.then { EngagementResult.None }
 
-    /** Applies [update] to the latest stored data, which may have changed while a prompt was on screen. */
+    /** Applies [update] atomically to the latest stored data, which may have changed while a prompt was on screen. */
     private suspend fun updateEngagementData(
         update: EngagementData.() -> EngagementData,
-    ): Answer<Unit, Failure> = engagementDataRepository.getEngagementData().coFlatMap { engagementData ->
-        engagementDataRepository.updateEngagementData(engagementData.update())
+    ): Answer<EngagementData, Failure> = engagementDataRepository.updateEngagementData { engagementData ->
+        engagementData.update()
     }
 
     internal companion object {

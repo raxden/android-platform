@@ -1,34 +1,44 @@
 package com.raxdenstudios.platform.engagement.data.datasource.local
 
-import android.content.SharedPreferences
+import androidx.room.InvalidationTracker
+import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.coroutines.DispatcherProvider
 import com.raxdenstudios.platform.core.domain.model.Failure
+import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
+import com.raxdenstudios.platform.engagement.data.database.dao.EngagementDao
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
+import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
+import com.raxdenstudios.platform.engagement.data.datasource.local.legacy.LegacyEngagementDataMigrator
+import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
-import io.mockk.Runs
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class EngagementDataLocalDataSourceImplTest {
 
-    /**
-     * In-memory SharedPreferences: reads resolve against [prefsStorage] and writes through the
-     * mocked editor land back in it, so persistence is exercised for real.
-     */
-    private val prefsStorage = mutableMapOf<String, String>()
-    private val editor: SharedPreferences.Editor = mockk()
-    private val sharedPreferences: SharedPreferences = mockk()
+    private val engagementDao: EngagementDao = mockk()
+    private val invalidationTracker: InvalidationTracker = mockk()
+    private val database: EngagementDatabase = mockk()
+    private val legacyEngagementDataMigrator: LegacyEngagementDataMigrator = mockk()
+    private val engagementEntityDataMapper: EngagementEntityDataMapper = mockk()
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private val dispatcherProvider = object : DispatcherProvider {
@@ -37,69 +47,64 @@ internal class EngagementDataLocalDataSourceImplTest {
         override val default: CoroutineDispatcher = testDispatcher
     }
 
+    private val stateEntity = EngagementStateEntity(
+        hasRated = false,
+        hasShared = false,
+        shareDeclines = 0,
+        lastSharePromptAt = null,
+        reviewAttempts = 0,
+        lastReviewAt = null,
+        pendingPrompt = false,
+    )
+    private val originCountEntities = listOf(EngagementOriginCountEntity(origin = "app_opened", count = 3))
+    private val storedData = EngagementData(counts = mapOf("app_opened" to 3))
+    private val failure = Failure.Unknown("migration error")
+
     private lateinit var dataSource: EngagementDataLocalDataSourceImpl
 
     @Before
     fun setUp() {
-        prefsStorage.clear()
-        every { sharedPreferences.getString(any(), any()) } answers {
-            prefsStorage[firstArg()] ?: secondArg()
+        mockkStatic("androidx.room.RoomDatabaseKt")
+        coEvery { any<RoomDatabase>().withTransaction(any<suspend () -> Any?>()) } coAnswers {
+            secondArg<suspend () -> Any?>().invoke()
         }
-        every { sharedPreferences.edit() } returns editor
-        every { editor.putString(any(), any()) } answers {
-            prefsStorage[firstArg()] = requireNotNull(secondArg<String>())
-            editor
-        }
-        every { editor.apply() } just Runs
+        every { database.engagementDao() } returns engagementDao
+        every { database.invalidationTracker } returns invalidationTracker
+        every { invalidationTracker.createFlow(*anyVararg(), emitInitialState = any()) } returns flowOf(emptySet())
+        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Success(Unit)
+        coEvery { engagementDao.getState() } returns stateEntity
+        coEvery { engagementDao.getOriginCounts() } returns originCountEntities
+        coEvery { engagementDao.replace(any(), any()) } returns Unit
+        every { engagementEntityDataMapper.toEngagementData(any(), any()) } returns storedData
+        every { engagementEntityDataMapper.toStateEntity(any()) } returns stateEntity
+        every { engagementEntityDataMapper.toOriginCountEntities(any()) } returns originCountEntities
 
-        dataSource = newDataSource()
+        dataSource = EngagementDataLocalDataSourceImpl(
+            database = database,
+            legacyEngagementDataMigrator = legacyEngagementDataMigrator,
+            engagementEntityDataMapper = engagementEntityDataMapper,
+            dispatcherProvider = dispatcherProvider,
+        )
+    }
+
+    @After
+    fun tearDown() {
+        unmockkStatic("androidx.room.RoomDatabaseKt")
     }
 
     @Test
-    fun `Given no persisted data When data is read Then default data is returned`() = runTest {
+    fun `Given stored data When data is read Then the mapped data is returned after migrating`() = runTest {
         val result = dataSource.getEngagementData()
 
-        assertEquals(Answer.Success(EngagementData()), result)
+        assertEquals(Answer.Success(storedData), result)
+        coVerify { legacyEngagementDataMigrator.migrate() }
+        coVerify { engagementEntityDataMapper.toEngagementData(stateEntity, originCountEntities) }
     }
 
     @Test
-    fun `Given persisted data When data is read Then decoded data is returned`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"hasShared":false,"counts":{"app_opened":3},""" +
-            """"reviewAttempts":2,"lastReviewAt":500,"pendingPrompt":true}"""
-
-        val result = dataSource.getEngagementData()
-
-        assertEquals(
-            Answer.Success(
-                EngagementData(
-                    hasRated = true,
-                    counts = mapOf("app_opened" to 3),
-                    reviewAttempts = 2,
-                    lastReviewAt = 500L,
-                    pendingPrompt = true,
-                ),
-            ),
-            result,
-        )
-    }
-
-    @Test
-    fun `Given an update When data is read back by a new instance Then it round-trips through preferences`() = runTest {
-        val updated = dataSource.updateEngagementData(
-            EngagementData(hasRated = true, counts = mapOf("app_opened" to 1)),
-        )
-
-        assertEquals(Answer.Success(Unit), updated)
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 1))),
-            newDataSource().getEngagementData(),
-        )
-    }
-
-    @Test
-    fun `Given corrupt JSON When data is read Then it falls back to default data`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] = "{ not valid json"
+    fun `Given no stored state When data is read Then the mapper receives a null state`() = runTest {
+        coEvery { engagementDao.getState() } returns null
+        every { engagementEntityDataMapper.toEngagementData(null, any()) } returns EngagementData()
 
         val result = dataSource.getEngagementData()
 
@@ -107,96 +112,94 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     @Test
-    fun `Given JSON with unknown keys When data is read Then unknown keys are ignored`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"reviewAttempts":1,"some_future_field":42,"counts":{"app_opened":2}}"""
+    fun `Given migration fails When data is read Then failure is returned and the database is untouched`() = runTest {
+        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
 
         val result = dataSource.getEngagementData()
 
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = true, reviewAttempts = 1, counts = mapOf("app_opened" to 2))),
-            result,
-        )
+        assertEquals(Answer.Failure(failure), result)
+        coVerify(exactly = 0) { engagementDao.getState() }
     }
 
     @Test
-    fun `Given legacy JSON with hasRated When data is read Then it is migrated to one review attempt`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"hasShared":true,"counts":{"app_opened":4},"lastSharePromptAt":7}"""
+    fun `Given the dao throws When data is read Then Unknown failure is returned`() = runTest {
+        coEvery { engagementDao.getState() } throws IllegalStateException("boom")
 
         val result = dataSource.getEngagementData()
 
-        assertEquals(
-            Answer.Success(
-                EngagementData(
-                    hasRated = false,
-                    hasShared = true,
-                    counts = mapOf("app_opened" to 4),
-                    lastSharePromptAt = 7L,
-                    reviewAttempts = 1,
-                    lastReviewAt = null,
-                ),
-            ),
-            result,
-        )
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
     }
 
     @Test
-    fun `Given legacy JSON without hasRated When data is read Then it is not migrated`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":false,"counts":{"app_opened":4}}"""
+    fun `Given an update When applied Then it receives the stored data and the result is persisted`() = runTest {
+        val updated = storedData.copy(hasRated = true)
+        var received: EngagementData? = null
 
-        val result = dataSource.getEngagementData()
+        val result = dataSource.updateEngagementData { current ->
+            received = current
+            updated
+        }
 
-        assertEquals(Answer.Success(EngagementData(counts = mapOf("app_opened" to 4))), result)
+        assertEquals(Answer.Success(updated), result)
+        assertEquals(storedData, received)
+        coVerify { engagementEntityDataMapper.toStateEntity(updated) }
+        coVerify { engagementEntityDataMapper.toOriginCountEntities(updated) }
+        coVerify(exactly = 1) { engagementDao.replace(stateEntity, originCountEntities) }
     }
 
     @Test
-    fun `Given JSON with reviewAttempts and hasRated When data is read Then it is not migrated`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":true,"reviewAttempts":0}"""
+    fun `Given migration fails When data is updated Then failure is returned and nothing is written`() = runTest {
+        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
 
-        val result = dataSource.getEngagementData()
+        val result = dataSource.updateEngagementData { it.copy(hasRated = true) }
 
-        assertEquals(Answer.Success(EngagementData(hasRated = true, reviewAttempts = 0)), result)
+        assertEquals(Answer.Failure(failure), result)
+        coVerify(exactly = 0) { engagementDao.replace(any(), any()) }
     }
 
     @Test
-    fun `Given migrated legacy data When it is written and read by a new instance Then migration survives`() = runTest {
-        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":true,"counts":{"app_opened":4}}"""
-        val migrated = (dataSource.getEngagementData() as Answer.Success).value
+    fun `Given the dao throws on write When data is updated Then Unknown failure is returned`() = runTest {
+        coEvery { engagementDao.replace(any(), any()) } throws IllegalStateException("boom")
 
-        dataSource.updateEngagementData(migrated.copy(counts = mapOf("app_opened" to 5)))
+        val result = dataSource.updateEngagementData { it.copy(hasRated = true) }
 
-        assertEquals(
-            Answer.Success(EngagementData(hasRated = false, reviewAttempts = 1, counts = mapOf("app_opened" to 5))),
-            newDataSource().getEngagementData(),
-        )
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
     }
 
     @Test
-    fun `Given an observer When data is updated Then updates are emitted`() = runTest {
-        val emissions = mutableListOf<Answer<EngagementData, Failure>>()
-        val job = launch { dataSource.observeEngagementData().collect { emissions += it } }
-        runCurrent()
+    fun `Given the update lambda throws When data is updated Then Unknown failure is returned`() = runTest {
+        val result = dataSource.updateEngagementData { throw IllegalStateException("boom") }
 
-        dataSource.updateEngagementData(EngagementData(hasRated = true))
-        runCurrent()
-
-        assertEquals(
-            listOf(
-                Answer.Success(EngagementData()),
-                Answer.Success(EngagementData(hasRated = true)),
-            ),
-            emissions,
-        )
-        job.cancel()
+        assertTrue(result is Answer.Failure)
+        assertTrue((result as Answer.Failure).value is Failure.Unknown)
+        coVerify(exactly = 0) { engagementDao.replace(any(), any()) }
     }
 
-    private fun newDataSource() = EngagementDataLocalDataSourceImpl(
-        sharedPreferences = sharedPreferences,
-        dispatcherProvider = dispatcherProvider,
-    )
+    @Test
+    fun `Given migration succeeds When data is observed Then stored data is emitted`() = runTest {
+        val emissions = dataSource.observeEngagementData().toList()
 
-    private companion object {
-        const val ENGAGEMENT_DATA_KEY = "engagement_data"
+        assertEquals(listOf(Answer.Success(storedData)), emissions)
+    }
+
+    @Test
+    fun `Given migration fails When data is observed Then the failure is emitted followed by stored data`() = runTest {
+        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
+
+        val emissions = dataSource.observeEngagementData().toList()
+
+        assertEquals(listOf(Answer.Failure(failure), Answer.Success(storedData)), emissions)
+    }
+
+    @Test
+    fun `Given the dao throws When data is observed Then Unknown failure is emitted`() = runTest {
+        coEvery { engagementDao.getState() } throws IllegalStateException("boom")
+
+        val emissions = dataSource.observeEngagementData().toList()
+
+        assertEquals(1, emissions.size)
+        assertTrue((emissions.single() as Answer.Failure).value is Failure.Unknown)
     }
 }

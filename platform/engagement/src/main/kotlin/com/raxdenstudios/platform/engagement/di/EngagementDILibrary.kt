@@ -12,9 +12,9 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  * that could not show anything (e.g. reached from a notification action with no activity) are
  * kept pending for the next call. See `EngagementUseCase` for the full policy.
  *
- * Progress is persisted in the module's own `SharedPreferences` file (`platform_engagement`,
- * key `engagement_data`) serialized with a private `Json` (`ignoreUnknownKeys`,
- * `encodeDefaults`), so consumers bind neither `SharedPreferences` nor `Json`.
+ * Progress is persisted in the module's own Room database (`platform_engagement.db`), so
+ * consumers bind nothing for it. Progress stored by older versions as JSON in the
+ * `platform_engagement` `SharedPreferences` file is moved into the database on first access.
  *
  * ## Setup
  *
