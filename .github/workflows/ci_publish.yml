@@ -32,13 +32,14 @@ on:
         required: false
         default: 'USER_MANAGED'
 
+run-name: "Publish · ${{ github.ref_name }}"
+
 concurrency:
-  group: build-publish-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  actions: write
 
 env:
   # Increment this to invalidate the cache.
@@ -134,12 +135,21 @@ jobs:
         with:
           retention-days: ${{ env.RETENTION_DAYS }}
 
-  build:
-    name: Build
-    needs: [ checkstyle ]
+  verify:
+    name: ${{ matrix.name }}
+    needs: [ checkstyle, computeChangedModules ]
     if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      # A failure cancels the sibling matrix jobs (replaces the old cancel steps)
+      fail-fast: true
+      matrix:
+        include:
+          - name: Build
+            task: build
+          - name: Run Unit Tests
+            task: test
 
     steps:
       - uses: actions/checkout@v6
@@ -148,46 +158,21 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Assemble ${{ env.BUILD_TYPE }}
+        if: matrix.task == 'build'
         uses: ./.github/actions/assemble
         with:
           build-type: ${{ env.BUILD_TYPE }}
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Cancel workflow run if failed
-        if: failure()
-        uses: ./.github/actions/workflow_run
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          operation: cancel
-
-  test:
-    name: Run Unit Tests
-    needs: [ checkstyle ]
-    if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v6
-        with: { fetch-depth: 0 }
-
-      - uses: ./.github/actions/setup
-
       - name: Execute unit tests
+        if: matrix.task == 'test'
         uses: ./.github/actions/unit_tests
         with:
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Cancel workflow run if failed
-        if: failure()
-        uses: ./.github/actions/workflow_run
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          operation: cancel
-
   bump:
     name: Bump libraries version
-    needs: [ build, test, computeChangedModules ]
+    needs: [ verify, computeChangedModules ]
     if: ${{ needs.computeChangedModules.outputs.hasModules == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

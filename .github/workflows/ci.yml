@@ -4,14 +4,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+run-name: "PR #${{ github.event.pull_request.number }} · ${{ github.event.pull_request.title }}"
+
 concurrency:
   # Ensure only one run per PR is active
-  group: build-pr-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  actions: write
 
 env:
   # Increment to invalidate Gradle cache when needed
@@ -70,11 +71,20 @@ jobs:
         with:
           retention-days: ${{ env.RETENTION_DAYS }}
 
-  build:
-    name: Build
+  verify:
+    name: ${{ matrix.name }}
     needs: [checkstyle]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      # A failure cancels the sibling matrix jobs (replaces the old cancel steps)
+      fail-fast: true
+      matrix:
+        include:
+          - name: Build
+            task: build
+          - name: Run Unit Tests
+            task: test
 
     steps:
       - uses: actions/checkout@v6
@@ -83,46 +93,22 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Assemble ${{ env.BUILD_TYPE }}
+        if: matrix.task == 'build'
         uses: ./.github/actions/assemble
         with:
           build-type: ${{ env.BUILD_TYPE }}
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Cancel workflow run if failed
-        if: failure()
-        uses: ./.github/actions/workflow_run
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          operation: cancel
-
-  test:
-    name: Run Unit Tests
-    needs: [checkstyle]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v6
-        with: { fetch-depth: 0 }
-
-      - uses: ./.github/actions/setup
-
       - name: Execute unit tests
+        if: matrix.task == 'test'
         uses: ./.github/actions/unit_tests
         with:
           build-type: ${{ env.BUILD_TYPE }}
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Cancel workflow run if failed
-        if: failure()
-        uses: ./.github/actions/workflow_run
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          operation: cancel
-
   status:
     name: Status
-    needs: [ build, test ]
+    needs: [ verify ]
     runs-on: ubuntu-latest
     if: always()
 
@@ -130,10 +116,9 @@ jobs:
       - name: Check dependencies status
         shell: bash
         run: |
-          echo "Build status: ${{ needs.build.result }}"
-          echo "Test status: ${{ needs.test.result }}"
-          
-          if [[ "${{ needs.build.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
+          echo "Build and test status: ${{ needs.verify.result }}"
+
+          if [[ "${{ needs.verify.result }}" != "success" ]]; then
             echo "❌ One or more jobs failed"
             exit 1
           fi

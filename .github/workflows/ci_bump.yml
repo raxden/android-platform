@@ -24,8 +24,8 @@ on:
         default: 'patch'
 
 concurrency:
-  group: build-publish-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read

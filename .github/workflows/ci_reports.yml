@@ -13,8 +13,8 @@ on:
         default: 'Debug'
 
 concurrency:
-  # Ensure only one run per PR is active
-  group: build-generate-reports-${{ github.ref }}
+  # Ensure only one reports run per ref is active
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
