@@ -1,8 +1,8 @@
 # platform-engagement
 
-Pide al usuario **valorar la app** (in-app review de Google Play) o **compartirla** en el momento adecuado, sin agobiarle.
+Asks the user to **rate the app** (Google Play in-app review) or **share it** at the right moment, without nagging.
 
-La app solo tiene que avisar al motor de que "ha pasado algo bueno". El motor decide si toca preguntar, qué preguntar y cuándo volver a hacerlo.
+The app only tells the engine that "something good just happened". The engine decides whether to ask, what to ask for and when to ask again.
 
 ```kotlin
 engagementUseCase(EngagementUseCase.Params(origin = "favourite_added"))
@@ -10,141 +10,141 @@ engagementUseCase(EngagementUseCase.Params(origin = "favourite_added"))
 
 ---
 
-## 1. La idea en 30 segundos
+## 1. The idea in 30 seconds
 
-| Concepto | Qué es | Ejemplo |
+| Concept | What it is | Example |
 |---|---|---|
-| **Origen** (`origin`) | Nombre del momento que dispara la llamada. Cada origen lleva su propio contador. | `"favourite_added"`, `"long_listening_session"` |
-| **Hito** (`EngagementEligibility`) | Regla que dice en qué ocurrencia de un origen merece la pena preguntar. La define la app. | 3.ª vez, y luego cada 10 |
-| **Política** (`PromptPolicy`) | Límites globales para no molestar: cuántas veces y cada cuánto se puede pedir la review o el share. | Review: 3 veces como máximo, cada 90 días |
-| **Pendiente** (`pendingPrompt`) | Un hito que se alcanzó pero no se pudo mostrar. No se pierde: se muestra en la siguiente llamada. | Favorito añadido desde la notificación, con la app cerrada |
+| **Origin** (`origin`) | Name of the moment that triggers the call. Each origin has its own counter. | `"favourite_added"`, `"long_listening_session"` |
+| **Milestone** (`EngagementEligibility`) | Rule that says on which occurrence of an origin it is worth asking. Defined by the app. | 3rd time, then every 10th |
+| **Policy** (`PromptPolicy`) | Global limits so the user is not bothered: how many times and how often the review or the share prompt can be shown. | Review: at most 3 times, 90 days apart |
+| **Pending** (`pendingPrompt`) | A milestone that was reached but could not be shown. It is not lost: it is shown on the next call. | Favourite added from the notification while the app is closed |
 
-En una frase: **cada llamada suma 1 al contador de su origen. Si es un hito (o hay algo pendiente) y la política lo permite, se muestra la review o, si no se puede, el share.**
+In one sentence: **every call adds 1 to its origin's counter. If it is a milestone (or something is pending) and the policy allows it, the review is shown or, if that is not possible, the share prompt.**
 
 ---
 
-## 2. Qué pasa en cada llamada
+## 2. What happens on each call
 
 ```mermaid
 flowchart TD
-    A["engagementUseCase(origin)"] --> B["Contador de origin + 1<br/>(siempre, en una transacción)"]
-    B --> C{"¿Otro prompt<br/>en pantalla?"}
-    C -- Sí --> C1{"¿Es hito y alguna<br/>política lo permite?"}
-    C1 -- Sí --> P1["Marca pendiente → None"]
+    A["engagementUseCase(origin)"] --> B["origin counter + 1<br/>(always, in a transaction)"]
+    B --> C{"Another prompt<br/>on screen?"}
+    C -- Yes --> C1{"Milestone and any<br/>policy allows it?"}
+    C1 -- Yes --> P1["Mark pending → None"]
     C1 -- No --> N0["None"]
-    C -- No --> D{"¿Es hito o hay<br/>algo pendiente?"}
+    C -- No --> D{"Milestone or<br/>something pending?"}
     D -- No --> N1["None"]
-    D -- Sí --> E{"¿Se puede pedir<br/>la review?"}
-    E -- Sí --> R["Lanza in-app review"]
-    R -- "Se lanzó" --> RL["ReviewLaunched<br/>(intento +1, limpia pendiente)"]
-    R -- "No se pudo<br/>(sin Activity)" --> F{"¿Se puede<br/>pedir el share?"}
-    F -- Sí --> S
-    F -- No --> P2["Marca pendiente →<br/>ReviewUnavailable"]
-    E -- No --> G{"¿Se puede<br/>pedir el share?"}
-    G -- Sí --> S["Muestra «¿Compartir la app?»"]
-    G -- No --> H{"¿Había pendiente?"}
-    H -- Sí --> X["Lo descarta → None<br/>(ya no se puede mostrar nada)"]
+    D -- Yes --> E{"Review<br/>allowed?"}
+    E -- Yes --> R["Launch in-app review"]
+    R -- "Launched" --> RL["ReviewLaunched<br/>(attempt + 1, pending cleared)"]
+    R -- "Could not launch<br/>(no Activity)" --> F{"Share<br/>allowed?"}
+    F -- Yes --> S
+    F -- No --> P2["Mark pending →<br/>ReviewUnavailable"]
+    E -- No --> G{"Share<br/>allowed?"}
+    G -- Yes --> S["Show «Share the app?»"]
+    G -- No --> H{"Was something<br/>pending?"}
+    H -- Yes --> X["Drop it → None<br/>(nothing can be shown any more)"]
     H -- No --> N2["None"]
-    S -- "Elige app" --> SC["ShareChosen<br/>(no se vuelve a pedir)"]
-    S -- "Ahora no" --> SN["ShareNotChosen<br/>(rechazos +1)"]
-    S -- "Acepta y cierra la hoja" --> SD["ShareNotChosen<br/>(no cuenta como rechazo)"]
-    S -- "No se pudo mostrar" --> P3["Marca pendiente →<br/>ShareNotChosen"]
+    S -- "Picks an app" --> SC["ShareChosen<br/>(never asked again)"]
+    S -- "Not now" --> SN["ShareNotChosen<br/>(declines + 1)"]
+    S -- "Accepts, then closes the sheet" --> SD["ShareNotChosen<br/>(not counted as a decline)"]
+    S -- "Could not be shown" --> P3["Mark pending →<br/>ShareNotChosen"]
 ```
 
-Prioridad: **primero la review, después el share**. Solo se muestra una cosa por llamada.
+Priority: **review first, then share**. Only one thing is shown per call.
 
 ---
 
-## 3. Las reglas para no molestar
+## 3. The rules that prevent nagging
 
-| | Review (in-app review) | Share («¿Compartir la app?») |
+| | Review (in-app review) | Share («Share the app?») |
 |---|---|---|
-| Nunca más si… | El usuario valoró desde Ajustes (`MarkAppAsRatedUseCase`) | El usuario eligió una app para compartir |
-| Máximo | 3 lanzamientos | 3 «Ahora no» |
-| Espera entre dos | 90 días | 7 días |
-| Separación con el otro | 7 días desde el último share | 7 días desde la última review |
+| Never again once… | The user rated from Settings (`MarkAppAsRatedUseCase`) | The user picked an app to share with |
+| Maximum | 3 launches | 3 «Not now» answers |
+| Wait between two | 90 days | 7 days |
+| Gap with the other one | 7 days since the last share prompt | 7 days since the last review |
 
-La última fila hace que **como mucho se pregunte una vez por semana**, sea lo que sea.
+The last row means **the user is asked at most once a week**, whatever the prompt.
 
-¿Por qué la review no es "una y no más"? Google Play **no dice si el diálogo llegó a mostrarse**: tiene una cuota propia y puede ignorar la petición en silencio. Por eso se reintenta un máximo de 3 veces, separadas 90 días.
+Why is the review not "once and done"? Google Play **does not report whether the dialog was actually shown**: it has its own quota and may silently ignore the request. That is why it is retried at most 3 times, 90 days apart.
 
 ---
 
-## 4. Casos prácticos
+## 4. Practical cases
 
-Los ejemplos usan la regla por defecto (`DefaultEngagementEligibility`): hito en la **3.ª** ocurrencia y luego en la **10.ª, 20.ª, 30.ª…**
+The examples use the default rule (`DefaultEngagementEligibility`): milestone on the **3rd** occurrence and then on the **10th, 20th, 30th…**
 
-### Caso 1: el camino feliz
+### Case 1: the happy path
 
-Ana añade emisoras a favoritos.
+Ana adds stations to her favourites.
 
-| Favorito n.º | ¿Hito? | Qué ve Ana |
+| Favourite # | Milestone? | What Ana sees |
 |---|---|---|
-| 1, 2 | No | Nada |
-| 3 | **Sí** | Diálogo de valoración de Google Play → `ReviewLaunched` |
-| 4 … 9 | No | Nada |
-| 10 | **Sí** | Nada: hace menos de 7 días de la review, y la siguiente review no llega hasta dentro de 90 días |
-| 20 (días después) | **Sí** | «¿Compartir la app?» |
+| 1, 2 | No | Nothing |
+| 3 | **Yes** | Google Play rating dialog → `ReviewLaunched` |
+| 4 … 9 | No | Nothing |
+| 10 | **Yes** | Nothing: the review was less than 7 days ago, and the next review is not due for 90 days |
+| 20 (days later) | **Yes** | «Share the app?» |
 
-### Caso 2: la línea temporal de un usuario fiel
+### Case 2: the timeline of a loyal user
 
 ```mermaid
 gantt
     dateFormat  YYYY-MM-DD
-    axisFormat  día %j
+    axisFormat  day %j
     section Review
-    Review #1 lanzada          :milestone, r1, 2026-01-01, 0d
-    Sin review (90 días)       :crit, 2026-01-01, 90d
-    Review #2 lanzada          :milestone, r2, 2026-04-05, 0d
+    Review #1 launched         :milestone, r1, 2026-01-01, 0d
+    No review (90 days)        :crit, 2026-01-01, 90d
+    Review #2 launched         :milestone, r2, 2026-04-05, 0d
     section Share
-    Sin share (7 días tras review) :crit, 2026-01-01, 7d
-    Share → «Ahora no» (rechazo 1) :milestone, s1, 2026-01-12, 0d
-    Sin share (7 días)          :crit, 2026-01-12, 7d
-    Share → «Ahora no» (rechazo 2) :milestone, s2, 2026-02-02, 0d
+    No share (7 days after review) :crit, 2026-01-01, 7d
+    Share → «Not now» (decline 1)  :milestone, s1, 2026-01-12, 0d
+    No share (7 days)              :crit, 2026-01-12, 7d
+    Share → «Not now» (decline 2)  :milestone, s2, 2026-02-02, 0d
 ```
 
-- Día 1: hito → review #1.
-- Día 12: hito → la review está en espera, así que sale el share. Pulsa «Ahora no».
-- Día 33: hito → share otra vez. «Ahora no» (lleva 2 rechazos; con el 3.º no se vuelve a preguntar).
-- Día 95: hito → ya han pasado 90 días → review #2.
-- Tras la review #3 no se vuelve a pedir nunca.
+- Day 1: milestone → review #1.
+- Day 12: milestone → the review is cooling down, so the share prompt is shown. «Not now».
+- Day 33: milestone → share prompt again. «Not now» (2 declines; after the 3rd it is never asked again).
+- Day 95: milestone → 90 days have passed → review #2.
+- After review #3 the review is never requested again.
 
-### Caso 3: el hito llega sin la app abierta (pendiente)
+### Case 3: the milestone is reached while the app is not open (pending)
 
-Ana marca una emisora como favorita **desde la notificación** del reproductor, con la app en segundo plano. Es su 3.er favorito, pero no hay pantalla donde mostrar la review.
+Ana marks a station as favourite **from the player notification**, with the app in the background. It is her 3rd favourite, but there is no screen to show the review on.
 
 ```mermaid
 sequenceDiagram
-    participant N as Notificación
-    participant E as Motor
-    participant App as App (primer plano)
-    N->>E: engagement("favourite_added") — 3.º, hito
-    E->>E: review → no hay Activity
-    E->>E: share → tampoco se puede
+    participant N as Notification
+    participant E as Engine
+    participant App as App (foreground)
+    N->>E: engagement("favourite_added") — 3rd, milestone
+    E->>E: review → no Activity
+    E->>E: share → not possible either
     E-->>N: ReviewUnavailable, pendingPrompt = true
-    Note over E: El hito no se pierde
-    App->>E: engagement("app_foreground") — no es hito
-    E->>E: ¡pero hay pendiente!
-    E-->>App: muestra la review → ReviewLaunched, pendiente limpio
+    Note over E: The milestone is not lost
+    App->>E: engagement("app_foreground") — not a milestone
+    E->>E: but something is pending!
+    E-->>App: shows the review → ReviewLaunched, pending cleared
 ```
 
-La app solo necesita llamar al motor con algún origen cuando vuelve a primer plano (RadioSquare usa `"app_foreground"`, que nunca es hito por sí mismo).
+The app only needs to call the engine with some origin when it returns to the foreground (RadioSquare uses `"app_foreground"`, which is never a milestone on its own).
 
-### Caso 4: dos momentos a la vez
+### Case 4: two moments at once
 
-Mientras el diálogo de review está abierto, salta otro hito (por ejemplo, termina una sesión larga). El segundo **se cuenta**, pero no abre otro diálogo encima: se marca como pendiente y se ofrecerá más adelante, si las políticas lo permiten.
+While the review dialog is open, another milestone fires (for example, a long listening session ends). The second one **is counted**, but it does not open another dialog on top: it is marked as pending and offered later, if the policies allow it.
 
-### Caso 5: el usuario valora desde Ajustes
+### Case 5: the user rates from Settings
 
-En Cuenta → «Valorar la app», la app abre Play Store y llama a:
+In Account → «Rate the app», the app opens the Play Store and calls:
 
 ```kotlin
 markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
 ```
 
-Desde ese momento **nunca** se vuelve a pedir la review a ese usuario (el share sí puede seguir).
+From then on the review is **never** requested from that user again (the share prompt can still be shown).
 
-### Caso 6: la review no se pudo lanzar y quieres ofrecer Play Store
+### Case 6: the review could not launch and you want to offer the Play Store
 
 ```kotlin
 engagementUseCase(EngagementUseCase.Params("alarm_dismissed")).onSuccess { result ->
@@ -155,30 +155,30 @@ engagementUseCase(EngagementUseCase.Params("alarm_dismissed")).onSuccess { resul
 }
 ```
 
-Es opcional: si no haces nada, el motor ya deja el prompt pendiente cuando procede.
+This is optional: if you do nothing, the engine already keeps the prompt pending when appropriate.
 
 ---
 
-## 5. Resultados posibles
+## 5. Possible results
 
-| `EngagementResult` | Significado |
+| `EngagementResult` | Meaning |
 |---|---|
-| `None` | No se mostró nada (no era hito, las políticas no lo permiten u otro prompt estaba abierto). |
-| `ReviewLaunched` | Se lanzó la review de Google Play (no garantiza que se viera). |
-| `ReviewUnavailable` | No se pudo lanzar la review y no se compartió nada. |
-| `ShareChosen` | El usuario compartió la app. |
-| `ShareNotChosen` | Rechazó o cerró el share, o no se pudo mostrar. |
+| `None` | Nothing was shown (not a milestone, the policies do not allow it, or another prompt was open). |
+| `ReviewLaunched` | The Google Play review was launched (it does not guarantee it was seen). |
+| `ReviewUnavailable` | The review could not launch and nothing was shared. |
+| `ShareChosen` | The user shared the app. |
+| `ShareNotChosen` | The user declined or closed the share prompt, or it could not be shown. |
 
 ---
 
-## 6. Dónde se guarda el progreso
+## 6. Where progress is stored
 
-En una base de datos Room propia del módulo, **`platform_engagement.db`**. La app no tiene que configurar nada.
+In the module's own Room database, **`platform_engagement.db`**. The app does not need to configure anything.
 
 ```mermaid
 erDiagram
     engagement_state {
-        int id PK "siempre 0 (una sola fila)"
+        int id PK "always 0 (single row)"
         bool has_rated
         bool has_shared
         int share_declines
@@ -193,40 +193,40 @@ erDiagram
     }
 ```
 
-- Cada cambio (sumar al contador, registrar una review…) se hace **en una transacción**: leer, modificar y guardar en un solo paso, así dos llamadas simultáneas nunca se pisan.
-- `ObserveEngagementDataUseCase` emite los datos cada vez que cambia cualquiera de las dos tablas (útil, por ejemplo, para una tarjeta «Valora la app» en la Home).
+- Every change (incrementing a counter, recording a review…) runs **in a transaction**: read, modify and save in one step, so two simultaneous calls never overwrite each other.
+- `ObserveEngagementDataUseCase` emits the data whenever either table changes (useful, for example, for a «Rate the app» card on the home screen).
 
-### Usuarios que vienen de una versión anterior
+### Users coming from an older version
 
-Antes el progreso se guardaba como JSON en las SharedPreferences `platform_engagement`. En el primer acceso se copia solo:
+Progress used to be stored as JSON in the `platform_engagement` SharedPreferences. It is copied over automatically on first access:
 
 ```mermaid
 sequenceDiagram
     participant DS as Data source
-    participant M as Migrador
+    participant M as Migrator
     participant SP as SharedPreferences
     participant DB as Room
-    DS->>M: migrate() (antes de cada lectura/escritura)
-    M->>SP: ¿existe engagement_data?
-    alt No existe
-        M-->>DS: nada que hacer
-    else Existe
-        M->>DB: transacción: inserta solo si aún no hay fila
-        M->>SP: borra la clave (solo tras confirmar)
-        M-->>DS: listo
+    DS->>M: migrate() (before every read/write)
+    M->>SP: does engagement_data exist?
+    alt It does not
+        M-->>DS: nothing to do
+    else It does
+        M->>DB: transaction: insert only if there is no row yet
+        M->>SP: remove the key (only after the commit)
+        M-->>DS: done
     end
 ```
 
-- Si la app muere entre los dos pasos, la siguiente vez ve que Room ya tiene datos y solo borra la clave: **nunca se duplica ni se pierde nada**.
-- Datos muy antiguos, en los que `hasRated = true` significaba "ya se lanzó la review una vez", se convierten en `reviewAttempts = 1`, `hasRated = false`.
+- If the app dies between the two steps, the next run sees that Room already has data and only removes the key: **nothing is ever duplicated or lost**.
+- Very old data, where `hasRated = true` meant "the review was launched once", is converted to `reviewAttempts = 1`, `hasRated = false`.
 
-> **Copia de seguridad:** para no perder el progreso al cambiar de móvil, la app debe incluir `platform_engagement.db` en sus reglas de Auto Backup (`data_extraction_rules.xml` y `backup_rules.xml`).
+> **Backup:** to keep progress when the user switches phones, the app must include `platform_engagement.db` in its Auto Backup rules (`data_extraction_rules.xml` and `backup_rules.xml`).
 
 ---
 
-## 7. Integrarlo en una app
+## 7. Integrating it into an app
 
-**1. Cargar las librerías** (`DeviceDILibrary` aporta `InAppReview` e `InAppShare`):
+**1. Load the libraries** (`DeviceDILibrary` provides `InAppReview` and `InAppShare`):
 
 ```kotlin
 override fun provideLibs(): List<DILibrary> = listOf(
@@ -235,14 +235,14 @@ override fun provideLibs(): List<DILibrary> = listOf(
 )
 ```
 
-**2. Enganchar las Activities** (en `ActivityLifecycleCallbacks.onActivityCreated`):
+**2. Attach the Activities** (in `ActivityLifecycleCallbacks.onActivityCreated`):
 
 ```kotlin
 inAppReview.attach(activity)
-inAppShare.attach(activity) // antes de que la Activity esté STARTED
+inAppShare.attach(activity) // before the Activity is STARTED
 ```
 
-**3. (Opcional) Definir tus hitos y tu texto de share:**
+**3. (Optional) Define your own milestones and share copy:**
 
 ```kotlin
 class MyEligibility : EngagementEligibility {
@@ -259,12 +259,12 @@ module {
 }
 ```
 
-Sin ellos se usan los valores por defecto: hito en la 3.ª ocurrencia y cada 10, y un texto de share con el nombre de la app y su enlace a Play Store (strings `engagement_share_subject` / `engagement_share_text`, sobrescribibles por nombre).
+Without them the defaults apply: a milestone on the 3rd occurrence and every 10th, and a share message with the app name and its Play Store link (strings `engagement_share_subject` / `engagement_share_text`, overridable by resource name).
 
-**4. Llamar al motor en los momentos positivos**, con un origen distinto para cada uno.
+**4. Call the engine at positive moments**, with a different origin for each one.
 
-### Consejos
+### Tips
 
-- Llama al motor **después** de algo que el usuario disfrutó (terminar de escuchar, apagar una alarma que funcionó), no al abrir la app.
-- Llámalo también al volver a primer plano con un origen que nunca sea hito, para que salgan los prompts pendientes.
-- Llama a `MarkAppAsRatedUseCase` siempre que abras la página de Play Store para valorar.
+- Call the engine **after** something the user enjoyed (finishing a listening session, dismissing an alarm that worked), not when the app opens.
+- Also call it when returning to the foreground with an origin that is never a milestone, so pending prompts get shown.
+- Call `MarkAppAsRatedUseCase` whenever you open the Play Store page to rate.
