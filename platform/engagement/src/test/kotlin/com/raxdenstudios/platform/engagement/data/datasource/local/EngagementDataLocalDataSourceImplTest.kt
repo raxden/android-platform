@@ -65,12 +65,21 @@ internal class EngagementDataLocalDataSourceImplTest {
     @Test
     fun `Given persisted data When data is read Then decoded data is returned`() = runTest {
         prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"hasShared":false,"counts":{"app_opened":3}}"""
+            """{"hasRated":true,"hasShared":false,"counts":{"app_opened":3},""" +
+            """"reviewAttempts":2,"lastReviewAt":500,"pendingPrompt":true}"""
 
         val result = dataSource.getEngagementData()
 
         assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 3))),
+            Answer.Success(
+                EngagementData(
+                    hasRated = true,
+                    counts = mapOf("app_opened" to 3),
+                    reviewAttempts = 2,
+                    lastReviewAt = 500L,
+                    pendingPrompt = true,
+                ),
+            ),
             result,
         )
     }
@@ -100,13 +109,66 @@ internal class EngagementDataLocalDataSourceImplTest {
     @Test
     fun `Given JSON with unknown keys When data is read Then unknown keys are ignored`() = runTest {
         prefsStorage[ENGAGEMENT_DATA_KEY] =
-            """{"hasRated":true,"some_future_field":42,"counts":{"app_opened":2}}"""
+            """{"hasRated":true,"reviewAttempts":1,"some_future_field":42,"counts":{"app_opened":2}}"""
 
         val result = dataSource.getEngagementData()
 
         assertEquals(
-            Answer.Success(EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))),
+            Answer.Success(EngagementData(hasRated = true, reviewAttempts = 1, counts = mapOf("app_opened" to 2))),
             result,
+        )
+    }
+
+    @Test
+    fun `Given legacy JSON with hasRated When data is read Then it is migrated to one review attempt`() = runTest {
+        prefsStorage[ENGAGEMENT_DATA_KEY] =
+            """{"hasRated":true,"hasShared":true,"counts":{"app_opened":4},"lastSharePromptAt":7}"""
+
+        val result = dataSource.getEngagementData()
+
+        assertEquals(
+            Answer.Success(
+                EngagementData(
+                    hasRated = false,
+                    hasShared = true,
+                    counts = mapOf("app_opened" to 4),
+                    lastSharePromptAt = 7L,
+                    reviewAttempts = 1,
+                    lastReviewAt = null,
+                ),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `Given legacy JSON without hasRated When data is read Then it is not migrated`() = runTest {
+        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":false,"counts":{"app_opened":4}}"""
+
+        val result = dataSource.getEngagementData()
+
+        assertEquals(Answer.Success(EngagementData(counts = mapOf("app_opened" to 4))), result)
+    }
+
+    @Test
+    fun `Given JSON with reviewAttempts and hasRated When data is read Then it is not migrated`() = runTest {
+        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":true,"reviewAttempts":0}"""
+
+        val result = dataSource.getEngagementData()
+
+        assertEquals(Answer.Success(EngagementData(hasRated = true, reviewAttempts = 0)), result)
+    }
+
+    @Test
+    fun `Given migrated legacy data When it is written and read by a new instance Then migration survives`() = runTest {
+        prefsStorage[ENGAGEMENT_DATA_KEY] = """{"hasRated":true,"counts":{"app_opened":4}}"""
+        val migrated = (dataSource.getEngagementData() as Answer.Success).value
+
+        dataSource.updateEngagementData(migrated.copy(counts = mapOf("app_opened" to 5)))
+
+        assertEquals(
+            Answer.Success(EngagementData(hasRated = false, reviewAttempts = 1, counts = mapOf("app_opened" to 5))),
+            newDataSource().getEngagementData(),
         )
     }
 

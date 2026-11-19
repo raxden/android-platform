@@ -10,6 +10,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 
@@ -43,20 +44,41 @@ internal class RateAppUseCaseImplTest {
         useCase = RateAppUseCaseImpl(
             inAppReview = inAppReview,
             engagementDataRepository = engagementDataRepository,
+            currentTimeMillis = { NOW },
         )
     }
 
     @Test
-    fun `Given review launches successfully When invoked Then app is marked as rated`() = runTest {
-        storedData = EngagementData(counts = mapOf("app_opened" to 3))
+    fun `Given review launches successfully When invoked Then attempt is recorded and app is not marked as rated`() =
+        runTest {
+            storedData = EngagementData(counts = mapOf("app_opened" to 3))
 
-        val result = useCase(RateAppUseCase.Params)
+            val result = useCase(RateAppUseCase.Params)
 
-        assertEquals(Answer.Success(false), result)
-        assertEquals(
-            EngagementData(counts = mapOf("app_opened" to 3), hasRated = true),
-            storedData,
-        )
+            assertEquals(Answer.Success(false), result)
+            assertEquals(
+                EngagementData(counts = mapOf("app_opened" to 3), reviewAttempts = 1, lastReviewAt = NOW),
+                storedData,
+            )
+        }
+
+    @Test
+    fun `Given previous attempts When review launches Then attempts are incremented and timestamp updated`() = runTest {
+        storedData = EngagementData(reviewAttempts = 1, lastReviewAt = NOW - 1)
+
+        useCase(RateAppUseCase.Params)
+
+        assertEquals(2, storedData.reviewAttempts)
+        assertEquals(NOW, storedData.lastReviewAt)
+    }
+
+    @Test
+    fun `Given pending prompt When review launches Then pending prompt is cleared`() = runTest {
+        storedData = EngagementData(pendingPrompt = true)
+
+        useCase(RateAppUseCase.Params)
+
+        assertFalse(storedData.pendingPrompt)
     }
 
     @Test
@@ -66,6 +88,7 @@ internal class RateAppUseCaseImplTest {
         val result = useCase(RateAppUseCase.Params)
 
         assertEquals(Answer.Success(true), result)
+        assertEquals(EngagementData(), storedData)
         coVerify(exactly = 0) { engagementDataRepository.getEngagementData() }
         coVerify(exactly = 0) { engagementDataRepository.updateEngagementData(any()) }
     }
@@ -77,5 +100,9 @@ internal class RateAppUseCaseImplTest {
         val result = useCase(RateAppUseCase.Params)
 
         assertEquals(Answer.Failure(failure), result)
+    }
+
+    private companion object {
+        const val NOW = 1_000_000_000_000L
     }
 }

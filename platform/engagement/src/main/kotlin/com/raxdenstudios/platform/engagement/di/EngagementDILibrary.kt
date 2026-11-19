@@ -6,7 +6,11 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
 
 /**
  * DI entry point of the engagement module: in-app review and share prompts gated by
- * per-origin occurrence milestones.
+ * per-origin occurrence milestones. The review is requested at most 3 times, 90 days apart, and
+ * never again once the user rated the app manually; the share prompt is shown until the user
+ * shares or declines it 3 times, 7 days apart; the user is asked at most once a week. Milestones
+ * that could not show anything (e.g. reached from a notification action with no activity) are
+ * kept pending for the next call. See `EngagementUseCase` for the full policy.
  *
  * Progress is persisted in the module's own `SharedPreferences` file (`platform_engagement`,
  * key `engagement_data`) serialized with a private `Json` (`ignoreUnknownKeys`,
@@ -58,8 +62,19 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  *             if (result == EngagementResult.ReviewUnavailable) {
  *                 // Optional: the review flow could not launch — offer the Play Store page.
  *                 context.startActivity(intentFactory.build(IntentType.PlayStore))
+ *                 markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
  *             }
  *         }
+ * }
+ * ```
+ *
+ * Whenever the user opens the Play Store rating page manually (e.g. a "Rate us" settings entry),
+ * call `MarkAppAsRatedUseCase` so the in-app review is never requested again:
+ *
+ * ```kotlin
+ * safeLaunch {
+ *     context.startActivity(intentFactory.build(IntentType.PlayStore))
+ *     markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
  * }
  * ```
  */

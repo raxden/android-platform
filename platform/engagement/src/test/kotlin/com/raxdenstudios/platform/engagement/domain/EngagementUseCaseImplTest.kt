@@ -238,7 +238,7 @@ internal class EngagementUseCaseImplTest {
     }
 
     @Test
-    fun `Given share fails When invoked Then it is swallowed and nothing is persisted`() = runTest {
+    fun `Given share fails When invoked Then it is swallowed and prompt is kept pending`() = runTest {
         val initial = EngagementData(hasRated = true, counts = mapOf("app_opened" to 2))
         storedData = initial
         every { engagementEligibility.isEligible(any(), any()) } returns true
@@ -248,8 +248,8 @@ internal class EngagementUseCaseImplTest {
 
         assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
         assertFalse(storedData.hasShared)
-        assertEquals(initial.copy(counts = mapOf("app_opened" to 3)), storedData)
-        coVerify(exactly = 1) { engagementDataRepository.updateEngagementData(any()) }
+        assertEquals(initial.copy(counts = mapOf("app_opened" to 3), pendingPrompt = true), storedData)
+        coVerify(exactly = 2) { engagementDataRepository.updateEngagementData(any()) }
     }
 
     @Test
@@ -268,12 +268,53 @@ internal class EngagementUseCaseImplTest {
             val second = useCase(EngagementUseCase.Params("app_opened"))
 
             assertEquals(Answer.Success(EngagementResult.None), second)
-            coVerify(exactly = 2) { engagementDataRepository.updateEngagementData(any()) }
+            coVerify(exactly = 3) { engagementDataRepository.updateEngagementData(any()) }
             assertEquals(2, storedData.counts["app_opened"])
+            assertTrue(storedData.pendingPrompt)
 
             gate.complete(Unit)
             assertEquals(Answer.Success(EngagementResult.ReviewLaunched), first.await())
             coVerify(exactly = 1) { rateAppUseCase(any()) }
+        }
+
+    @Test
+    fun `Given engagement in progress and non milestone When invoked concurrently Then pending is not set`() = runTest {
+        every { engagementEligibility.isEligible(any(), any()) } answers { secondArg<Int>() == 1 }
+        val gate = CompletableDeferred<Unit>()
+        coEvery { rateAppUseCase(any()) } coAnswers {
+            gate.await()
+            Answer.Success(false)
+        }
+
+        val first = async { useCase(EngagementUseCase.Params("app_opened")) }
+        runCurrent()
+        val second = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.None), second)
+        assertFalse(storedData.pendingPrompt)
+        gate.complete(Unit)
+        first.await()
+    }
+
+    @Test
+    fun `Given engagement in progress and nothing allowed When invoked concurrently Then pending is not set`() =
+        runTest {
+            every { engagementEligibility.isEligible(any(), any()) } returns true
+            val gate = CompletableDeferred<Unit>()
+            coEvery { rateAppUseCase(any()) } coAnswers {
+                gate.await()
+                Answer.Success(false)
+            }
+
+            val first = async { useCase(EngagementUseCase.Params("app_opened")) }
+            runCurrent()
+            storedData = storedData.copy(hasRated = true, hasShared = true)
+            val second = useCase(EngagementUseCase.Params("app_opened"))
+
+            assertEquals(Answer.Success(EngagementResult.None), second)
+            assertFalse(storedData.pendingPrompt)
+            gate.complete(Unit)
+            first.await()
         }
 
     @Test
@@ -371,19 +412,183 @@ internal class EngagementUseCaseImplTest {
     }
 
     @Test
-    fun `Given review unavailable and share within cooldown When invoked Then share is skipped`() = runTest {
-        storedData = EngagementData(lastSharePromptAt = NOW - 1)
+    fun `Given review unavailable and share not allowed When invoked Then share is skipped and prompt is pending`() =
+        runTest {
+            storedData = EngagementData(shareDeclines = 3, lastSharePromptAt = NOW - GAP)
+            every { engagementEligibility.isEligible(any(), any()) } returns true
+            coEvery { rateAppUseCase(any()) } returns Answer.Success(true)
+
+            val result = useCase(EngagementUseCase.Params("app_opened"))
+
+            assertEquals(Answer.Success(EngagementResult.ReviewUnavailable), result)
+            assertTrue(storedData.pendingPrompt)
+            coVerify(exactly = 0) { shareAppUseCase(any()) }
+        }
+
+    @Test
+    fun `Given review attempts below cap When eligible Then review is launched`() = runTest {
+        storedData = EngagementData(reviewAttempts = 2)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewLaunched), result)
+    }
+
+    @Test
+    fun `Given review attempts cap reached When eligible Then review is not launched and share is`() = runTest {
+        storedData = EngagementData(reviewAttempts = 3)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
+        coVerify(exactly = 0) { rateAppUseCase(any()) }
+        coVerify(exactly = 1) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review within 90 days When eligible Then review is not launched`() = runTest {
+        storedData = EngagementData(lastReviewAt = NOW - REVIEW_COOLDOWN + 1, reviewAttempts = 1)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        coVerify(exactly = 0) { rateAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review cooldown elapsed When eligible Then review is launched again`() = runTest {
+        storedData = EngagementData(lastReviewAt = NOW - REVIEW_COOLDOWN, reviewAttempts = 1)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewLaunched), result)
+    }
+
+    @Test
+    fun `Given user rated the app When eligible Then review is never launched`() = runTest {
+        storedData = EngagementData(hasRated = true, hasShared = true)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        coVerify(exactly = 0) { rateAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review launched within gap When eligible Then share is not prompted`() = runTest {
+        storedData = EngagementData(hasRated = true, lastReviewAt = NOW - GAP + 1)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.None), result)
+        coVerify(exactly = 0) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given review launched a gap ago When eligible Then share is prompted`() = runTest {
+        storedData = EngagementData(hasRated = true, lastReviewAt = NOW - GAP)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
+        coVerify(exactly = 1) { shareAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given share prompted within gap When eligible Then review is not launched`() = runTest {
+        storedData = EngagementData(lastSharePromptAt = NOW - GAP + 1)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        coVerify(exactly = 0) { rateAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given share prompted a gap ago When eligible Then review is launched`() = runTest {
+        storedData = EngagementData(lastSharePromptAt = NOW - GAP)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewLaunched), result)
+    }
+
+    @Test
+    fun `Given review fails and share not allowed When eligible Then prompt is kept pending`() = runTest {
+        storedData = EngagementData(hasShared = true)
         every { engagementEligibility.isEligible(any(), any()) } returns true
         coEvery { rateAppUseCase(any()) } returns Answer.Success(true)
 
         val result = useCase(EngagementUseCase.Params("app_opened"))
 
         assertEquals(Answer.Success(EngagementResult.ReviewUnavailable), result)
+        assertTrue(storedData.pendingPrompt)
+    }
+
+    @Test
+    fun `Given share returns no result When eligible Then prompt is kept pending`() = runTest {
+        storedData = EngagementData(hasRated = true)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+        coEvery { shareAppUseCase(any()) } returns Answer.Failure(failure)
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        assertTrue(storedData.pendingPrompt)
+    }
+
+    @Test
+    fun `Given nothing allowed When milestone is reached Then pending is not set`() = runTest {
+        storedData = EngagementData(hasRated = true, hasShared = true)
+        every { engagementEligibility.isEligible(any(), any()) } returns true
+
+        useCase(EngagementUseCase.Params("app_opened"))
+
+        assertFalse(storedData.pendingPrompt)
+    }
+
+    @Test
+    fun `Given pending prompt When non milestone call is made Then prompt is shown`() = runTest {
+        storedData = EngagementData(pendingPrompt = true)
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ReviewLaunched), result)
+        coVerify(exactly = 1) { rateAppUseCase(any()) }
+    }
+
+    @Test
+    fun `Given pending prompt and review not allowed When share is shown Then pending is cleared`() = runTest {
+        storedData = EngagementData(hasRated = true, pendingPrompt = true)
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.ShareNotChosen), result)
+        assertFalse(storedData.pendingPrompt)
+        assertEquals(NOW, storedData.lastSharePromptAt)
+    }
+
+    @Test
+    fun `Given stale pending prompt and nothing allowed When invoked Then pending is cleared`() = runTest {
+        storedData = EngagementData(hasRated = true, hasShared = true, pendingPrompt = true)
+
+        val result = useCase(EngagementUseCase.Params("app_opened"))
+
+        assertEquals(Answer.Success(EngagementResult.None), result)
+        assertFalse(storedData.pendingPrompt)
+        coVerify(exactly = 0) { rateAppUseCase(any()) }
         coVerify(exactly = 0) { shareAppUseCase(any()) }
     }
 
     private companion object {
         const val NOW = 1_000_000_000_000L
         val COOLDOWN = EngagementUseCaseImpl.SHARE_PROMPT_COOLDOWN_MILLIS
+        val REVIEW_COOLDOWN = EngagementUseCaseImpl.REVIEW_COOLDOWN_MILLIS
+        val GAP = EngagementUseCaseImpl.MIN_PROMPTS_GAP_MILLIS
     }
 }

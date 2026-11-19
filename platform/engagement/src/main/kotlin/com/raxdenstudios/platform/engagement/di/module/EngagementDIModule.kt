@@ -10,6 +10,8 @@ import com.raxdenstudios.platform.engagement.domain.DefaultEngagementEligibility
 import com.raxdenstudios.platform.engagement.domain.DefaultShareContentProvider
 import com.raxdenstudios.platform.engagement.domain.EngagementUseCase
 import com.raxdenstudios.platform.engagement.domain.EngagementUseCaseImpl
+import com.raxdenstudios.platform.engagement.domain.MarkAppAsRatedUseCase
+import com.raxdenstudios.platform.engagement.domain.MarkAppAsRatedUseCaseImpl
 import com.raxdenstudios.platform.engagement.domain.ObserveEngagementDataUseCase
 import com.raxdenstudios.platform.engagement.domain.ObserveEngagementDataUseCaseImpl
 import com.raxdenstudios.platform.engagement.domain.RateAppUseCase
@@ -43,7 +45,13 @@ class EngagementDIModule : DIModule {
         }
         factoryOf(::EngagementDataRepositoryImpl) bind EngagementDataRepository::class
         factoryOf(::ObserveEngagementDataUseCaseImpl) bind ObserveEngagementDataUseCase::class
-        factoryOf(::RateAppUseCaseImpl) bind RateAppUseCase::class
+        factory<RateAppUseCase> {
+            RateAppUseCaseImpl(
+                inAppReview = get(),
+                engagementDataRepository = get(),
+            )
+        }
+        factoryOf(::MarkAppAsRatedUseCaseImpl) bind MarkAppAsRatedUseCase::class
         factory<ShareAppUseCase> {
             ShareAppUseCaseImpl(
                 shareContentProvider = getOrNull() ?: DefaultShareContentProvider(androidContext()),
