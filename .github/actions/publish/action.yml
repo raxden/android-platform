@@ -81,22 +81,41 @@ runs:
 
         gradleArgs='${{ inputs.gradle-args }}'
   
+        echo "::group::./gradlew publishAggregationToCentralPortal"
+        # shellcheck disable=SC2086
         ./gradlew publishAggregationToCentralPortal \
           -PnmcpProjects="$NMCP_PROJECTS" \
           -PpublishingType="${{ inputs.publishing-type }}" \
           $gradleArgs
+        echo "::endgroup::"
+
+        # Best-effort coordinates (group:module) and version per published module
+        rows=""
+        notice=""
+        while IFS= read -r module; do
+          [[ -z "$module" ]] && continue
+          version=$(./gradlew -q "$module:getVersion" --no-configuration-cache 2>/dev/null | tail -n 1 || true)
+          group=$(./gradlew -q "$module:properties" --no-configuration-cache 2>/dev/null | sed -n 's/^group: //p' | head -n 1 || true)
+          name="${module##*:}"
+          coords="$module"
+          if [[ -n "$group" ]]; then coords="$group:$name"; fi
+          rows="${rows}| \`$coords\` | \`${version:--}\` |"$'\n'
+          notice="${notice}${notice:+, }$coords ${version}"
+        done < <(echo '${{ inputs.modules }}' | jq -r '.[]')
 
         {
-          echo "## 🚀 Publish completed"
+          echo "## 🚀 Published to Maven Central"
           echo ""
-          echo "### Modules published"
+          echo "| Module | Version |"
+          echo "|---|---|"
+          printf '%s' "$rows"
           echo ""
-          echo '${{ inputs.modules }}' | jq -r '.[] | "- `\(.)`"'
+          echo "<details><summary>Publish details</summary>"
           echo ""
-          echo "---"
-          echo "Publishing type: \`${{ inputs.publishing-type }}\`"
-          echo ""
-          echo "Gradle modules:"
-          echo "\`$NMCP_PROJECTS\`"
+          echo "- Publishing type: \`${{ inputs.publishing-type }}\`"
+          echo "- Gradle modules: \`$NMCP_PROJECTS\`"
+          echo "</details>"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
+
+        echo "::notice title=Maven publish::Published $notice (${{ inputs.publishing-type }})"

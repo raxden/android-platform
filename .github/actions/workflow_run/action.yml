@@ -1,5 +1,5 @@
 name: Workflow run operation
-description: Perform an operation on the current workflow run (cancel, rerun-failed, rerun-all)
+description: Perform an operation on the current workflow run (cancel, rerun-failed, rerun-all). To cancel sibling jobs of a matrix, prefer strategy.fail-fast in the matrix over this action
 
 inputs:
   github_token:

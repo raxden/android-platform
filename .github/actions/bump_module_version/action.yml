@@ -33,6 +33,17 @@ inputs:
     required: false
     default: 'false'
 
+outputs:
+  versions:
+    description: 'JSON array of bumped modules: [{"module":":x","from":"1.0.0","to":"1.0.1"}]. Empty array when nothing was bumped'
+    value: ${{ steps.bump_modules.outputs.versions }}
+  new-version:
+    description: 'Version of the last bumped module (empty when nothing was bumped)'
+    value: ${{ steps.bump_modules.outputs.new-version }}
+  committed:
+    description: 'true when at least one bump commit was created'
+    value: ${{ steps.bump_modules.outputs.committed }}
+
 runs:
   using: 'composite'
   steps:
@@ -59,6 +70,9 @@ runs:
         esac
 
         committed=false
+        bump_type="${{ inputs.version }}"
+        versions_json="[]"
+        new_version=""
         modules_json='${{ inputs.modules }}'
 
         if [[ -z "$modules_json" || "$modules_json" == "[]" ]]; then
@@ -69,12 +83,15 @@ runs:
 
           for module in "${modules[@]}"; do
 
-            echo "Bumping $module"
+            echo "::group::Bump $module"
+
+            from=$(./gradlew -q "$module:getVersion" | tail -n 1)
 
             ./gradlew "$module:$task" --no-configuration-cache
 
             if git diff --quiet; then
               echo "No changes detected for $module"
+              echo "::endgroup::"
               continue
             fi
 
@@ -89,13 +106,33 @@ runs:
 
             committed=true
 
-            echo ":rocket: $module bumped to $version" >> "$GITHUB_STEP_SUMMARY"
+            versions_json=$(jq -c --arg m "$module" --arg f "$from" --arg t "$version" \
+              '. + [{module: $m, from: $f, to: $t}]' <<< "$versions_json")
+            new_version="$version"
+
+            echo "::endgroup::"
+            echo "::notice title=Version bump::$module $from → $version ($bump_type)"
 
           done
 
         fi
 
-        echo "committed=$committed" >> "$GITHUB_OUTPUT"
+        if [[ "$versions_json" != "[]" ]]; then
+          {
+            echo "## 🔖 Version bump"
+            echo ""
+            echo "| Module | From | To | Bump type |"
+            echo "|---|---|---|---|"
+            jq -r --arg type "$bump_type" '.[] | "| `\(.module)` | `\(.from)` | `\(.to)` | \($type) |"' <<< "$versions_json"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        {
+          echo "committed=$committed"
+          echo "versions=$versions_json"
+          echo "new-version=$new_version"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Push changes
       if: inputs.push == 'true' && steps.bump_modules.outputs.committed == 'true'

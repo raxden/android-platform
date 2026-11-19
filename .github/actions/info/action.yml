@@ -4,6 +4,14 @@ description: 'Writes a workflow summary table with event, repository, ref, actor
 runs:
   using: "composite"
   steps:
+    - name: Open run context block
+      shell: bash
+      run: |
+        {
+          echo "<details><summary>🧭 Run context</summary>"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
     - name: Summary
       shell: bash
       run: |
@@ -77,5 +85,14 @@ runs:
           echo '```json'
           echo '${{ toJson(github.event.inputs) }}'
           echo '```'
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Close run context block
+      if: always()
+      shell: bash
+      run: |
+        {
+          echo "</details>"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"

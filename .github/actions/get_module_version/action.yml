@@ -12,6 +12,10 @@ outputs:
     description: The extracted version value
     value: ${{ steps.extract.outputs.version }}
 
+  version-code:
+    description: 'Android versionCode derived from the version (MAJOR*1000000 + MINOR*10000 + PATCH*100 + DEV, as computed by the android-versioning plugin). DEV is read from version.properties at the workspace root when present, otherwise 0. Empty when the version is not MAJOR.MINOR.PATCH'
+    value: ${{ steps.extract.outputs.version-code }}
+
 runs:
   using: "composite"
   steps:
@@ -32,3 +36,15 @@ runs:
 
         echo "Module $module version: $version"
         echo "version=$version" >> "$GITHUB_OUTPUT"
+
+        # versionCode = MAJOR*1000000 + MINOR*10000 + PATCH*100 + DEV (android-versioning plugin)
+        version_code=""
+        if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+          dev=0
+          if [[ -f version.properties ]]; then
+            dev=$(sed -n 's/^DEV=//p' version.properties | tr -d '[:space:]' | head -n 1)
+            dev="${dev:-0}"
+          fi
+          version_code=$(( 10#${BASH_REMATCH[1]} * 1000000 + 10#${BASH_REMATCH[2]} * 10000 + 10#${BASH_REMATCH[3]} * 100 + 10#$dev ))
+        fi
+        echo "version-code=$version_code" >> "$GITHUB_OUTPUT"
