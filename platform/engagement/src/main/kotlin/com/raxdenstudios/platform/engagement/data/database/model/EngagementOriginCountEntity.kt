@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = EngagementOriginCountEntity.TABLE_NAME)
 internal data class EngagementOriginCountEntity(
     @PrimaryKey @ColumnInfo(name = "origin") val origin: String,
-    @ColumnInfo(name = "count") val count: Int,
+    @ColumnInfo(name = "occurrences") val occurrences: Int,
 ) {
 
     companion object {

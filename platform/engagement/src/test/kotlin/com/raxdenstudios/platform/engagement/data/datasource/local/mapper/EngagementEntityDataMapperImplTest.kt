@@ -3,7 +3,10 @@ package com.raxdenstudios.platform.engagement.data.datasource.local.mapper
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
+import com.raxdenstudios.platform.engagement.domain.model.ShareState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,14 +15,21 @@ internal class EngagementEntityDataMapperImplTest {
     private val mapper = EngagementEntityDataMapperImpl()
 
     private val fullData = EngagementData(
-        hasRated = true,
-        hasShared = true,
         counts = mapOf("app_opened" to 3, "favourite_added" to 1),
-        shareDeclines = 2,
-        lastSharePromptAt = 100L,
+        review = ReviewState(attempts = 2, lastAt = 200L, ratedAt = 300L),
+        share = ShareState(declines = 2, lastPromptAt = 100L, sharedAt = 150L),
+        pendingPromptAt = 400L,
+    )
+
+    private val fullStateEntity = EngagementStateEntity(
+        id = EngagementStateEntity.SINGLE_ROW_ID,
         reviewAttempts = 2,
-        lastReviewAt = 200L,
-        pendingPrompt = true,
+        reviewLastAt = 200L,
+        reviewRatedAt = 300L,
+        shareDeclines = 2,
+        shareLastPromptAt = 100L,
+        shareSharedAt = 150L,
+        pendingPromptAt = 400L,
     )
 
     @Test
@@ -33,7 +43,7 @@ internal class EngagementEntityDataMapperImplTest {
     fun `Given no state but counts When mapped to data Then defaults with the counts are returned`() {
         val result = mapper.toEngagementData(
             state = null,
-            originCounts = listOf(EngagementOriginCountEntity(origin = "app_opened", count = 4)),
+            originCounts = listOf(EngagementOriginCountEntity(origin = "app_opened", occurrences = 4)),
         )
 
         assertEquals(EngagementData(counts = mapOf("app_opened" to 4)), result)
@@ -42,18 +52,10 @@ internal class EngagementEntityDataMapperImplTest {
     @Test
     fun `Given state and counts When mapped to data Then every field is mapped`() {
         val result = mapper.toEngagementData(
-            state = EngagementStateEntity(
-                hasRated = true,
-                hasShared = true,
-                shareDeclines = 2,
-                lastSharePromptAt = 100L,
-                reviewAttempts = 2,
-                lastReviewAt = 200L,
-                pendingPrompt = true,
-            ),
+            state = fullStateEntity,
             originCounts = listOf(
-                EngagementOriginCountEntity(origin = "app_opened", count = 3),
-                EngagementOriginCountEntity(origin = "favourite_added", count = 1),
+                EngagementOriginCountEntity(origin = "app_opened", occurrences = 3),
+                EngagementOriginCountEntity(origin = "favourite_added", occurrences = 1),
             ),
         )
 
@@ -64,52 +66,43 @@ internal class EngagementEntityDataMapperImplTest {
     fun `Given data When mapped to state entity Then it uses the single row id and every field`() {
         val result = mapper.toStateEntity(fullData)
 
-        assertEquals(
-            EngagementStateEntity(
-                id = EngagementStateEntity.SINGLE_ROW_ID,
-                hasRated = true,
-                hasShared = true,
-                shareDeclines = 2,
-                lastSharePromptAt = 100L,
-                reviewAttempts = 2,
-                lastReviewAt = 200L,
-                pendingPrompt = true,
-            ),
-            result,
-        )
+        assertEquals(fullStateEntity, result)
     }
 
     @Test
-    fun `Given data with null timestamps When mapped to state entity Then timestamps stay null`() {
+    fun `Given default data When mapped to state entity Then nullable timestamps stay null`() {
         val result = mapper.toStateEntity(EngagementData())
 
-        assertEquals(null, result.lastSharePromptAt)
-        assertEquals(null, result.lastReviewAt)
+        assertNull(result.reviewLastAt)
+        assertNull(result.reviewRatedAt)
+        assertNull(result.shareLastPromptAt)
+        assertNull(result.shareSharedAt)
+        assertNull(result.pendingPromptAt)
     }
 
     @Test
-    fun `Given data with counts When mapped to origin entities Then one entity per origin is returned`() {
-        val result = mapper.toOriginCountEntities(fullData)
+    fun `Given counts When mapped to origin entities Then one entity per origin is returned`() {
+        val result = mapper.toOriginCountEntities(fullData.counts)
 
         assertEquals(
             listOf(
-                EngagementOriginCountEntity(origin = "app_opened", count = 3),
-                EngagementOriginCountEntity(origin = "favourite_added", count = 1),
+                EngagementOriginCountEntity(origin = "app_opened", occurrences = 3),
+                EngagementOriginCountEntity(origin = "favourite_added", occurrences = 1),
             ),
             result,
         )
     }
 
     @Test
-    fun `Given data without counts When mapped to origin entities Then the list is empty`() {
-        assertTrue(mapper.toOriginCountEntities(EngagementData()).isEmpty())
+    fun `Given no counts When mapped to origin entities Then the list is empty`() {
+        assertTrue(mapper.toOriginCountEntities(emptyMap()).isEmpty())
     }
 
     @Test
     fun `Given data When mapped to entities and back Then it round-trips`() {
         val result = mapper.toEngagementData(
             state = mapper.toStateEntity(fullData),
-            originCounts = mapper.toOriginCountEntities(fullData),
+            originCounts = mapper.toOriginCountEntities(fullData.counts),
         )
 
         assertEquals(fullData, result)
@@ -121,7 +114,7 @@ internal class EngagementEntityDataMapperImplTest {
 
         val result = mapper.toEngagementData(
             state = mapper.toStateEntity(data),
-            originCounts = mapper.toOriginCountEntities(data),
+            originCounts = mapper.toOriginCountEntities(data.counts),
         )
 
         assertEquals(data, result)

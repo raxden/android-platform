@@ -4,6 +4,7 @@ import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -29,22 +30,26 @@ internal class MarkAppAsRatedUseCaseImplTest {
             Answer.Success(storedData)
         }
 
-        useCase = MarkAppAsRatedUseCaseImpl(engagementDataRepository = engagementDataRepository)
+        useCase = MarkAppAsRatedUseCaseImpl(
+            engagementDataRepository = engagementDataRepository,
+            currentTimeMillis = { NOW },
+        )
     }
 
     @Test
     fun `Given engagement data When invoked Then app is marked as rated and the rest is kept`() = runTest {
-        storedData = EngagementData(counts = mapOf("app_opened" to 3), reviewAttempts = 2, lastReviewAt = 5L)
+        storedData = EngagementData(
+            counts = mapOf("app_opened" to 3),
+            review = ReviewState(attempts = 2, lastAt = 5L),
+        )
 
         val result = useCase(MarkAppAsRatedUseCase.Params)
 
         assertEquals(Answer.Success(Unit), result)
         assertEquals(
             EngagementData(
-                hasRated = true,
                 counts = mapOf("app_opened" to 3),
-                reviewAttempts = 2,
-                lastReviewAt = 5L,
+                review = ReviewState(attempts = 2, lastAt = 5L, ratedAt = NOW),
             ),
             storedData,
         )
@@ -58,5 +63,9 @@ internal class MarkAppAsRatedUseCaseImplTest {
 
         assertEquals(Answer.Failure(failure), result)
         assertEquals(EngagementData(), storedData)
+    }
+
+    private companion object {
+        const val NOW = 1_000_000_000_000L
     }
 }

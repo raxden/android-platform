@@ -4,9 +4,10 @@ package com.raxdenstudios.platform.engagement.domain
 sealed interface EngagementResult {
 
     /**
-     * Nothing was shown: no milestone reached and no prompt pending, both prompts blocked by
-     * their policies (rated/shared, caps or cooldowns), or another flow in progress (a reached
-     * milestone is then kept pending for a later call).
+     * Nothing was shown: no milestone reached and no prompt pending (or it expired), both prompts
+     * blocked by the [com.raxdenstudios.platform.engagement.domain.model.EngagementPolicy]
+     * (app installed too recently, rated/shared, caps, cooldowns or the gap between prompts), or
+     * another flow in progress (a reached milestone is then kept pending for a later call).
      */
     data object None : EngagementResult
 
@@ -28,9 +29,10 @@ sealed interface EngagementResult {
     data object ShareChosen : EngagementResult
 
     /**
-     * The share prompt was declined or dismissed, and is retried on a later milestone once its
-     * cooldown elapses unless it has been declined too many times; or it could not be shown, and
-     * is kept pending for the next call.
+     * The share prompt was declined, or accepted and then the share sheet was closed without
+     * picking a target; both count as a decline, and the prompt is retried on a later milestone
+     * once its cooldown elapses unless it has been declined too many times. Or it could not be
+     * shown, and is kept pending for the next call.
      */
     data object ShareNotChosen : EngagementResult
 }

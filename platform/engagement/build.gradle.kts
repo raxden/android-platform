@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.android.versioning)
     alias(libs.plugins.android.library.conventions)
     alias(libs.plugins.android.publish.library)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
 }
 
@@ -42,8 +41,7 @@ dependencies {
     implementation(libs.commons.core)
     implementation(libs.commons.android)
     implementation(libs.commons.coroutines)
-
-    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.timber)
 
     implementationBundle(libs.bundles.koin)
     implementationBundle(libs.bundles.room)

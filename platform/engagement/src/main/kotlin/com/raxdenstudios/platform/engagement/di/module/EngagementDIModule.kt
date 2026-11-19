@@ -1,12 +1,10 @@
 package com.raxdenstudios.platform.engagement.di.module
 
-import android.content.Context
 import com.raxdenstudios.platform.core.di.DIModule
 import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
 import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDataLocalDataSource
 import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDataLocalDataSourceImpl
-import com.raxdenstudios.platform.engagement.data.datasource.local.legacy.LegacyEngagementDataMigrator
-import com.raxdenstudios.platform.engagement.data.datasource.local.legacy.LegacyEngagementDataMigratorImpl
+import com.raxdenstudios.platform.engagement.data.datasource.local.install.firstInstallTimeMillis
 import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapperImpl
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
@@ -23,6 +21,7 @@ import com.raxdenstudios.platform.engagement.domain.RateAppUseCase
 import com.raxdenstudios.platform.engagement.domain.RateAppUseCaseImpl
 import com.raxdenstudios.platform.engagement.domain.ShareAppUseCase
 import com.raxdenstudios.platform.engagement.domain.ShareAppUseCaseImpl
+import com.raxdenstudios.platform.engagement.domain.model.EngagementPolicy
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
@@ -31,28 +30,17 @@ import org.koin.dsl.module
 
 /**
  * Apps may bind their own `EngagementEligibility` and `ShareContentProvider`; when absent the
- * generic defaults are used.
+ * generic defaults are used. [EngagementPolicy] is bound here with its defaults as a `factory`, so
+ * an app module loaded afterwards can override it.
  *
  * Persistence is self-contained: the module creates its own Room database
- * (`platform_engagement.db`) and reads the legacy `platform_engagement` `SharedPreferences` file
- * only to migrate it, so consumers bind neither.
+ * (`platform_engagement.db`), kept as a single, so consumers bind nothing for it.
  */
 class EngagementDIModule : DIModule {
 
     override fun get(): Module = module {
-        single<EngagementDatabase> { EngagementDatabase.getInstance(androidContext()) }
+        single<EngagementDatabase> { EngagementDatabase.create(androidContext()) }
         factoryOf(::EngagementEntityDataMapperImpl) bind EngagementEntityDataMapper::class
-        factory<LegacyEngagementDataMigrator> {
-            LegacyEngagementDataMigratorImpl(
-                sharedPreferences = androidContext().getSharedPreferences(
-                    LegacyEngagementDataMigratorImpl.PREFERENCES_NAME,
-                    Context.MODE_PRIVATE,
-                ),
-                database = get(),
-                engagementEntityDataMapper = get(),
-                dispatcherProvider = get(),
-            )
-        }
         factoryOf(::EngagementDataLocalDataSourceImpl) bind EngagementDataLocalDataSource::class
         factoryOf(::EngagementDataRepositoryImpl) bind EngagementDataRepository::class
         factoryOf(::ObserveEngagementDataUseCaseImpl) bind ObserveEngagementDataUseCase::class
@@ -62,19 +50,27 @@ class EngagementDIModule : DIModule {
                 engagementDataRepository = get(),
             )
         }
-        factoryOf(::MarkAppAsRatedUseCaseImpl) bind MarkAppAsRatedUseCase::class
+        factory<MarkAppAsRatedUseCase> {
+            MarkAppAsRatedUseCaseImpl(
+                engagementDataRepository = get(),
+            )
+        }
         factory<ShareAppUseCase> {
             ShareAppUseCaseImpl(
                 shareContentProvider = getOrNull() ?: DefaultShareContentProvider(androidContext()),
                 inAppShare = get(),
             )
         }
+        factory { EngagementPolicy() }
         single<EngagementUseCase> {
+            val context = androidContext()
             EngagementUseCaseImpl(
                 rateAppUseCase = get(),
                 shareAppUseCase = get(),
                 engagementDataRepository = get(),
                 engagementEligibility = getOrNull() ?: DefaultEngagementEligibility(),
+                engagementPolicy = get(),
+                firstInstallTimeMillis = context::firstInstallTimeMillis,
             )
         }
     }

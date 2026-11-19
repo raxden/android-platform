@@ -6,19 +6,20 @@ import androidx.room.PrimaryKey
 
 /**
  * Single-row table holding the scalar fields of
- * [com.raxdenstudios.platform.engagement.domain.model.EngagementData]; the row always uses
+ * [com.raxdenstudios.platform.engagement.domain.model.EngagementData], flattened: `review_*`
+ * columns hold its `ReviewState` and `share_*` columns its `ShareState`. The row always uses
  * [SINGLE_ROW_ID]. Per-origin counts live in [EngagementOriginCountEntity].
  */
 @Entity(tableName = EngagementStateEntity.TABLE_NAME)
 internal data class EngagementStateEntity(
     @PrimaryKey @ColumnInfo(name = "id") val id: Int = SINGLE_ROW_ID,
-    @ColumnInfo(name = "has_rated") val hasRated: Boolean,
-    @ColumnInfo(name = "has_shared") val hasShared: Boolean,
-    @ColumnInfo(name = "share_declines") val shareDeclines: Int,
-    @ColumnInfo(name = "last_share_prompt_at") val lastSharePromptAt: Long?,
     @ColumnInfo(name = "review_attempts") val reviewAttempts: Int,
-    @ColumnInfo(name = "last_review_at") val lastReviewAt: Long?,
-    @ColumnInfo(name = "pending_prompt") val pendingPrompt: Boolean,
+    @ColumnInfo(name = "review_last_at") val reviewLastAt: Long?,
+    @ColumnInfo(name = "review_rated_at") val reviewRatedAt: Long?,
+    @ColumnInfo(name = "share_declines") val shareDeclines: Int,
+    @ColumnInfo(name = "share_last_prompt_at") val shareLastPromptAt: Long?,
+    @ColumnInfo(name = "share_shared_at") val shareSharedAt: Long?,
+    @ColumnInfo(name = "pending_prompt_at") val pendingPromptAt: Long?,
 ) {
 
     companion object {

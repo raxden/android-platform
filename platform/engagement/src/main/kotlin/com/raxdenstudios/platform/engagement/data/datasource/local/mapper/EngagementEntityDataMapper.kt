@@ -3,6 +3,8 @@ package com.raxdenstudios.platform.engagement.data.datasource.local.mapper
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
+import com.raxdenstudios.platform.engagement.domain.model.ShareState
 
 internal interface EngagementEntityDataMapper {
 
@@ -16,8 +18,9 @@ internal interface EngagementEntityDataMapper {
         engagementData: EngagementData,
     ): EngagementStateEntity
 
+    /** One entity per entry of [counts] (origin to occurrences). */
     fun toOriginCountEntities(
-        engagementData: EngagementData,
+        counts: Map<String, Int>,
     ): List<EngagementOriginCountEntity>
 }
 
@@ -27,41 +30,45 @@ internal class EngagementEntityDataMapperImpl : EngagementEntityDataMapper {
         state: EngagementStateEntity?,
         originCounts: List<EngagementOriginCountEntity>,
     ): EngagementData {
-        val counts = originCounts.associate { entity -> entity.origin to entity.count }
+        val counts = originCounts.associate { entity -> entity.origin to entity.occurrences }
         return state?.toEngagementData(counts) ?: EngagementData(counts = counts)
     }
 
     override fun toStateEntity(
         engagementData: EngagementData,
     ): EngagementStateEntity = EngagementStateEntity(
-        hasRated = engagementData.hasRated,
-        hasShared = engagementData.hasShared,
-        shareDeclines = engagementData.shareDeclines,
-        lastSharePromptAt = engagementData.lastSharePromptAt,
-        reviewAttempts = engagementData.reviewAttempts,
-        lastReviewAt = engagementData.lastReviewAt,
-        pendingPrompt = engagementData.pendingPrompt,
+        reviewAttempts = engagementData.review.attempts,
+        reviewLastAt = engagementData.review.lastAt,
+        reviewRatedAt = engagementData.review.ratedAt,
+        shareDeclines = engagementData.share.declines,
+        shareLastPromptAt = engagementData.share.lastPromptAt,
+        shareSharedAt = engagementData.share.sharedAt,
+        pendingPromptAt = engagementData.pendingPromptAt,
     )
 
     override fun toOriginCountEntities(
-        engagementData: EngagementData,
-    ): List<EngagementOriginCountEntity> = engagementData.counts.map { (origin, count) ->
+        counts: Map<String, Int>,
+    ): List<EngagementOriginCountEntity> = counts.map { (origin, occurrences) ->
         EngagementOriginCountEntity(
             origin = origin,
-            count = count,
+            occurrences = occurrences,
         )
     }
 
     private fun EngagementStateEntity.toEngagementData(
         counts: Map<String, Int>,
     ): EngagementData = EngagementData(
-        hasRated = hasRated,
-        hasShared = hasShared,
         counts = counts,
-        shareDeclines = shareDeclines,
-        lastSharePromptAt = lastSharePromptAt,
-        reviewAttempts = reviewAttempts,
-        lastReviewAt = lastReviewAt,
-        pendingPrompt = pendingPrompt,
+        review = ReviewState(
+            attempts = reviewAttempts,
+            lastAt = reviewLastAt,
+            ratedAt = reviewRatedAt,
+        ),
+        share = ShareState(
+            declines = shareDeclines,
+            lastPromptAt = shareLastPromptAt,
+            sharedAt = shareSharedAt,
+        ),
+        pendingPromptAt = pendingPromptAt,
     )
 }

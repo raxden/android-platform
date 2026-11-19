@@ -10,9 +10,9 @@ import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
 import com.raxdenstudios.platform.engagement.data.database.dao.EngagementDao
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementOriginCountEntity
 import com.raxdenstudios.platform.engagement.data.database.model.EngagementStateEntity
-import com.raxdenstudios.platform.engagement.data.datasource.local.legacy.LegacyEngagementDataMigrator
 import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -37,7 +37,6 @@ internal class EngagementDataLocalDataSourceImplTest {
     private val engagementDao: EngagementDao = mockk()
     private val invalidationTracker: InvalidationTracker = mockk()
     private val database: EngagementDatabase = mockk()
-    private val legacyEngagementDataMigrator: LegacyEngagementDataMigrator = mockk()
     private val engagementEntityDataMapper: EngagementEntityDataMapper = mockk()
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -48,17 +47,18 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     private val stateEntity = EngagementStateEntity(
-        hasRated = false,
-        hasShared = false,
-        shareDeclines = 0,
-        lastSharePromptAt = null,
         reviewAttempts = 0,
-        lastReviewAt = null,
-        pendingPrompt = false,
+        reviewLastAt = null,
+        reviewRatedAt = null,
+        shareDeclines = 0,
+        shareLastPromptAt = null,
+        shareSharedAt = null,
+        pendingPromptAt = null,
     )
-    private val originCountEntities = listOf(EngagementOriginCountEntity(origin = "app_opened", count = 3))
+    private val ratedStateEntity = stateEntity.copy(reviewRatedAt = 1L)
+    private val originCountEntities = listOf(EngagementOriginCountEntity(origin = "app_opened", occurrences = 3))
     private val storedData = EngagementData(counts = mapOf("app_opened" to 3))
-    private val failure = Failure.Unknown("migration error")
+    private val ratedData = storedData.copy(review = ReviewState(ratedAt = 1L))
 
     private lateinit var dataSource: EngagementDataLocalDataSourceImpl
 
@@ -71,17 +71,22 @@ internal class EngagementDataLocalDataSourceImplTest {
         every { database.engagementDao() } returns engagementDao
         every { database.invalidationTracker } returns invalidationTracker
         every { invalidationTracker.createFlow(*anyVararg(), emitInitialState = any()) } returns flowOf(emptySet())
-        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Success(Unit)
         coEvery { engagementDao.getState() } returns stateEntity
         coEvery { engagementDao.getOriginCounts() } returns originCountEntities
-        coEvery { engagementDao.replace(any(), any()) } returns Unit
+        coEvery { engagementDao.upsertState(any()) } returns Unit
+        coEvery { engagementDao.upsertOriginCounts(any()) } returns Unit
+        coEvery { engagementDao.deleteOriginCounts(any()) } returns Unit
         every { engagementEntityDataMapper.toEngagementData(any(), any()) } returns storedData
-        every { engagementEntityDataMapper.toStateEntity(any()) } returns stateEntity
-        every { engagementEntityDataMapper.toOriginCountEntities(any()) } returns originCountEntities
+        every { engagementEntityDataMapper.toStateEntity(storedData) } returns stateEntity
+        every { engagementEntityDataMapper.toStateEntity(ratedData) } returns ratedStateEntity
+        every { engagementEntityDataMapper.toOriginCountEntities(any()) } answers {
+            firstArg<Map<String, Int>>().map { (origin, occurrences) ->
+                EngagementOriginCountEntity(origin = origin, occurrences = occurrences)
+            }
+        }
 
         dataSource = EngagementDataLocalDataSourceImpl(
             database = database,
-            legacyEngagementDataMigrator = legacyEngagementDataMigrator,
             engagementEntityDataMapper = engagementEntityDataMapper,
             dispatcherProvider = dispatcherProvider,
         )
@@ -93,11 +98,10 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     @Test
-    fun `Given stored data When data is read Then the mapped data is returned after migrating`() = runTest {
+    fun `Given stored data When data is read Then the mapped data is returned`() = runTest {
         val result = dataSource.getEngagementData()
 
         assertEquals(Answer.Success(storedData), result)
-        coVerify { legacyEngagementDataMigrator.migrate() }
         coVerify { engagementEntityDataMapper.toEngagementData(stateEntity, originCountEntities) }
     }
 
@@ -112,16 +116,6 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     @Test
-    fun `Given migration fails When data is read Then failure is returned and the database is untouched`() = runTest {
-        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
-
-        val result = dataSource.getEngagementData()
-
-        assertEquals(Answer.Failure(failure), result)
-        coVerify(exactly = 0) { engagementDao.getState() }
-    }
-
-    @Test
     fun `Given the dao throws When data is read Then Unknown failure is returned`() = runTest {
         coEvery { engagementDao.getState() } throws IllegalStateException("boom")
 
@@ -132,37 +126,107 @@ internal class EngagementDataLocalDataSourceImplTest {
     }
 
     @Test
-    fun `Given an update When applied Then it receives the stored data and the result is persisted`() = runTest {
-        val updated = storedData.copy(hasRated = true)
+    fun `Given an update that changes the state When applied Then only the state is written`() = runTest {
         var received: EngagementData? = null
 
         val result = dataSource.updateEngagementData { current ->
             received = current
-            updated
+            ratedData
         }
 
-        assertEquals(Answer.Success(updated), result)
+        assertEquals(Answer.Success(ratedData), result)
         assertEquals(storedData, received)
-        coVerify { engagementEntityDataMapper.toStateEntity(updated) }
-        coVerify { engagementEntityDataMapper.toOriginCountEntities(updated) }
-        coVerify(exactly = 1) { engagementDao.replace(stateEntity, originCountEntities) }
+        coVerify(exactly = 1) { engagementDao.upsertState(ratedStateEntity) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
     }
 
     @Test
-    fun `Given migration fails When data is updated Then failure is returned and nothing is written`() = runTest {
-        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
+    fun `Given an update that changes nothing When applied Then nothing is written`() = runTest {
+        val result = dataSource.updateEngagementData { it }
 
-        val result = dataSource.updateEngagementData { it.copy(hasRated = true) }
+        assertEquals(Answer.Success(storedData), result)
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
+    }
 
-        assertEquals(Answer.Failure(failure), result)
-        coVerify(exactly = 0) { engagementDao.replace(any(), any()) }
+    @Test
+    fun `Given an update that only changes counts When applied Then the state is not rewritten`() = runTest {
+        val updated = storedData.copy(counts = mapOf("app_opened" to 4))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 1) {
+            engagementDao.upsertOriginCounts(
+                listOf(EngagementOriginCountEntity(origin = "app_opened", occurrences = 4)),
+            )
+        }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
+    }
+
+    @Test
+    fun `Given an update that changes one of two origins When applied Then only the changed origin is upserted`() =
+        runTest {
+            val current = EngagementData(counts = mapOf("app_opened" to 3, "favourite_added" to 1))
+            every { engagementEntityDataMapper.toEngagementData(any(), any()) } returns current
+            val updated = current.copy(counts = mapOf("app_opened" to 3, "favourite_added" to 2))
+            every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+            dataSource.updateEngagementData { updated }
+
+            coVerify(exactly = 1) {
+                engagementDao.upsertOriginCounts(
+                    listOf(EngagementOriginCountEntity(origin = "favourite_added", occurrences = 2)),
+                )
+            }
+        }
+
+    @Test
+    fun `Given an update that adds an origin When applied Then the new origin is upserted`() = runTest {
+        val updated = storedData.copy(counts = mapOf("app_opened" to 3, "new_origin" to 1))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) {
+            engagementDao.upsertOriginCounts(
+                listOf(EngagementOriginCountEntity(origin = "new_origin", occurrences = 1)),
+            )
+        }
+    }
+
+    @Test
+    fun `Given an update that removes an origin When applied Then the removed origin is deleted`() = runTest {
+        val updated = storedData.copy(counts = emptyMap())
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) { engagementDao.deleteOriginCounts(listOf("app_opened")) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+    }
+
+    @Test
+    fun `Given no stored state row When an update changes data Then the state is inserted`() = runTest {
+        coEvery { engagementDao.getState() } returns null
+        every { engagementEntityDataMapper.toEngagementData(null, any()) } returns storedData
+        val updated = storedData.copy(counts = mapOf("app_opened" to 4))
+        every { engagementEntityDataMapper.toStateEntity(updated) } returns stateEntity
+
+        dataSource.updateEngagementData { updated }
+
+        coVerify(exactly = 1) { engagementDao.upsertState(stateEntity) }
     }
 
     @Test
     fun `Given the dao throws on write When data is updated Then Unknown failure is returned`() = runTest {
-        coEvery { engagementDao.replace(any(), any()) } throws IllegalStateException("boom")
+        coEvery { engagementDao.upsertState(any()) } throws IllegalStateException("boom")
 
-        val result = dataSource.updateEngagementData { it.copy(hasRated = true) }
+        val result = dataSource.updateEngagementData { ratedData }
 
         assertTrue(result is Answer.Failure)
         assertTrue((result as Answer.Failure).value is Failure.Unknown)
@@ -174,23 +238,16 @@ internal class EngagementDataLocalDataSourceImplTest {
 
         assertTrue(result is Answer.Failure)
         assertTrue((result as Answer.Failure).value is Failure.Unknown)
-        coVerify(exactly = 0) { engagementDao.replace(any(), any()) }
+        coVerify(exactly = 0) { engagementDao.upsertState(any()) }
+        coVerify(exactly = 0) { engagementDao.upsertOriginCounts(any()) }
+        coVerify(exactly = 0) { engagementDao.deleteOriginCounts(any()) }
     }
 
     @Test
-    fun `Given migration succeeds When data is observed Then stored data is emitted`() = runTest {
+    fun `Given stored data When data is observed Then stored data is emitted`() = runTest {
         val emissions = dataSource.observeEngagementData().toList()
 
         assertEquals(listOf(Answer.Success(storedData)), emissions)
-    }
-
-    @Test
-    fun `Given migration fails When data is observed Then the failure is emitted followed by stored data`() = runTest {
-        coEvery { legacyEngagementDataMigrator.migrate() } returns Answer.Failure(failure)
-
-        val emissions = dataSource.observeEngagementData().toList()
-
-        assertEquals(listOf(Answer.Failure(failure), Answer.Success(storedData)), emissions)
     }
 
     @Test

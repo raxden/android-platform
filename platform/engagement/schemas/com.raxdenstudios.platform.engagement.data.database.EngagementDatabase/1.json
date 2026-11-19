@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "52cb1110362b3daa1e26dba2ce3eb9dd",
+    "identityHash": "e2989f497d1badbe491eb3b502603f7d",
     "entities": [
       {
         "tableName": "engagement_state",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `has_rated` INTEGER NOT NULL, `has_shared` INTEGER NOT NULL, `share_declines` INTEGER NOT NULL, `last_share_prompt_at` INTEGER, `review_attempts` INTEGER NOT NULL, `last_review_at` INTEGER, `pending_prompt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `review_attempts` INTEGER NOT NULL, `review_last_at` INTEGER, `review_rated_at` INTEGER, `share_declines` INTEGER NOT NULL, `share_last_prompt_at` INTEGER, `share_shared_at` INTEGER, `pending_prompt_at` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -15,16 +15,20 @@
             "notNull": true
           },
           {
-            "fieldPath": "hasRated",
-            "columnName": "has_rated",
+            "fieldPath": "reviewAttempts",
+            "columnName": "review_attempts",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "hasShared",
-            "columnName": "has_shared",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "reviewLastAt",
+            "columnName": "review_last_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reviewRatedAt",
+            "columnName": "review_rated_at",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "shareDeclines",
@@ -33,26 +37,19 @@
             "notNull": true
           },
           {
-            "fieldPath": "lastSharePromptAt",
-            "columnName": "last_share_prompt_at",
+            "fieldPath": "shareLastPromptAt",
+            "columnName": "share_last_prompt_at",
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "reviewAttempts",
-            "columnName": "review_attempts",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "lastReviewAt",
-            "columnName": "last_review_at",
+            "fieldPath": "shareSharedAt",
+            "columnName": "share_shared_at",
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "pendingPrompt",
-            "columnName": "pending_prompt",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "pendingPromptAt",
+            "columnName": "pending_prompt_at",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -64,7 +61,7 @@
       },
       {
         "tableName": "engagement_origin_count",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`origin` TEXT NOT NULL, `count` INTEGER NOT NULL, PRIMARY KEY(`origin`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`origin` TEXT NOT NULL, `occurrences` INTEGER NOT NULL, PRIMARY KEY(`origin`))",
         "fields": [
           {
             "fieldPath": "origin",
@@ -73,8 +70,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "count",
-            "columnName": "count",
+            "fieldPath": "occurrences",
+            "columnName": "occurrences",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -89,7 +86,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52cb1110362b3daa1e26dba2ce3eb9dd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e2989f497d1badbe491eb3b502603f7d')"
     ]
   }
 }

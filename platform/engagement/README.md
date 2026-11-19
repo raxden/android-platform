@@ -16,10 +16,10 @@ engagementUseCase(EngagementUseCase.Params(origin = "favourite_added"))
 |---|---|---|
 | **Origin** (`origin`) | Name of the moment that triggers the call. Each origin has its own counter. | `"favourite_added"`, `"long_listening_session"` |
 | **Milestone** (`EngagementEligibility`) | Rule that says on which occurrence of an origin it is worth asking. Defined by the app. | 3rd time, then every 10th |
-| **Policy** (`PromptPolicy`) | Global limits so the user is not bothered: how many times and how often the review or the share prompt can be shown. | Review: at most 3 times, 90 days apart |
-| **Pending** (`pendingPrompt`) | A milestone that was reached but could not be shown. It is not lost: it is shown on the next call. | Favourite added from the notification while the app is closed |
+| **Policy** (`EngagementPolicy`) | Global limits so the user is not bothered: how many times and how often each prompt can be shown. Overridable by the app. | Review: at most 3 times, 90 days apart |
+| **Pending** (`pendingPromptAt`) | A milestone that was reached but could not be shown. It is offered on the next call, as long as it is less than 48 h old. | Favourite added from the notification while the app is closed |
 
-In one sentence: **every call adds 1 to its origin's counter. If it is a milestone (or something is pending) and the policy allows it, the review is shown or, if that is not possible, the share prompt.**
+In one sentence: **every call adds 1 to its origin's counter. If it is a milestone (or a recent one is pending) and the policy allows it, the review is shown or, if that is not possible, the share prompt.**
 
 ---
 
@@ -27,12 +27,12 @@ In one sentence: **every call adds 1 to its origin's counter. If it is a milesto
 
 ```mermaid
 flowchart TD
-    A["engagementUseCase(origin)"] --> B["origin counter + 1<br/>(always, in a transaction)"]
+    A["engagementUseCase(origin)"] --> B["origin counter + 1<br/>(always, in a transaction;<br/>an expired pending is dropped)"]
     B --> C{"Another prompt<br/>on screen?"}
     C -- Yes --> C1{"Milestone and any<br/>policy allows it?"}
-    C1 -- Yes --> P1["Mark pending → None"]
+    C1 -- Yes --> P1["Mark pending (now) → None"]
     C1 -- No --> N0["None"]
-    C -- No --> D{"Milestone or<br/>something pending?"}
+    C -- No --> D{"Milestone or<br/>pending < 48 h?"}
     D -- No --> N1["None"]
     D -- Yes --> E{"Review<br/>allowed?"}
     E -- Yes --> R["Launch in-app review"]
@@ -46,27 +46,39 @@ flowchart TD
     H -- Yes --> X["Drop it → None<br/>(nothing can be shown any more)"]
     H -- No --> N2["None"]
     S -- "Picks an app" --> SC["ShareChosen<br/>(never asked again)"]
-    S -- "Not now" --> SN["ShareNotChosen<br/>(declines + 1)"]
-    S -- "Accepts, then closes the sheet" --> SD["ShareNotChosen<br/>(not counted as a decline)"]
+    S -- "Not now, or accepts<br/>and closes the sheet" --> SN["ShareNotChosen<br/>(declines + 1)"]
     S -- "Could not be shown" --> P3["Mark pending →<br/>ShareNotChosen"]
 ```
 
 Priority: **review first, then share**. Only one thing is shown per call.
 
+"Allowed" always includes the install age: **nothing is shown during the first 3 days after install**. Milestones reached in that period are counted but not kept pending.
+
 ---
 
 ## 3. The rules that prevent nagging
 
+These are the defaults of `EngagementPolicy`:
+
 | | Review (in-app review) | Share («Share the app?») |
 |---|---|---|
 | Never again once… | The user rated from Settings (`MarkAppAsRatedUseCase`) | The user picked an app to share with |
-| Maximum | 3 launches | 3 «Not now» answers |
-| Wait between two | 90 days | 7 days |
-| Gap with the other one | 7 days since the last share prompt | 7 days since the last review |
+| Maximum | 3 launches | 2 declines |
+| Wait between two | 90 days | 30 days |
+| Gap with the other one | 14 days since the last share prompt | 14 days since the last review |
 
-The last row means **the user is asked at most once a week**, whatever the prompt.
+| Global rule | Default |
+|---|---|
+| Time after install before the first prompt (`minInstallAge`) | 3 days |
+| How long a pending prompt is kept (`pendingPromptTtl`) | 48 hours |
+
+The gap row means **the user is asked at most once every two weeks**, whatever the prompt.
 
 Why is the review not "once and done"? Google Play **does not report whether the dialog was actually shown**: it has its own quota and may silently ignore the request. That is why it is retried at most 3 times, 90 days apart.
+
+Why does a pending prompt expire? The engine is meant to ask right after a good moment. A milestone from three weeks ago shown when the user opens the app is out of context.
+
+A share decline is either «Not now» or accepting the prompt and then closing the share sheet without picking an app.
 
 ---
 
@@ -76,63 +88,56 @@ The examples use the default rule (`DefaultEngagementEligibility`): milestone on
 
 ### Case 1: the happy path
 
-Ana adds stations to her favourites.
+Ana installs the app and adds stations to her favourites.
 
-| Favourite # | Milestone? | What Ana sees |
-|---|---|---|
-| 1, 2 | No | Nothing |
-| 3 | **Yes** | Google Play rating dialog → `ReviewLaunched` |
-| 4 … 9 | No | Nothing |
-| 10 | **Yes** | Nothing: the review was less than 7 days ago, and the next review is not due for 90 days |
-| 20 (days later) | **Yes** | «Share the app?» |
+| When | Favourite # | Milestone? | What Ana sees |
+|---|---|---|---|
+| Day 0 | 1, 2, 3 | 3rd: **yes** | Nothing: the app was installed less than 3 days ago (not kept pending either) |
+| Day 4 | 10 | **Yes** | Google Play rating dialog → `ReviewLaunched` |
+| Day 10 | 20 | **Yes** | Nothing: the review was less than 14 days ago |
+| Day 20 | 30 | **Yes** | «Share the app?» |
 
 ### Case 2: the timeline of a loyal user
 
-```mermaid
-gantt
-    dateFormat  YYYY-MM-DD
-    axisFormat  day %j
-    section Review
-    Review #1 launched         :milestone, r1, 2026-01-01, 0d
-    No review (90 days)        :crit, 2026-01-01, 90d
-    Review #2 launched         :milestone, r2, 2026-04-05, 0d
-    section Share
-    No share (7 days after review) :crit, 2026-01-01, 7d
-    Share → «Not now» (decline 1)  :milestone, s1, 2026-01-12, 0d
-    No share (7 days)              :crit, 2026-01-12, 7d
-    Share → «Not now» (decline 2)  :milestone, s2, 2026-02-02, 0d
-```
+A user who reaches a milestone almost every day:
 
-- Day 1: milestone → review #1.
-- Day 12: milestone → the review is cooling down, so the share prompt is shown. «Not now».
-- Day 33: milestone → share prompt again. «Not now» (2 declines; after the 3rd it is never asked again).
-- Day 95: milestone → 90 days have passed → review #2.
-- After review #3 the review is never requested again.
+| Day | Prompt | Why now |
+|---|---|---|
+| 0–2 | — | Install age below 3 days |
+| 3 | Review #1 | First milestone after day 3 |
+| 17 | Share → «Not now» (decline 1) | 14 days since the review |
+| 47 | Share → «Not now» (decline 2) | 30 days since the last share prompt; it is never offered again |
+| 93 | Review #2 | 90 days since review #1 |
+| 183 | Review #3 | 90 days since review #2; it is never requested again |
+
+5 prompts in 6 months, never two within 14 days.
 
 ### Case 3: the milestone is reached while the app is not open (pending)
 
-Ana marks a station as favourite **from the player notification**, with the app in the background. It is her 3rd favourite, but there is no screen to show the review on.
+Ana marks a station as favourite **from the player notification**, with the app in the background. It is a milestone, but there is no screen to show the review on.
 
 ```mermaid
 sequenceDiagram
     participant N as Notification
     participant E as Engine
     participant App as App (foreground)
-    N->>E: engagement("favourite_added") — 3rd, milestone
+    N->>E: engagement("favourite_added") — milestone
     E->>E: review → no Activity
     E->>E: share → not possible either
-    E-->>N: ReviewUnavailable, pendingPrompt = true
-    Note over E: The milestone is not lost
+    E-->>N: ReviewUnavailable, pendingPromptAt = now
+    Note over E: The milestone is kept for 48 h
     App->>E: engagement("app_foreground") — not a milestone
-    E->>E: but something is pending!
+    E->>E: but a recent one is pending!
     E-->>App: shows the review → ReviewLaunched, pending cleared
 ```
+
+If Ana only comes back 3 days later, the pending prompt has expired: nothing is shown and it is dropped. Only a new milestone restarts the 48 h; calls that are eligible just because of the pending prompt do not, so it always expires.
 
 The app only needs to call the engine with some origin when it returns to the foreground (RadioSquare uses `"app_foreground"`, which is never a milestone on its own).
 
 ### Case 4: two moments at once
 
-While the review dialog is open, another milestone fires (for example, a long listening session ends). The second one **is counted**, but it does not open another dialog on top: it is marked as pending and offered later, if the policies allow it.
+While the review dialog is open, another milestone fires (for example, a long listening session ends). The second one **is counted**, but it does not open another dialog on top: it is marked as pending (restarting its 48 h) and offered later, if the policies allow it.
 
 ### Case 5: the user rates from Settings
 
@@ -171,7 +176,22 @@ This is optional: if you do nothing, the engine already keeps the prompt pending
 
 ---
 
-## 6. Where progress is stored
+## 6. The data
+
+`ObserveEngagementDataUseCase` exposes the progress as `EngagementData` (useful, for example, for a «Rate the app» card on the home screen):
+
+```kotlin
+data class EngagementData(
+    val counts: Map<String, Int>,  // occurrences per origin
+    val review: ReviewState,       // attempts, lastAt, ratedAt → hasRated
+    val share: ShareState,         // declines, lastPromptAt, sharedAt → hasShared
+    val pendingPromptAt: Long?,    // when a prompt was left pending
+)
+```
+
+All times are epoch millis. `hasRated` and `hasShared` are derived from `ratedAt` and `sharedAt`, so the data also says **when** it happened.
+
+### Where it is stored
 
 In the module's own Room database, **`platform_engagement.db`**. The app does not need to configure anything.
 
@@ -179,46 +199,24 @@ In the module's own Room database, **`platform_engagement.db`**. The app does no
 erDiagram
     engagement_state {
         int id PK "always 0 (single row)"
-        bool has_rated
-        bool has_shared
-        int share_declines
-        long last_share_prompt_at "nullable"
         int review_attempts
-        long last_review_at "nullable"
-        bool pending_prompt
+        long review_last_at "nullable"
+        long review_rated_at "nullable"
+        int share_declines
+        long share_last_prompt_at "nullable"
+        long share_shared_at "nullable"
+        long pending_prompt_at "nullable"
     }
     engagement_origin_count {
         string origin PK
-        int count
+        int occurrences
     }
 ```
 
 - Every change (incrementing a counter, recording a review…) runs **in a transaction**: read, modify and save in one step, so two simultaneous calls never overwrite each other.
-- `ObserveEngagementDataUseCase` emits the data whenever either table changes (useful, for example, for a «Rate the app» card on the home screen).
+- **Only what changed is written**: a call that only increments a counter updates that one row and leaves the state row untouched. A call that changes nothing writes nothing.
 
-### Users coming from an older version
-
-Progress used to be stored as JSON in the `platform_engagement` SharedPreferences. It is copied over automatically on first access:
-
-```mermaid
-sequenceDiagram
-    participant DS as Data source
-    participant M as Migrator
-    participant SP as SharedPreferences
-    participant DB as Room
-    DS->>M: migrate() (before every read/write)
-    M->>SP: does engagement_data exist?
-    alt It does not
-        M-->>DS: nothing to do
-    else It does
-        M->>DB: transaction: insert only if there is no row yet
-        M->>SP: remove the key (only after the commit)
-        M-->>DS: done
-    end
-```
-
-- If the app dies between the two steps, the next run sees that Room already has data and only removes the key: **nothing is ever duplicated or lost**.
-- Very old data, where `hasRated = true` meant "the review was launched once", is converted to `reviewAttempts = 1`, `hasRated = false`.
+Progress stored by versions before the Room database (JSON in the `platform_engagement` SharedPreferences) is **not** carried over: every user starts from zero.
 
 > **Backup:** to keep progress when the user switches phones, the app must include `platform_engagement.db` in its Auto Backup rules (`data_extraction_rules.xml` and `backup_rules.xml`).
 
@@ -261,7 +259,22 @@ module {
 
 Without them the defaults apply: a milestone on the 3rd occurrence and every 10th, and a share message with the app name and its Play Store link (strings `engagement_share_subject` / `engagement_share_text`, overridable by resource name).
 
-**4. Call the engine at positive moments**, with a different origin for each one.
+**4. (Optional) Change the rate limits** by overriding `EngagementPolicy` from a module loaded after `EngagementDILibrary`, for example from Remote Config:
+
+```kotlin
+module {
+    factory {
+        EngagementPolicy(
+            shareCooldown = remoteConfig.getLong("share_cooldown_days").days,
+            minInstallAge = 7.days,
+        )
+    }
+}
+```
+
+Set `maxReviewAttempts` or `maxShareDeclines` to `0` to turn that prompt off. The policy is read once, when `EngagementUseCase` is first created.
+
+**5. Call the engine at positive moments**, with a different origin for each one.
 
 ### Tips
 

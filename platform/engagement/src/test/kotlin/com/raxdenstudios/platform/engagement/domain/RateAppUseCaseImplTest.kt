@@ -5,12 +5,13 @@ import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.inapp.InAppReview
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository
 import com.raxdenstudios.platform.engagement.domain.model.EngagementData
+import com.raxdenstudios.platform.engagement.domain.model.ReviewState
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -54,28 +55,31 @@ internal class RateAppUseCaseImplTest {
 
             assertEquals(Answer.Success(false), result)
             assertEquals(
-                EngagementData(counts = mapOf("app_opened" to 3), reviewAttempts = 1, lastReviewAt = NOW),
+                EngagementData(
+                    counts = mapOf("app_opened" to 3),
+                    review = ReviewState(attempts = 1, lastAt = NOW),
+                ),
                 storedData,
             )
         }
 
     @Test
     fun `Given previous attempts When review launches Then attempts are incremented and timestamp updated`() = runTest {
-        storedData = EngagementData(reviewAttempts = 1, lastReviewAt = NOW - 1)
+        storedData = EngagementData(review = ReviewState(attempts = 1, lastAt = NOW - 1))
 
         useCase(RateAppUseCase.Params)
 
-        assertEquals(2, storedData.reviewAttempts)
-        assertEquals(NOW, storedData.lastReviewAt)
+        assertEquals(2, storedData.review.attempts)
+        assertEquals(NOW, storedData.review.lastAt)
     }
 
     @Test
     fun `Given pending prompt When review launches Then pending prompt is cleared`() = runTest {
-        storedData = EngagementData(pendingPrompt = true)
+        storedData = EngagementData(pendingPromptAt = NOW - 1)
 
         useCase(RateAppUseCase.Params)
 
-        assertFalse(storedData.pendingPrompt)
+        assertNull(storedData.pendingPromptAt)
     }
 
     @Test

@@ -28,16 +28,8 @@ internal abstract class EngagementDatabase : RoomDatabase() {
 
         private const val NAME = "platform_engagement.db"
 
-        @Volatile
-        private var instance: EngagementDatabase? = null
-
-        fun getInstance(
-            context: Context,
-        ): EngagementDatabase = instance ?: synchronized(this) {
-            instance ?: buildDatabase(context).also { instance = it }
-        }
-
-        private fun buildDatabase(
+        /** Builds a new instance; DI keeps it as a single, since Room expects one per process. */
+        fun create(
             context: Context,
         ): EngagementDatabase = Room.databaseBuilder(context, EngagementDatabase::class.java, NAME)
             .build()
