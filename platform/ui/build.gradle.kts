@@ -35,7 +35,6 @@ dependencies {
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android.compose)
     implementation(libs.commons.coroutines)
-    implementation(libs.commons.threetenabp)
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)

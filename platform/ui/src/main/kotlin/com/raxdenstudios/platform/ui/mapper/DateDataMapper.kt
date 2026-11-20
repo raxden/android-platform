@@ -1,10 +1,9 @@
 package com.raxdenstudios.platform.ui.mapper
 
-import com.raxdenstudios.commons.threetenabp.ext.toFormat
-import org.threeten.bp.LocalDate
-import org.threeten.bp.LocalDateTime
-import org.threeten.bp.format.DateTimeFormatter
-import org.threeten.bp.format.FormatStyle
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 interface DateDataMapper {
     fun toString(
@@ -23,5 +22,5 @@ class DateDataMapperImpl : DateDataMapper {
 
     override fun toHourMinutes(
         source: LocalDateTime,
-    ): String = source.toFormat("HH:mm")
+    ): String = source.format(DateTimeFormatter.ofPattern("HH:mm"))
 }
