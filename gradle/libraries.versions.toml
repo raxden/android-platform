@@ -81,6 +81,7 @@ retrofit2 = "3.0.0"
 network-response-adapter = "5.0.0"
 gson = "2.13.2"
 json = "20251224"
+# Deprecated: only used by android-commons commons-threetenabp
 threetenabp = "1.4.9"
 chucker = "4.2.0"
 timber = "5.0.1"
@@ -329,8 +330,7 @@ commons-network = { module = "com.raxdenstudios:commons-network" }
 commons-pagination-co = { module = "com.raxdenstudios:commons-pagination-co" }
 commons-permissions = { module = "com.raxdenstudios:commons-permissions" }
 commons-preferences = { module = "com.raxdenstudios:commons-preferences" }
-commons-threetenabp = { module = "com.raxdenstudios:commons-threetenabp" }
-commons-threetenabp-test = { module = "com.raxdenstudios:commons-threetenabp-test" }
+commons-time = { module = "com.raxdenstudios:commons-time" }
 
 # -------------------------------------------------------------------
 # RaxdenStudios - Android platform libs
@@ -571,10 +571,6 @@ test-room = [
 test-coroutines = [
     "coroutines-test",
     "turbine",
-]
-
-test-threetenabp = [
-    "threetenabp",
 ]
 
 test-espresso = [

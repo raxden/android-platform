@@ -33,7 +33,6 @@ dependencies {
 
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android)
-    implementation(libs.commons.threetenabp)
     implementation(libs.commons.network)
 
     implementation(libs.play.services.location)

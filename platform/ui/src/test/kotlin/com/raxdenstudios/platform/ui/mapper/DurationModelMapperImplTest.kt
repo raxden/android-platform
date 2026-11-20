@@ -6,7 +6,7 @@ import com.raxdenstudios.platform.ui.R
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Test
-import org.threeten.bp.Duration
+import java.time.Duration
 
 internal class DurationModelMapperImplTest {
 
