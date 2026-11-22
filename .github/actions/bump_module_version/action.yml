@@ -29,7 +29,7 @@ inputs:
     required: true
 
   git-create-tag:
-    description: 'Create a Git tag for each bumped version (true/false)'
+    description: 'Create a Git tag for each bumped version (true/false). Tags are created and pushed atomically with the branch, only when push is true'
     required: false
     default: 'false'
 
@@ -69,6 +69,7 @@ runs:
           *) echo "version must be patch|minor|major"; exit 1 ;;
         esac
 
+        rm -f "$RUNNER_TEMP/bump_tags.tsv"
         committed=false
         bump_type="${{ inputs.version }}"
         versions_json="[]"
@@ -100,8 +101,14 @@ runs:
             git add .
             git commit -m "Bump $module version to $version [skip ci]"
 
+            # Tags are created in the push step, after the final rebase, so they
+            # always point at the commit that actually lands on the branch.
             if [[ "${{ inputs.git-create-tag }}" == "true" ]]; then
-              git tag "$version"
+              if [[ ! "$version" =~ ^[0-9A-Za-z._-]+$ ]]; then
+                echo "::error::Unexpected version string for tag: $version"
+                exit 1
+              fi
+              printf '%s\t%s\n' "$version" "Bump $module version to $version [skip ci]" >> "$RUNNER_TEMP/bump_tags.tsv"
             fi
 
             committed=true
@@ -138,7 +145,45 @@ runs:
       if: inputs.push == 'true' && steps.bump_modules.outputs.committed == 'true'
       # Plain git push: the caller's checkout (ssh-key + persist-credentials) already
       # configured git, so no third-party action needs access to the SSH key.
+      # Branch and tags are pushed atomically (all or nothing), so a rejected branch
+      # push can never leave an orphan tag on the remote. On rejection (the branch
+      # moved) rebase onto the latest remote branch, re-create the tags on the
+      # rebased commits and retry. Existing tags are never moved or deleted.
       shell: bash
       env:
         GIT_BRANCH: ${{ inputs.git-branch }}
-      run: git push origin "HEAD:refs/heads/${GIT_BRANCH}" --follow-tags --tags
+      run: |
+        set -euo pipefail
+        tags_file="$RUNNER_TEMP/bump_tags.tsv"
+        max_attempts=5
+
+        for attempt in $(seq 1 "$max_attempts"); do
+          git pull --rebase origin "$GIT_BRANCH"
+
+          refs=()
+          if [[ -s "$tags_file" ]]; then
+            while IFS=$'\t' read -r tag subject; do
+              if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null 2>&1; then
+                echo "::error::Tag ${tag} already exists on origin; refusing to move it. Fix the module version so it does not collide."
+                exit 1
+              fi
+              sha=$(git log -n 1 --format=%H --fixed-strings --grep="$subject" HEAD)
+              if [[ -z "$sha" ]]; then
+                echo "::error::Bump commit not found for tag ${tag}"
+                exit 1
+              fi
+              git tag -f "$tag" "$sha"
+              refs+=("refs/tags/${tag}")
+            done < "$tags_file"
+          fi
+
+          if git push --atomic origin "HEAD:refs/heads/${GIT_BRANCH}" "${refs[@]}"; then
+            exit 0
+          fi
+
+          echo "::warning::Push rejected (attempt ${attempt}/${max_attempts}); retrying after rebase"
+          sleep $((attempt * 3))
+        done
+
+        echo "::error::Could not push after ${max_attempts} attempts"
+        exit 1

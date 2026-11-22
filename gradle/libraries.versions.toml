@@ -22,6 +22,8 @@ ksp = "2.3.6"
 # AndroidX
 # -------------------------------------------------------------------
 androidx-core-ktx = "1.18.0"
+androidx-core-splashscreen = "1.2.0"
+androidx-recyclerview = "1.2.1"
 androidx-activity-ktx = "1.13.0"
 androidx-fragment-ktx = "1.8.9"
 androidx-preference-ktx = "1.2.1"
@@ -133,8 +135,8 @@ android-publish-library = "0.57.30"
 android-publish-platform = "0.57.30"
 
 commons-bom = "1.5.6"
-platform-bom = "1.0.39"
-component-bom = "1.0.11"
+platform-bom = "1.1.1"
+component-bom = "1.1.1"
 junit-jupiter = "5.10.0"
 
 [libraries]
@@ -143,6 +145,8 @@ junit-jupiter = "5.10.0"
 # AndroidX - Core
 # -------------------------------------------------------------------
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core-ktx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-core-splashscreen" }
+androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "androidx-recyclerview" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity-ktx" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "androidx-fragment-ktx" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference-ktx" }
@@ -177,6 +181,7 @@ androidx-media3-session = { module = "androidx.media3:media3-session", version.r
 # -------------------------------------------------------------------
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "androidx-compose-bom" }
 androidx-compose-activity = { module = "androidx.activity:activity-compose", version.ref = "androidx-compose-activity" }
+androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-compose-navigation = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-compose-navigation" }
