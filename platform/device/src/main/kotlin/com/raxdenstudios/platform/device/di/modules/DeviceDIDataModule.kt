@@ -132,7 +132,7 @@ class DeviceDIDataModule : DIModule {
             }
         }
 
-        singleOf(::PermissionsManagerImpl) bind PermissionsManager::class
+        single { PermissionsManagerImpl(androidContext()) } bind PermissionsManager::class
         factoryOf(::LocationMapperImpl) bind LocationMapper::class
         single<LocationDataSource> { LocationDataSourceImpl(androidContext(), get(), get()) }
 
