@@ -3,9 +3,9 @@ package com.raxdenstudios.platform.device.domain.usecase
 import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.permissions.model.Permission
+import com.raxdenstudios.commons.permissions.model.PermissionResult
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.data.repository.PermissionRepository
-import com.raxdenstudios.platform.device.domain.model.PermissionResult
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

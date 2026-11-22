@@ -1,7 +1,7 @@
 package com.raxdenstudios.platform.ui.mapper
 
+import com.raxdenstudios.commons.core.ext.toCurrencyString
 import com.raxdenstudios.commons.core.util.DataMapper
-import java.text.NumberFormat
 import java.util.Currency
 
 interface CurrencyModelMapper {
@@ -18,8 +18,6 @@ class CurrencyModelMapperImpl :
         source: Double,
     ): String {
         if (source == 0.0) return ""
-        val currencyFormat = NumberFormat.getCurrencyInstance()
-        currencyFormat.currency = Currency.getInstance("USD")
-        return currencyFormat.format(source)
+        return source.toCurrencyString(Currency.getInstance("USD"))
     }
 }

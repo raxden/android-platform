@@ -24,12 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.raxdenstudios.commons.android.compose.model.StringResource.PlainText
+import com.raxdenstudios.commons.android.compose.model.StringResource.ResourceId
 import com.raxdenstudios.platform.device.R
 import com.raxdenstudios.platform.ui.composable.BottomSheet
 import com.raxdenstudios.platform.ui.composable.Label
 import com.raxdenstudios.platform.ui.composable.Spacer
-import com.raxdenstudios.platform.ui.model.StringResource.PlainText
-import com.raxdenstudios.platform.ui.model.StringResource.ResourceId
 import com.raxdenstudios.platform.ui.theme.ThemeProvider
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.isActive

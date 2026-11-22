@@ -156,7 +156,7 @@ From then on the review is **never** requested from that user again (the share p
 ```kotlin
 engagementUseCase(EngagementUseCase.Params("alarm_dismissed")).onSuccess { result ->
     if (result == EngagementResult.ReviewUnavailable) {
-        context.startActivity(intentFactory.build(IntentType.PlayStore))
+        context.startActivity(intentFactory.build(com.raxdenstudios.commons.android.intent.IntentType.PlayStore))
         markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)
     }
 }

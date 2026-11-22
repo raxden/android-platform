@@ -4,7 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.permissions.PermissionsManager
 import com.raxdenstudios.commons.permissions.model.Permission
-import com.raxdenstudios.platform.device.domain.model.PermissionResult
+import com.raxdenstudios.commons.permissions.model.PermissionResult
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest

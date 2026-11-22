@@ -4,7 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
-import com.raxdenstudios.platform.ui.model.ImageResource
+import com.raxdenstudios.commons.android.compose.model.ImageResource
 
 object Icons {
 

@@ -1,19 +1,17 @@
 package com.raxdenstudios.platform.ui
 
 import android.content.Context
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.raxdenstudios.commons.android.ext.findActivity
-import com.raxdenstudios.platform.ui.composable.ComposableLifecycle
+import com.raxdenstudios.commons.android.compose.ComposableLifecycle
+import com.raxdenstudios.commons.android.compose.LockScreenOrientation
+import com.raxdenstudios.commons.android.compose.ScreenOrientation
 import com.raxdenstudios.platform.ui.layout.LayoutProvider
 import com.raxdenstudios.platform.ui.navigation.DefaultNavigator
 import com.raxdenstudios.platform.ui.navigation.Navigator
@@ -49,7 +47,7 @@ class FeatureScreen<UIS, UIE>(
 
     @Composable
     operator fun invoke() {
-        LockScreenOrientation(orientation = screenState.orientation)
+        LockScreenOrientation(orientation = screenState.orientation.toScreenOrientation())
 
         ObserveLifecycle()
         ObserveBackStackEntryState()
@@ -60,26 +58,6 @@ class FeatureScreen<UIS, UIE>(
     @Composable
     private fun ObserveLifecycle() {
         lifecycleEventObserver?.let { handler -> ComposableLifecycle(handler) }
-    }
-
-    @Composable
-    fun LockScreenOrientation(
-        context: Context = LocalContext.current,
-        orientation: ScreenState.Orientation,
-    ) {
-        // More info -> https://developer.android.com/jetpack/compose/side-effects#disposableeffect
-        DisposableEffect(Unit) {
-            val activity = context.findActivity() ?: return@DisposableEffect onDispose {}
-            val originalOrientation = activity.requestedOrientation
-            activity.requestedOrientation = when (orientation) {
-                ScreenState.Orientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                ScreenState.Orientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            }
-            onDispose {
-                // restore original orientation when view disappears
-                activity.requestedOrientation = originalOrientation
-            }
-        }
     }
 
     @Composable
@@ -105,4 +83,9 @@ class FeatureScreen<UIS, UIE>(
 
         layoutProvider.Apply(paddingValues, screenState, uiState, onAction)
     }
+}
+
+private fun ScreenState.Orientation.toScreenOrientation(): ScreenOrientation = when (this) {
+    ScreenState.Orientation.PORTRAIT -> ScreenOrientation.Portrait
+    ScreenState.Orientation.LANDSCAPE -> ScreenOrientation.Landscape
 }

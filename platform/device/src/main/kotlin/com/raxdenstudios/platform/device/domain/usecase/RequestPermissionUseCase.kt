@@ -3,10 +3,10 @@ package com.raxdenstudios.platform.device.domain.usecase
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.coroutines.ext.coFlatMap
 import com.raxdenstudios.commons.permissions.model.Permission
+import com.raxdenstudios.commons.permissions.model.PermissionResult
 import com.raxdenstudios.platform.core.domain.SuspendUseCase
 import com.raxdenstudios.platform.core.domain.model.Failure
 import com.raxdenstudios.platform.device.data.repository.PermissionRepository
-import com.raxdenstudios.platform.device.domain.model.PermissionResult
 
 interface RequestPermissionUseCase : SuspendUseCase<RequestPermissionUseCase.Params, PermissionResult> {
 

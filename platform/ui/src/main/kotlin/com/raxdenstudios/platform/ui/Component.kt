@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.raxdenstudios.platform.ui.composable.ComposableLifecycle
+import com.raxdenstudios.commons.android.compose.ComposableLifecycle
 import com.raxdenstudios.platform.ui.navigation.DefaultNavigator
 import com.raxdenstudios.platform.ui.navigation.Navigator
 

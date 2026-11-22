@@ -4,9 +4,9 @@ import android.annotation.SuppressLint
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.raxdenstudios.platform.ui.model.StringResource
-import com.raxdenstudios.platform.ui.model.StringResource.PlainText
-import com.raxdenstudios.platform.ui.preview.DevicePreviews
+import com.raxdenstudios.commons.android.compose.model.StringResource
+import com.raxdenstudios.commons.android.compose.model.StringResource.PlainText
+import com.raxdenstudios.commons.android.compose.preview.DevicePreviews
 import com.raxdenstudios.platform.ui.theme.AppComposeTheme
 
 object Dialog {

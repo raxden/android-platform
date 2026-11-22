@@ -29,8 +29,9 @@ publishLibrary {
 }
 
 dependencies {
-    implementation(platform(libs.commons.bom))
-    implementation(libs.commons.android.compose)
+    api(platform(libs.commons.bom))
+    api(libs.commons.android)
+    implementation(libs.commons.core)
     implementation(libs.commons.coroutines)
 
     implementation(libs.play.services.location)

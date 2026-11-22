@@ -1,9 +1,9 @@
 package com.raxdenstudios.platform.ui.mapper
 
+import com.raxdenstudios.commons.time.ext.toHourMinutes
+import com.raxdenstudios.commons.time.ext.toLocalizedString
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 interface DateDataMapper {
     fun toString(
@@ -18,9 +18,9 @@ class DateDataMapperImpl : DateDataMapper {
 
     override fun toString(
         source: LocalDate,
-    ): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(source)
+    ): String = source.toLocalizedString()
 
     override fun toHourMinutes(
         source: LocalDateTime,
-    ): String = source.format(DateTimeFormatter.ofPattern("HH:mm"))
+    ): String = source.toHourMinutes()
 }

@@ -1,10 +1,10 @@
 package com.raxdenstudios.platform.engagement.di.module
 
+import com.raxdenstudios.commons.android.ext.firstInstallTimeMillis
 import com.raxdenstudios.platform.core.di.DIModule
 import com.raxdenstudios.platform.engagement.data.database.EngagementDatabase
 import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDataLocalDataSource
 import com.raxdenstudios.platform.engagement.data.datasource.local.EngagementDataLocalDataSourceImpl
-import com.raxdenstudios.platform.engagement.data.datasource.local.install.firstInstallTimeMillis
 import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapper
 import com.raxdenstudios.platform.engagement.data.datasource.local.mapper.EngagementEntityDataMapperImpl
 import com.raxdenstudios.platform.engagement.data.repository.EngagementDataRepository

@@ -23,9 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.raxdenstudios.platform.ui.model.StringResource
-import com.raxdenstudios.platform.ui.model.StringResource.PlainText
-import com.raxdenstudios.platform.ui.preview.DevicePreviews
+import com.raxdenstudios.commons.android.compose.model.StringResource
+import com.raxdenstudios.commons.android.compose.model.StringResource.PlainText
+import com.raxdenstudios.commons.android.compose.preview.DevicePreviews
 import com.raxdenstudios.platform.ui.theme.AppComposeTheme
 import com.raxdenstudios.platform.ui.theme.Icons
 import com.raxdenstudios.platform.ui.theme.Spacing

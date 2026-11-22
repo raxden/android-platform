@@ -1,5 +1,6 @@
 package com.raxdenstudios.platform.ui.mapper
 
+import com.raxdenstudios.commons.core.ext.displayLanguageName
 import com.raxdenstudios.commons.core.util.DataMapper
 import java.util.Locale
 
@@ -15,5 +16,5 @@ class LanguageModelMapperImpl :
 
     override fun transform(
         source: Locale,
-    ): String = source.getDisplayLanguage(Locale.getDefault())
+    ): String = source.displayLanguageName()
 }

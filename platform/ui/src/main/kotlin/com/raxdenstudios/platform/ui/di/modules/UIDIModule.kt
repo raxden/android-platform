@@ -1,9 +1,9 @@
 package com.raxdenstudios.platform.ui.di.modules
 
+import com.raxdenstudios.commons.android.intent.IntentFactory
+import com.raxdenstudios.commons.android.intent.IntentFactoryImpl
 import com.raxdenstudios.commons.android.provider.StringProvider
 import com.raxdenstudios.platform.core.di.DIModule
-import com.raxdenstudios.platform.core.util.IntentFactory
-import com.raxdenstudios.platform.core.util.IntentFactoryImpl
 import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapper
 import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapperImpl
 import com.raxdenstudios.platform.ui.mapper.DateDataMapper

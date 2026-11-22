@@ -2,9 +2,7 @@ package com.raxdenstudios.platform.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.raxdenstudios.commons.coroutines.ext.launch
 import com.raxdenstudios.commons.coroutines.ext.safeLaunch
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,15 +56,4 @@ class EventDelegateImpl<UIE : UIEvent> : EventDelegate<UIE> {
     ) {
         viewModelScope.safeLaunch { _viewEvent.send(newEvent) }
     }
-}
-
-fun ViewModel.safeLaunch(
-    block: suspend () -> Unit,
-): Job = viewModelScope.safeLaunch { block() }
-
-fun ViewModel.launch(
-    onError: (throwable: Throwable) -> Unit,
-    block: suspend () -> Unit,
-) {
-    viewModelScope.launch(onError = onError) { block() }
 }

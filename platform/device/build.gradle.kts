@@ -35,8 +35,10 @@ dependencies {
 
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android)
+    implementation(libs.commons.android.compose)
+    implementation(libs.commons.core)
     implementation(libs.commons.coroutines)
-    implementation(libs.commons.permissions)
+    api(libs.commons.permissions)
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)
