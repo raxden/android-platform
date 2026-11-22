@@ -9,7 +9,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.raxdenstudios.platform.ui.model.StringResource
+import com.raxdenstudios.commons.android.compose.model.StringResource
 
 /**
  * Typography presets; fontWeight, when provided, overrides the weight in style, and minLines

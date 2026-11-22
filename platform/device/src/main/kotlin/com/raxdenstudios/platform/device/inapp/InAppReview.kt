@@ -9,14 +9,15 @@ import com.google.android.play.core.ktx.requestReview
 import com.google.android.play.core.review.ReviewInfo
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.raxdenstudios.commons.android.ActivityHolder
+import com.raxdenstudios.commons.android.intent.IntentFactoryImpl
+import com.raxdenstudios.commons.android.intent.IntentType
+import com.raxdenstudios.commons.android.resumedActivity
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.core.ext.onFailure
 import com.raxdenstudios.commons.core.ext.onSuccess
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
 import com.raxdenstudios.platform.core.domain.model.Failure
-import com.raxdenstudios.platform.core.util.IntentFactoryImpl
-import com.raxdenstudios.platform.core.util.IntentType
 import timber.log.Timber
 
 /**

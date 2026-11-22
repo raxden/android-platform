@@ -15,14 +15,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.raxdenstudios.commons.android.ActivityHolder
+import com.raxdenstudios.commons.android.intent.IntentFactoryImpl
+import com.raxdenstudios.commons.android.intent.IntentType
+import com.raxdenstudios.commons.android.resumedActivity
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.commons.core.ext.onFailure
 import com.raxdenstudios.commons.core.ext.onSuccess
 import com.raxdenstudios.commons.core.ext.thenFailure
 import com.raxdenstudios.commons.coroutines.ext.coRunCatching
 import com.raxdenstudios.platform.core.domain.model.Failure
-import com.raxdenstudios.platform.core.util.IntentFactoryImpl
-import com.raxdenstudios.platform.core.util.IntentType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

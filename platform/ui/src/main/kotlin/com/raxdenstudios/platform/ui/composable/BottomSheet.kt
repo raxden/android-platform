@@ -13,7 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.raxdenstudios.platform.ui.model.StringResource
+import com.raxdenstudios.commons.android.compose.model.StringResource
 import com.raxdenstudios.platform.ui.theme.Spacing.xLarge
 
 object BottomSheet {

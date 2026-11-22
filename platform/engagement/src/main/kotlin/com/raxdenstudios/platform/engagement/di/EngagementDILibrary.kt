@@ -74,6 +74,7 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  * Call `EngagementUseCase` from each trigger point, giving every origin its own name:
  *
  * ```kotlin
+ * // import com.raxdenstudios.commons.android.intent.IntentType
  * safeLaunch {
  *     engagementUseCase(EngagementUseCase.Params("origin"))
  *         .onSuccess { result ->
@@ -90,6 +91,7 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  * call `MarkAppAsRatedUseCase` so the in-app review is never requested again:
  *
  * ```kotlin
+ * // import com.raxdenstudios.commons.android.intent.IntentType
  * safeLaunch {
  *     context.startActivity(intentFactory.build(IntentType.PlayStore))
  *     markAppAsRatedUseCase(MarkAppAsRatedUseCase.Params)

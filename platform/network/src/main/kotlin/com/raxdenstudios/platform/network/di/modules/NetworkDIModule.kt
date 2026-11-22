@@ -7,20 +7,18 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
 import com.raxdenstudios.commons.android.util.Network
+import com.raxdenstudios.commons.network.DefaultHttpClientFactory
+import com.raxdenstudios.commons.network.HttpClientFactory
 import com.raxdenstudios.commons.network.interceptor.CacheLoggerInterceptor
 import com.raxdenstudios.commons.network.interceptor.CacheNetworkInterceptor
 import com.raxdenstudios.commons.network.interceptor.CacheOfflineInterceptor
 import com.raxdenstudios.commons.network.interceptor.RetryInterceptor
 import com.raxdenstudios.platform.core.di.DIModule
-import com.raxdenstudios.platform.network.DefaultHttpClientFactory
-import com.raxdenstudios.platform.network.HttpClientFactory
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
-import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.bind
 import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -61,7 +59,16 @@ internal class NetworkDIModule : DIModule {
         factory<SSLSocketFactory?> { null }
         factory<X509TrustManager?> { null }
 
-        singleOf(::DefaultHttpClientFactory) bind HttpClientFactory::class
+        single<HttpClientFactory> {
+            DefaultHttpClientFactory(
+                retryInterceptor = get(),
+                httpLoggingInterceptor = get(),
+                cacheOfflineInterceptor = get(),
+                cacheNetworkInterceptor = get(),
+                cacheLoggerInterceptor = get(),
+                cache = get(),
+            )
+        }
         single<OkHttpClient> {
             get<HttpClientFactory>().create()
         }

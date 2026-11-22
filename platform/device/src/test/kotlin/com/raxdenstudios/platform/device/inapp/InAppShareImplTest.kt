@@ -17,9 +17,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.truth.Truth.assertThat
+import com.raxdenstudios.commons.android.intent.IntentFactoryImpl
 import com.raxdenstudios.commons.core.Answer
 import com.raxdenstudios.platform.core.domain.model.Failure
-import com.raxdenstudios.platform.core.util.IntentFactoryImpl
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
