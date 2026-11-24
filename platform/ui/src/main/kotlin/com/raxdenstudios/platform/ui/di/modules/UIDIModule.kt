@@ -4,16 +4,12 @@ import com.raxdenstudios.commons.android.intent.IntentFactory
 import com.raxdenstudios.commons.android.intent.IntentFactoryImpl
 import com.raxdenstudios.commons.android.provider.StringProvider
 import com.raxdenstudios.platform.core.di.DIModule
-import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapper
-import com.raxdenstudios.platform.ui.mapper.CurrencyModelMapperImpl
 import com.raxdenstudios.platform.ui.mapper.DateDataMapper
 import com.raxdenstudios.platform.ui.mapper.DateDataMapperImpl
 import com.raxdenstudios.platform.ui.mapper.DurationModelMapper
 import com.raxdenstudios.platform.ui.mapper.DurationModelMapperImpl
 import com.raxdenstudios.platform.ui.mapper.ErrorModelDataMapper
 import com.raxdenstudios.platform.ui.mapper.ErrorModelDataMapperImpl
-import com.raxdenstudios.platform.ui.mapper.LanguageModelMapper
-import com.raxdenstudios.platform.ui.mapper.LanguageModelMapperImpl
 import com.raxdenstudios.platform.ui.theme.DefaultThemeProvider
 import com.raxdenstudios.platform.ui.theme.ThemeManager
 import com.raxdenstudios.platform.ui.theme.ThemeManagerImpl
@@ -32,10 +28,8 @@ class UIDIModule : DIModule {
         singleOf(::DefaultThemeProvider) bind ThemeProvider::class
         factoryOf(::ThemeManagerImpl) bind ThemeManager::class
 
-        factoryOf(::CurrencyModelMapperImpl) bind CurrencyModelMapper::class
         factoryOf(::DateDataMapperImpl) bind DateDataMapper::class
         factoryOf(::DurationModelMapperImpl) bind DurationModelMapper::class
         factoryOf(::ErrorModelDataMapperImpl) bind ErrorModelDataMapper::class
-        factoryOf(::LanguageModelMapperImpl) bind LanguageModelMapper::class
     }
 }
