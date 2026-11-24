@@ -37,7 +37,7 @@ class TimberCoroutineLogger : CoroutineLogger {
 
         /**
          * Sets [defaultCoroutineLogger] to a new [TimberCoroutineLogger], so uncaught errors from the commons coroutine
-         * helpers are reported through Timber. Call once at app start, after the Timber trees are planted. Calling it
+         * helpers are reported through Timber. Call once at app start; planting order does not matter. Calling it
          * again replaces the logger that was installed before.
          */
         fun install() {
