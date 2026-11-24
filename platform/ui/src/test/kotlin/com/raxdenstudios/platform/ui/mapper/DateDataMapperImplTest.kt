@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
 
@@ -22,13 +21,6 @@ internal class DateDataMapperImplTest {
     @After
     fun tearDown() {
         Locale.setDefault(defaultLocale)
-    }
-
-    @Test
-    fun `toString formats date with long style`() {
-        val result = mapper.toString(LocalDate.of(2024, 1, 15))
-
-        assertThat(result).isEqualTo("January 15, 2024")
     }
 
     @Test

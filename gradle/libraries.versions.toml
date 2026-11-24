@@ -134,7 +134,7 @@ android-versioning = "0.57.30"
 android-publish-library = "0.57.30"
 android-publish-platform = "0.57.30"
 
-commons-bom = "1.5.9"
+commons-bom = "4.0.3"
 platform-bom = "1.1.1"
 component-bom = "1.1.1"
 junit-jupiter = "5.10.0"
