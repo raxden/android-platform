@@ -7,16 +7,25 @@ import org.junit.Test
 internal class FailureExtensionTest {
 
     @Test
-    fun `toUnknownError returns failure with message and cause`() {
+    fun `Given throwable with message When toUnknownError Then message includes throwable message`() {
         val result = Throwable("boom").toUnknownError("Operation failed")
 
         assertThat(result).isEqualTo(Failure.Unknown("Operation failed: boom"))
     }
 
     @Test
-    fun `toUnknownError appends null when throwable has no message`() {
-        val result = Throwable().toUnknownError("Operation failed")
+    fun `Given throwable without message When toUnknownError Then message uses class name`() {
+        val result = IllegalStateException().toUnknownError("Operation failed")
 
-        assertThat(result).isEqualTo(Failure.Unknown("Operation failed: null"))
+        assertThat(result.message).isEqualTo("Operation failed: IllegalStateException")
+    }
+
+    @Test
+    fun `Given throwable When toUnknownError Then keeps throwable as cause`() {
+        val throwable = IllegalStateException("boom")
+
+        val result = throwable.toUnknownError("Operation failed")
+
+        assertThat(result.cause).isSameInstanceAs(throwable)
     }
 }
