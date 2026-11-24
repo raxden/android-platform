@@ -29,10 +29,11 @@ publishLibrary {
 }
 
 dependencies {
-    implementation(projects.platform.core)
+    api(projects.platform.core)
 
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.android)
+    implementation(libs.commons.core)
     api(libs.commons.network)
 
     implementation(libs.play.services.location)
@@ -45,4 +46,6 @@ dependencies {
 
     // release libraries
     releaseImplementation(libs.chucker.release)
+
+    testImplementation(libs.truth)
 }
