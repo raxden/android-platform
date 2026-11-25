@@ -39,6 +39,8 @@ dependencies {
     implementation(libs.commons.core)
     implementation(libs.commons.coroutines)
     api(libs.commons.permissions)
+    // api: the public initializers implement Initializer, so apps that reference them need it too.
+    api(libs.androidx.startup)
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)

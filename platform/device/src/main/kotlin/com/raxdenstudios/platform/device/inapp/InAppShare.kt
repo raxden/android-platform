@@ -41,7 +41,9 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * ## Setup
  *
- * Bind the running activities once, e.g. in `Application.ActivityLifecycleCallbacks`:
+ * Bind the running activities once. Enabling
+ * [com.raxdenstudios.platform.device.initializer.EngagementPromptsInitializer] does it for every
+ * created activity; otherwise do it in your own `Application.ActivityLifecycleCallbacks`:
  *
  * ```kotlin
  * override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
