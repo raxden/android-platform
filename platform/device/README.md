@@ -18,12 +18,88 @@ if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree()) else Timber.plant(Fireba
 
 ### TimberCoroutineLogger
 
-`com.raxdenstudios.platform.device.logging.TimberCoroutineLogger` is a commons `CoroutineLogger` that logs coroutine errors with Timber at error level, under the tag it receives. `TimberCoroutineLogger.install()` sets it as commons' `defaultCoroutineLogger`, used by `defaultExceptionHandler` and `safeLaunch`. Call it once at app start. Errors go to the trees planted when they happen, so the order of planting and `install()` does not matter. This replaces the `CoroutineLoggerInitializer` / `CoroutineSDK` copies in the apps; their ordering dependency on the Timber initializer is no longer needed.
+`com.raxdenstudios.platform.device.logging.TimberCoroutineLogger` is a commons `CoroutineLogger` that logs coroutine errors with Timber at error level, under the tag it receives. `TimberCoroutineLogger.install()` sets it as commons' `defaultCoroutineLogger`, used by `defaultExceptionHandler` and `safeLaunch`. Call it once at app start. Errors go to the trees planted when they happen, so the order of planting and `install()` does not matter. Apps that use androidx.startup enable the platform `CoroutineLoggerInitializer` instead (see [Startup initializers](#startup-initializers)).
 
 ```kotlin
 Timber.plant(FirebaseCrashlyticsTree())
 TimberCoroutineLogger.install()
 ```
+
+## Startup initializers
+
+Three androidx.startup initializers in `com.raxdenstudios.platform.device.initializer` replace the identical copies the apps carried in `com.raxdenstudios.app.initializer`. None of them uses Koin.
+
+| Initializer | Does | `dependencies()` |
+|---|---|---|
+| `TimberInitializer` | Plants `Timber.DebugTree` when the app is debuggable, `FirebaseCrashlyticsTree` otherwise | none |
+| `CoroutineLoggerInitializer` | Calls `TimberCoroutineLogger.install()` | `TimberInitializer` |
+| `CrashlyticsInitializer` | Sets the Crashlytics custom keys `app_version` (version name) and `app_version_code` (version code) | none |
+
+They read the build from the running app, not from a `BuildConfig`: the library `BuildConfig` is baked into the AAR (`DEBUG` is always false for consumers). `TimberInitializer` checks `ApplicationInfo.FLAG_DEBUGGABLE`, and `CrashlyticsInitializer` reads the app's `PackageInfo` (`versionName`, and `PackageInfoCompat.getLongVersionCode`). The key names are the ones the app copies used, so existing Crashlytics filters keep working. Whether reports are collected is still set per build type by the app's `firebase_crashlytics_collection_enabled` manifest flag.
+
+`TimberInitializer` picks the tree from `ApplicationInfo.FLAG_DEBUGGABLE`, so a release build marked
+`debuggable=true` plants `Timber.DebugTree` and a debug build with `debuggable=false` plants
+`FirebaseCrashlyticsTree`, a deliberate difference from `BuildConfig.DEBUG`.
+
+### Enabling them (opt-in)
+
+The library manifest does not declare them. Add them to the app's androidx.startup provider:
+
+```xml
+<provider
+    android:name="androidx.startup.InitializationProvider"
+    android:authorities="${applicationId}.androidx-startup"
+    android:exported="false"
+    tools:node="merge">
+    <meta-data
+        android:name="com.raxdenstudios.platform.device.initializer.TimberInitializer"
+        android:value="androidx.startup" />
+    <meta-data
+        android:name="com.raxdenstudios.platform.device.initializer.CoroutineLoggerInitializer"
+        android:value="androidx.startup" />
+    <meta-data
+        android:name="com.raxdenstudios.platform.device.initializer.CrashlyticsInitializer"
+        android:value="androidx.startup" />
+</provider>
+```
+
+An initializer reached through another one's `dependencies()` runs even without its own `<meta-data>`, so `CoroutineLoggerInitializer` alone already plants the Timber tree. Declaring both is harmless: App Startup runs each initializer once.
+
+### Ordering with the app's Koin initializer
+
+The app keeps its own `KoinInitializer` (it composes the app's DI graph). To keep starting Koin after logging is ready, list the platform initializers in its `dependencies()`:
+
+```kotlin
+import com.raxdenstudios.platform.device.initializer.CoroutineLoggerInitializer
+import com.raxdenstudios.platform.device.initializer.TimberInitializer
+
+class KoinInitializer : Initializer<Unit> {
+
+    override fun create(
+        context: Context,
+    ) {
+        AppDIApp().initialize(context)
+    }
+
+    override fun dependencies(): List<Class<out Initializer<*>>> = listOf(
+        TimberInitializer::class.java,
+        CoroutineLoggerInitializer::class.java,
+    )
+}
+```
+
+An app initializer may depend on library initializers; the reverse is impossible, because a library cannot name an app class. That is why initializers that need Koin while they run (such as an FCM token initializer that resolves a use case in `create`) stay in the app: they must depend on the app's `KoinInitializer`.
+
+### Migrating from the app copies
+
+1. Delete the app's `TimberInitializer`, `CoroutineLoggerInitializer` and `CrashlyticsInitializer`.
+2. Point their `<meta-data>` entries to the `com.raxdenstudios.platform.device.initializer` classes. Remove the
+   app's own `<meta-data>` entries for them, not only the classes: keeping both the app's and the platform's Timber
+   entries plants two trees even though the class names differ.
+3. Change the imports in the app's `KoinInitializer` (and any other app initializer that lists them) to the platform classes.
+
+Do not keep the app's Timber initializer enabled together with the platform one: both would plant a tree and every log would be written, and every non-fatal recorded, twice. The same applies to Crashlytics keys and the coroutine logger, which are harmless but redundant.
+Any `Timber.plant` still called in `Application.onCreate` is another source of double planting, so remove it too.
 
 ## Activity initializers
 
