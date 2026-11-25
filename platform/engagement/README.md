@@ -269,19 +269,26 @@ Details in the [platform-device README](../device/README.md#activity-initializer
 **3. (Optional) Define your own milestones and share copy:**
 
 ```kotlin
-class MyEligibility : EngagementEligibility {
-    override fun isEligible(origin: String, count: Int): Boolean = when (origin) {
-        "favourite_added" -> count == 3 || (count > 3 && count % 10 == 0)
-        "long_listening_session" -> count == 1 || count == 3 || (count > 3 && count % 5 == 0)
-        else -> false
+module {
+    factory<EngagementEligibility> {
+        MilestoneEngagementEligibility(
+            milestones = mapOf(
+                "favourite_added" to Milestones(early = setOf(3), step = 10),          // 3, 10, 20…
+                "long_listening_session" to Milestones(early = setOf(1, 3), step = 5), // 1, 3, 5, 10…
+            ),
+        )
+    }
+    factory<ShareContentProvider> {
+        StringResShareContentProvider(
+            context = androidContext(),
+            subject = R.string.share_subject,
+            text = R.string.share_text,
+        )
     }
 }
-
-module {
-    factory<EngagementEligibility> { MyEligibility() }
-    factory<ShareContentProvider> { MyShareContentProvider() }
-}
 ```
+
+`Milestones(early, step)` is eligible on every count in `early` and on every multiple of `step`. Origins missing from the `MilestoneEngagementEligibility` table are never eligible (useful for an origin such as `"app_foreground"` that only flushes pending prompts). `StringResShareContentProvider` uses `subject` as is and formats `text` with the release package name (`releasePackageName()`, the application id without the debug suffix), e.g. `"Download it now! https://play.google.com/store/apps/details?id=%s"`. For anything else, implement `EngagementEligibility` / `ShareContentProvider` yourself and bind it the same way.
 
 Without them the defaults apply: a milestone on the 3rd occurrence and every 10th, and a share message with the app name and its Play Store link (strings `engagement_share_subject` / `engagement_share_text`, overridable by resource name).
 
