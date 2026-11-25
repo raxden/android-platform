@@ -235,12 +235,36 @@ override fun provideLibs(): List<DILibrary> = listOf(
 )
 ```
 
-**2. Attach the Activities** (in `ActivityLifecycleCallbacks.onActivityCreated`):
+**2. Attach the Activities.** The prompts need the running Activity, attached before it is STARTED. The easiest way is to enable `EngagementPromptsInitializer` from `platform-device` in the app's androidx.startup provider; it attaches `InAppReview` and `InAppShare` to every created `ComponentActivity`:
+
+```xml
+<provider
+    android:name="androidx.startup.InitializationProvider"
+    android:authorities="${applicationId}.androidx-startup"
+    android:exported="false"
+    tools:node="merge">
+    <meta-data
+        android:name="com.raxdenstudios.platform.device.initializer.EngagementPromptsInitializer"
+        android:value="androidx.startup" />
+</provider>
+```
+
+Koin must be started (with `DeviceDILibrary`) by the app's own initializer or `Application.onCreate`; the initializer resolves its dependencies when the first Activity is created. To keep the prompts off some screens (a full-screen alarm over the lock screen, for example), bind a filter; a milestone reached while such a screen is in front stays pending:
+
+```kotlin
+module {
+    single { EngagementPromptsActivityFilter { activity -> activity !is AlarmRingingActivity } }
+}
+```
+
+Without the initializer, attach them yourself in `ActivityLifecycleCallbacks.onActivityCreated`:
 
 ```kotlin
 inAppReview.attach(activity)
 inAppShare.attach(activity) // before the Activity is STARTED
 ```
+
+Details in the [platform-device README](../device/README.md#activity-initializers).
 
 **3. (Optional) Define your own milestones and share copy:**
 
