@@ -11,6 +11,8 @@ import com.raxdenstudios.platform.ui.mapper.DurationModelMapperImpl
 import com.raxdenstudios.platform.ui.mapper.ErrorModelDataMapper
 import com.raxdenstudios.platform.ui.mapper.ErrorModelDataMapperImpl
 import com.raxdenstudios.platform.ui.theme.DefaultThemeProvider
+import com.raxdenstudios.platform.ui.theme.ThemeDelegate
+import com.raxdenstudios.platform.ui.theme.ThemeDelegateImpl
 import com.raxdenstudios.platform.ui.theme.ThemeManager
 import com.raxdenstudios.platform.ui.theme.ThemeManagerImpl
 import com.raxdenstudios.platform.ui.theme.ThemeProvider
@@ -27,6 +29,8 @@ class UIDIModule : DIModule {
         factoryOf(::IntentFactoryImpl) bind IntentFactory::class
         singleOf(::DefaultThemeProvider) bind ThemeProvider::class
         factoryOf(::ThemeManagerImpl) bind ThemeManager::class
+        // Resolving ThemeDelegate needs the app to bind a ThemeSource.
+        factoryOf(::ThemeDelegateImpl) bind ThemeDelegate::class
 
         factoryOf(::DateDataMapperImpl) bind DateDataMapper::class
         factoryOf(::DurationModelMapperImpl) bind DurationModelMapper::class
