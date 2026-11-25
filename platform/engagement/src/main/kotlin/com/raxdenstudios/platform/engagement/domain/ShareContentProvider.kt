@@ -8,7 +8,8 @@ import com.raxdenstudios.platform.engagement.R
  * Supplies the promotional message used by [ShareAppUseCase]. [DefaultShareContentProvider] builds
  * a generic one from the app label and its Play Store link, formatted with the
  * `engagement_share_subject` and `engagement_share_text` strings — apps can override them by
- * resource name, or bind their own implementation via DI to customise the copy entirely.
+ * resource name, or bind their own implementation via DI to customise the copy entirely (usually a
+ * [StringResShareContentProvider] pointing at the app's own strings).
  */
 interface ShareContentProvider {
 

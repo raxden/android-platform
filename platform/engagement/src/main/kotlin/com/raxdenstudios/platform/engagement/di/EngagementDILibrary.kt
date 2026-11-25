@@ -48,10 +48,25 @@ import com.raxdenstudios.platform.engagement.di.module.EngagementDIModule
  *
  * ```kotlin
  * module {
- *     factory<EngagementEligibility> { MyEligibility() }
- *     factory<ShareContentProvider> { MyShareContentProvider() }
+ *     factory<EngagementEligibility> {
+ *         MilestoneEngagementEligibility(
+ *             milestones = mapOf(
+ *                 "favourite_added" to Milestones(early = setOf(3), step = 10),
+ *             ),
+ *         )
+ *     }
+ *     factory<ShareContentProvider> {
+ *         StringResShareContentProvider(
+ *             context = androidContext(),
+ *             subject = R.string.share_subject,
+ *             text = R.string.share_text, // formatted with the release package name
+ *         )
+ *     }
  * }
  * ```
+ *
+ * Origins missing from the `MilestoneEngagementEligibility` table are never eligible. Any other
+ * `EngagementEligibility` or `ShareContentProvider` implementation can be bound the same way.
  *
  * To change the rate limits, override the `EngagementPolicy` bound by this library with a
  * `factory` in an app module loaded after it (listed after `EngagementDILibrary` in
