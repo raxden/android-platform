@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import com.raxdenstudios.commons.android.compose.model.StringResource
 import com.raxdenstudios.platform.ui.theme.Spacing.xLarge
 
@@ -41,6 +42,15 @@ object BottomSheet {
         }
     }
 
+    /**
+     * Modal bottom sheet with a free [content] column and an optional row of text buttons at the end.
+     *
+     * @param primaryButton label and action of the trailing button; `null` hides it.
+     * @param secondaryButton label and action of the button before [primaryButton]; `null` hides it.
+     * @param horizontalPadding side margin of the content and the button row. Pass `0.dp` when the
+     * content brings its own margins (e.g. full-width search fields or cards) to avoid a double inset.
+     * @param content body of the sheet, laid out in a [Column].
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun Simple(
@@ -48,6 +58,7 @@ object BottomSheet {
         sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         primaryButton: Pair<StringResource, () -> Unit>? = null,
         secondaryButton: Pair<StringResource, () -> Unit>? = null,
+        horizontalPadding: Dp = xLarge,
         content: @Composable ColumnScope.() -> Unit,
     ) {
         ModalBottomSheet(
@@ -57,7 +68,7 @@ object BottomSheet {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = xLarge)
+                    .padding(horizontal = horizontalPadding)
                     .padding(bottom = xLarge),
             ) {
                 content()
