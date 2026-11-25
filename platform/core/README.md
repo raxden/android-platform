@@ -1,5 +1,31 @@
 # platform-core
 
+## Generic DI bindings (`CoreDILibrary`)
+
+`com.raxdenstudios.platform.core.di.CoreDILibrary` binds the app-agnostic definitions every app used to declare itself. All are unqualified singletons:
+
+| Type | Implementation |
+|---|---|
+| `DispatcherProvider` (commons-coroutines) | `DefaultDispatcherProvider()` |
+| `CoroutineScopeProvider` (commons-coroutines) | `DefaultCoroutineScopeProvider(dispatcherProvider = get())` |
+| `WorkManager` | `WorkManager.getInstance(androidContext())` |
+
+List it first in `provideLibs()`. Koin lets the definition loaded last win, so an app override
+listed after it wins. Apps should still delete their copies (see below):
+
+```kotlin
+override fun provideLibs(): List<DILibrary> = listOf(
+    CoreDILibrary(),
+    UIDILibrary(),
+    DeviceDILibrary(),
+    // ...
+)
+```
+
+Delete the app's own copies of these bindings: its `CoroutinesDIModule` (and its entry in the app `DILibrary`) and the `single { WorkManager.getInstance(get()) }` line. `KoinDIApp` keeps Koin's default `allowOverride = true`, so a duplicate does not fail at startup: the definition loaded last (its library listed later in `provideLibs()`) silently replaces the other one. Override on purpose only, from a module listed after `CoreDILibrary`.
+
+Other generic bindings live in the library that owns their dependency: `FirebaseAnalytics` and `PermissionsManager` are bound by `DeviceDILibrary` (platform-device), so apps that load it must not bind them again either.
+
 ## Failure
 
 `com.raxdenstudios.platform.core.domain.model.Failure` is the domain error carried in `Answer<T, Failure>`. It is an open interface: apps add their own business failures as `sealed interface XFailure : Failure`.
