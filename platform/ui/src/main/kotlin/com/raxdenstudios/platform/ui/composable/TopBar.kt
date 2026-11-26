@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,7 +32,6 @@ object TopBar {
      * @param backIcon icon of the back button, the small [Icons.BackArrow] chevron by default.
      * @param colors colours of the bar; its navigation icon colour tints the back button.
      * @param windowInsets insets the bar pads itself with, [TopAppBarDefaults.windowInsets] by default.
-     * @param scrollBehavior optional Material scroll behaviour that collapses or recolours the bar on scroll.
      * @param backButtonModifier applies to the back button only, e.g. a test tag.
      * @param onNavigationIconClick called when the back button is clicked.
      */
@@ -46,7 +44,6 @@ object TopBar {
             navigationIconContentColor = MaterialTheme.colorScheme.primary,
         ),
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-        scrollBehavior: TopAppBarScrollBehavior? = null,
         backButtonModifier: Modifier = Modifier,
         onNavigationIconClick: () -> Unit,
     ) {
@@ -55,7 +52,6 @@ object TopBar {
             title = { title?.let { NavigationTitle(title) } },
             colors = colors,
             windowInsets = windowInsets,
-            scrollBehavior = scrollBehavior,
             navigationIcon = {
                 IconButton.Back(
                     modifier = backButtonModifier,
@@ -75,7 +71,6 @@ object TopBar {
      * @param colors colours of the bar, [TopAppBarDefaults.topAppBarColors] by default; pass a `copy` with another
      * `containerColor` for a tinted bar.
      * @param windowInsets insets the bar pads itself with, [TopAppBarDefaults.windowInsets] by default.
-     * @param scrollBehavior optional Material scroll behaviour that collapses or recolours the bar on scroll.
      * @param actions icon buttons placed at the end of the bar.
      * @param navigationIcon content placed at the start of the bar, such as [IconButton.Back]; empty by default.
      */
@@ -86,7 +81,6 @@ object TopBar {
         description: StringResource? = null,
         colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
         windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-        scrollBehavior: TopAppBarScrollBehavior? = null,
         actions: @Composable RowScope.() -> Unit = {},
         navigationIcon: @Composable () -> Unit = {},
     ) {
@@ -100,7 +94,6 @@ object TopBar {
             },
             colors = colors,
             windowInsets = windowInsets,
-            scrollBehavior = scrollBehavior,
             actions = actions,
             navigationIcon = navigationIcon,
         )

@@ -80,8 +80,6 @@ Package `com.raxdenstudios.platform.ui.composable`. Every text is a `StringResou
 |---|---|
 | `TopBar.Back` | Top app bar with a back button tinted with `colors.navigationIconContentColor` (primary). `backIcon` picks the icon, `backButtonModifier` applies to the button only; `onNavigationIconClick` is required. |
 | `TopBar.Default` | Top app bar with optional title and description, `actions` and a `navigationIcon` slot. |
-
-Both top bars also take `windowInsets` (Material default) and an optional `scrollBehavior`.
 | `IconButton.Default` | Primary icon button for any action; `contentDescription` is required. |
 | `IconButton.Back` / `Close` | Back (small `Icons.BackArrow` chevron by default) and close buttons described by the platform strings; both take `enabled`. |
 | `IconButton.BackCircle` | 36dp primary circle with the back chevron, for content drawn under the top bar; takes `enabled`. |
@@ -93,6 +91,8 @@ Both top bars also take `windowInsets` (Material default) and an optional `scrol
 | `Modifier.selectableTab` | Tab semantics that stay clickable while selected, so UiAutomator keeps the test tag. |
 | `EmptyState.Default` | Centred illustration (`EmptyStateDefaults.ImageSize`, 200dp, by default), bold title, description and optional tip. `tintVectors = true` tints vector images with the primary colour. |
 | `Header.Section` / `Subsection` | Section title after a double arrow, with an optional `trailing` slot, or `trailingText` + `onTrailingClick` for a `TextArrow`; primary subheader. |
+
+Both top bars also take `windowInsets` (Material default). They expose no experimental Material3 types, so callers need no `@OptIn(ExperimentalMaterial3Api::class)`.
 
 `modifier` always applies to the component itself, never to its label: callers can pass sizes, paddings and test
 tags safely. Every button, icon button, `TopBar.Back` and `Header.Section` with a trailing arrow requires its click
