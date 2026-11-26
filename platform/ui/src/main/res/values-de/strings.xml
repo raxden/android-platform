@@ -12,4 +12,9 @@
     <string name="error_lost_connection">Keine Internetverbindung</string>
     <string name="error_unexpected_error_message">Ein unerwarteter Fehler ist aufgetreten, bitte versuchen Sie es später erneut.</string>
     <string name="cancel">Abbrechen</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Zurück</string>
+    <string name="platform_ui_close">Schließen</string>
+    <string name="platform_ui_tab_selected">Ausgewählt</string>
 </resources>

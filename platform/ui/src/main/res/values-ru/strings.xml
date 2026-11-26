@@ -12,4 +12,9 @@
     <string name="error_lost_connection">Нет подключения к интернету</string>
     <string name="error_unexpected_error_message">Произошла непредвиденная ошибка, пожалуйста, попробуйте позже.</string>
     <string name="cancel">Отмена</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Назад</string>
+    <string name="platform_ui_close">Закрыть</string>
+    <string name="platform_ui_tab_selected">Выбрано</string>
 </resources>

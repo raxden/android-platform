@@ -11,5 +11,10 @@
     <string name="error_information">Información</string>
     <string name="error_lost_connection">No hay conexión a internet</string>
     <string name="error_unexpected_error_message">Se ha producido un error inesperado, inténtalo más tarde.</string>
-    <string name="cancel">Cancel</string>
+    <string name="cancel">Cancelar</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Atrás</string>
+    <string name="platform_ui_close">Cerrar</string>
+    <string name="platform_ui_tab_selected">Seleccionado</string>
 </resources>
