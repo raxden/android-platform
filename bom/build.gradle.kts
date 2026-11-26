@@ -34,6 +34,7 @@ dependencies {
         api(projects.platform.ui)
         api(projects.platform.device)
         api(projects.platform.engagement)
+        api(projects.platform.featureflag)
         api(projects.platform.network)
     }
 }

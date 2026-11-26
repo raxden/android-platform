@@ -24,6 +24,7 @@ Android Platform is a multi-module library that provides a curated set of platfo
 | [`platform-ui`](platform/ui/README.md) | Jetpack Compose UI components, navigation utilities and the app theme | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-ui.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-ui) |
 | [`platform-device`](platform/device/README.md) | Device-level abstractions (location, Firebase, permissions, in-app review/share/update, activity initializers) | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-device.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-device) |
 | [`platform-engagement`](platform/engagement/README.md) | In-app review and share prompts driven by per-origin occurrence milestones | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-engagement.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-engagement) |
+| [`platform-featureflag`](platform/featureflag/README.md) | Remote feature flags backed by Firebase Remote Config, declared by the app | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-featureflag.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-featureflag) |
 | `platform-network` | Network layer with OkHttp/Retrofit, Chucker debug support | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-network.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-network) |
 
 ## 🚀 Getting Started
@@ -47,6 +48,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-ui")
     implementation("com.raxdenstudios:platform-device")
     implementation("com.raxdenstudios:platform-engagement")
+    implementation("com.raxdenstudios:platform-featureflag")
     implementation("com.raxdenstudios:platform-network")
 }
 ```
@@ -59,6 +61,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-ui:<version>")
     implementation("com.raxdenstudios:platform-device:<version>")
     implementation("com.raxdenstudios:platform-engagement:<version>")
+    implementation("com.raxdenstudios:platform-featureflag:<version>")
     implementation("com.raxdenstudios:platform-network:<version>")
 }
 ```
