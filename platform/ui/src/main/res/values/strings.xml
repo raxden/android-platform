@@ -12,4 +12,9 @@
     <string name="error_lost_connection">No internet connection</string>
     <string name="error_unexpected_error_message">An unexpected error occurred, please try again later.</string>
     <string name="cancel">Cancel</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Back</string>
+    <string name="platform_ui_close">Close</string>
+    <string name="platform_ui_tab_selected">Selected</string>
 </resources>

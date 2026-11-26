@@ -12,4 +12,9 @@
     <string name="error_lost_connection">No hi ha connexió a internet</string>
     <string name="error_unexpected_error_message">S\'ha produït un error inesperat, torna-ho a intentar més tard.</string>
     <string name="cancel">Cancel·la</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Enrere</string>
+    <string name="platform_ui_close">Tanca</string>
+    <string name="platform_ui_tab_selected">Seleccionat</string>
 </resources>
