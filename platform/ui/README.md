@@ -81,7 +81,7 @@ Package `com.raxdenstudios.platform.ui.composable`. Every text is a `StringResou
 | `TopBar.Back` | Top app bar with a back button tinted with `colors.navigationIconContentColor` (primary). `backIcon` picks the icon, `backButtonModifier` applies to the button only; `onNavigationIconClick` is required. |
 | `TopBar.Default` | Top app bar with optional title and description, `actions` and a `navigationIcon` slot. |
 
-Both top bars also take `windowInsets` (Material default) and an optional `scrollBehavior`.
+Both top bars also take `windowInsets` (Material default). They expose no experimental Material3 types, so callers need no `@OptIn(ExperimentalMaterial3Api::class)`.
 | `IconButton.Default` | Primary icon button for any action; `contentDescription` is required. |
 | `IconButton.Back` / `Close` | Back (small `Icons.BackArrow` chevron by default) and close buttons described by the platform strings; both take `enabled`. |
 | `IconButton.BackCircle` | 36dp primary circle with the back chevron, for content drawn under the top bar; takes `enabled`. |

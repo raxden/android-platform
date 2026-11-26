@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- time formatting -->
+    <string name="hours_minutes">%1$s uur %2$s minuten</string>
+    <string name="hours">%1$s uur</string>
+    <string name="hour_minutes">%1$s uur %2$s minuten</string>
+    <string name="hour">%1$s uur</string>
+    <string name="minutes">%1$s minuten</string>
+
+    <!-- errors -->
+    <string name="error_information">Informatie</string>
+    <string name="error_lost_connection">Geen internetverbinding</string>
+    <string name="error_unexpected_error_message">Er is een onverwachte fout opgetreden. Probeer het later opnieuw.</string>
+    <string name="cancel">Annuleren</string>
+
+    <!-- components -->
+    <string name="platform_ui_back">Terug</string>
+    <string name="platform_ui_close">Sluiten</string>
+    <string name="platform_ui_tab_selected">Geselecteerd</string>
+</resources>
