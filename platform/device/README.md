@@ -90,6 +90,8 @@ class KoinInitializer : Initializer<Unit> {
 
 An app initializer may depend on library initializers; the reverse is impossible, because a library cannot name an app class. That is why initializers that need Koin while they run (such as an FCM token initializer that resolves a use case in `create`) stay in the app: they must depend on the app's `KoinInitializer`.
 
+Apps can instead replace their `KoinInitializer` with platform-core's `DIInitializer` (see [Starting DI](../core/README.md#starting-di-diinitializer)): initializers that need Koin then depend on `DIInitializer::class.java`, including library ones, and list `TimberInitializer` too if they log at create time, because `DIInitializer` has no dependencies.
+
 ### Migrating from the app copies
 
 1. Delete the app's `TimberInitializer`, `CoroutineLoggerInitializer` and `CrashlyticsInitializer`.

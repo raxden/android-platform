@@ -33,6 +33,8 @@ dependencies {
     api(libs.commons.android)
     implementation(libs.commons.core)
     implementation(libs.commons.coroutines)
+    // api: the public DIInitializer implements Initializer, so apps that reference it need it too.
+    api(libs.androidx.startup)
 
     implementation(libs.play.services.location)
     implementation(libs.play.review.ktx)
