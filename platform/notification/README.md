@@ -35,12 +35,13 @@ notificationTopicSyncer.sync() // subscribes to e.g. "radio_daily_utc_p1"
 
 `isGranted` is `true` only for `Granted`; `isRuntimePermissionMissing` is `true` for `Requestable` and `Blocked`.
 
-Android does not tell a permission never asked from one permanently denied, so the module remembers whether the dialog was ever shown (`permission_requested`, see [Persistence](#5-persistence)).
+Android does not tell a permission never asked from one permanently denied, so the module remembers whether the dialog was ever shown (`permission_requested`, see [Persistence](#5-persistence)), readable through `WasNotificationPermissionRequestedUseCase`.
 
 | Use case | Returns |
 |---|---|
 | `GetNotificationPermissionStateUseCase` | The current `NotificationPermissionState`. The rationale is read from the top attached activity. |
 | `AreNotificationsEnabledUseCase` | Whether notifications can be posted now, from the application context only: safe in the background (e.g. while handling an FCM message). |
+| `WasNotificationPermissionRequestedUseCase` | Whether this app ever showed the system dialog. Use it to tell "never asked" from "asked and denied" (e.g. prompt only users never asked) instead of reading the preferences file. |
 | `LaunchNotificationPermissionDialogUseCase` | `NotificationPermissionDialogResult(state, isDialogShown)`. Shows the dialog only when the state is `Requestable` and an attached activity is alive; otherwise returns the current state with `isDialogShown = false`. Report an answer only when `isDialogShown` is `true`. Call it from the main thread. |
 
 Unlike `PermissionsManager` (commons-permissions), the launcher shows the dialog even after a first denial (the second and last chance Android gives), so call it only after your own explanation, when the user chose to turn notifications on.
@@ -128,6 +129,11 @@ safeLaunch {
     launchNotificationPermissionDialogUseCase(LaunchNotificationPermissionDialogUseCase.Params)
         .onSuccess { result -> if (result.isDialogShown) tracker.permissionAnswered(result.state) }
 }
+
+safeLaunch {
+    wasNotificationPermissionRequestedUseCase(WasNotificationPermissionRequestedUseCase.Params)
+        .onSuccess { requested -> if (!requested) showNotificationsPrompt() }
+}
 ```
 
 ---
@@ -155,7 +161,7 @@ Every flag lives in the module's own `SharedPreferences` file, never in the app'
 | `NotificationPermissionLauncher` | `attach`, `areNotificationsEnabled`, `isRuntimePermission`, `isPermissionGranted`, `shouldShowRationale`, `suspend launch()` |
 | `NotificationPermissionState` | `Granted`, `Requestable`, `Blocked`, `Disabled` |
 | `NotificationPermissionDialogResult` | `state`, `isDialogShown` |
-| `GetNotificationPermissionStateUseCase`, `AreNotificationsEnabledUseCase`, `LaunchNotificationPermissionDialogUseCase` | Permission use cases |
+| `GetNotificationPermissionStateUseCase`, `AreNotificationsEnabledUseCase`, `WasNotificationPermissionRequestedUseCase`, `LaunchNotificationPermissionDialogUseCase` | Permission use cases |
 | `NotificationTopic` | FCM topic value class, `utcOffset(prefix, utcOffsetHours)` |
 | `NotificationTopicPolicy` | App-bound prefix and legacy topics |
 | `NotificationTopicSync` | `topic`, `previousTopic`, `removedLegacyTopics`, `hasChanges` |

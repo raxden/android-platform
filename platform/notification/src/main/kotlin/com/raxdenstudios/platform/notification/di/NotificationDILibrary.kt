@@ -87,6 +87,16 @@ import com.raxdenstudios.platform.notification.di.module.NotificationDIModule
  *
  * Inside a background handler (e.g. an FCM message), where no activity is alive, use `AreNotificationsEnabledUseCase`
  * instead, which reads the application context only.
+ *
+ * To tell "never asked" from "asked and denied" (e.g. prompt only users never asked), read
+ * `WasNotificationPermissionRequestedUseCase` instead of the module's preferences file:
+ *
+ * ```kotlin
+ * safeLaunch {
+ *     wasNotificationPermissionRequestedUseCase(WasNotificationPermissionRequestedUseCase.Params)
+ *         .onSuccess { requested -> if (!requested) { /* show your prompt */ } }
+ * }
+ * ```
  */
 class NotificationDILibrary : DILibrary {
 
