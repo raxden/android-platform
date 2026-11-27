@@ -25,6 +25,8 @@ import com.raxdenstudios.platform.notification.domain.NotificationTopicLock
 import com.raxdenstudios.platform.notification.domain.NotificationTopicLockImpl
 import com.raxdenstudios.platform.notification.domain.SyncNotificationTopicUseCase
 import com.raxdenstudios.platform.notification.domain.SyncNotificationTopicUseCaseImpl
+import com.raxdenstudios.platform.notification.domain.WasNotificationPermissionRequestedUseCase
+import com.raxdenstudios.platform.notification.domain.WasNotificationPermissionRequestedUseCaseImpl
 import com.raxdenstudios.platform.notification.permission.NotificationPermissionLauncher
 import com.raxdenstudios.platform.notification.permission.NotificationPermissionLauncherImpl
 import com.raxdenstudios.platform.notification.topic.NotificationTopicSyncer
@@ -61,6 +63,7 @@ internal class NotificationDIModule : DIModule {
         factoryOf(::GetNotificationPermissionStateUseCaseImpl) bind GetNotificationPermissionStateUseCase::class
         factoryOf(::AreNotificationsEnabledUseCaseImpl) bind AreNotificationsEnabledUseCase::class
         factoryOf(::LaunchNotificationPermissionDialogUseCaseImpl) bind LaunchNotificationPermissionDialogUseCase::class
+        factoryOf(::WasNotificationPermissionRequestedUseCaseImpl) bind WasNotificationPermissionRequestedUseCase::class
     }
 
     // The lock is a single instance shared by every sync. The use case reads the default zone on every sync, so a sync
