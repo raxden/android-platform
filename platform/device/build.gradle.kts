@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.timber)
 
     implementationBundle(libs.bundles.firebase)
+    implementation(libs.firebase.config)
     implementationBundle(libs.bundles.koin)
     implementationBundle(libs.bundles.android.compose)
 
