@@ -88,9 +88,9 @@ class KoinInitializer : Initializer<Unit> {
 }
 ```
 
-An app initializer may depend on library initializers; the reverse is impossible, because a library cannot name an app class. That is why initializers that need Koin while they run (such as an FCM token initializer that resolves a use case in `create`) stay in the app: they must depend on the app's `KoinInitializer`.
+An app initializer may depend on library initializers; the reverse is impossible, because a library cannot name an app class. So a library initializer that needs Koin while it runs cannot depend on the app's `KoinInitializer`.
 
-Apps can instead replace their `KoinInitializer` with platform-core's `DIInitializer` (see [Starting DI](../core/README.md#starting-di-diinitializer)): initializers that need Koin then depend on `DIInitializer::class.java`, including library ones, and list `TimberInitializer` too if they log at create time, because `DIInitializer` has no dependencies.
+Apps can instead replace their `KoinInitializer` with platform-core's `DIInitializer` (see [Starting DI](../core/README.md#starting-di-diinitializer)): initializers that need Koin then depend on `DIInitializer::class.java`, including library ones such as [`FCMTokenInitializer`](#fcm-token-initializer), and list `TimberInitializer` too if they log at create time, because `DIInitializer` has no dependencies.
 
 ### Migrating from the app copies
 
@@ -102,6 +102,40 @@ Apps can instead replace their `KoinInitializer` with platform-core's `DIInitial
 
 Do not keep the app's Timber initializer enabled together with the platform one: both would plant a tree and every log would be written, and every non-fatal recorded, twice. The same applies to Crashlytics keys and the coroutine logger, which are harmless but redundant.
 Any `Timber.plant` still called in `Application.onCreate` is another source of double planting, so remove it too.
+
+## FCM token initializer
+
+`com.raxdenstudios.platform.device.initializer.FCMTokenInitializer` replaces the identical `FCMTokenInitializer` the apps carried in `com.raxdenstudios.app.initializer`. In debuggable apps it gets the FCM token with `GetFCMTokenUseCase` on `CoroutineScopeProvider.io` and logs it with `Timber.d` (`FCM Token: <token>`), so a developer can copy it from Logcat; a failure is logged with `Timber.e` and is not fatal. In other builds `create` returns without touching Koin.
+
+| Initializer | Does | `dependencies()` |
+|---|---|---|
+| `FCMTokenInitializer` | Logs the FCM token in debuggable apps | `DIInitializer` (platform-core), `TimberInitializer` |
+
+- Debuggable is read from `ApplicationInfo.FLAG_DEBUGGABLE`, as `TimberInitializer` does, instead of the app's `BuildConfig.DEBUG` (the library's is always false for consumers). A release build marked `debuggable=true` logs the token too.
+- It resolves `GetFCMTokenUseCase` (`DeviceDILibrary`) and `CoroutineScopeProvider` (platform-core's `CoreDILibrary`; an app that does not load it must bind it itself) from Koin. `DIInitializer` starts Koin first, so the app's `Application` must implement `DIAppProvider`.
+- `TimberInitializer` runs first, so the token is never logged before a tree is planted.
+
+### Enabling it (opt-in)
+
+The library manifest does not declare it:
+
+```xml
+<provider
+    android:name="androidx.startup.InitializationProvider"
+    android:authorities="${applicationId}.androidx-startup"
+    android:exported="false"
+    tools:node="merge">
+    <meta-data
+        android:name="com.raxdenstudios.platform.device.initializer.FCMTokenInitializer"
+        android:value="androidx.startup" />
+</provider>
+```
+
+`DIInitializer` and `TimberInitializer` run as its dependencies even without their own entries.
+
+### Migrating from the app copy
+
+Delete the app's `FCMTokenInitializer` and its test, point its `<meta-data>` entry to the platform class, and remove the app's entry. Keeping both logs the token twice. The app copy depended on its `KoinInitializer`; the platform one needs the app to have moved to `DIInitializer`.
 
 ## Activity initializers
 

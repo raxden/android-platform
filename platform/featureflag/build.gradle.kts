@@ -34,6 +34,9 @@ dependencies {
     implementation(platform(libs.commons.bom))
     implementation(libs.commons.core)
     implementation(libs.commons.coroutines)
+    // api: the public FeatureFlagInitializer implements Initializer, so apps that reference it need it too.
+    api(libs.androidx.startup)
+    implementation(libs.timber)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.config)
