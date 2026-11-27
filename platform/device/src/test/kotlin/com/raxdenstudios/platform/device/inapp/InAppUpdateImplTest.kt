@@ -17,8 +17,10 @@ import com.google.android.gms.tasks.Tasks
 import com.google.android.play.core.appupdate.AppUpdateInfo
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.install.InstallException
+import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallErrorCode
+import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.common.truth.Truth.assertThat
 import com.raxdenstudios.commons.core.Answer
@@ -38,7 +40,11 @@ import org.junit.Test
 internal class InAppUpdateImplTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
-    private val manager: AppUpdateManager = mockk()
+    private val installListener = slot<InstallStateUpdatedListener>()
+    private val manager: AppUpdateManager = mockk {
+        every { registerListener(capture(installListener)) } just Runs
+        every { unregisterListener(any()) } just Runs
+    }
     private val tracker: InAppUpdateTracker = mockk(relaxed = true)
     private var lifecycleState = Lifecycle.State.INITIALIZED
     private var inAppUpdate = createInAppUpdate()
@@ -179,15 +185,27 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given immediate not allowed by Play When check Then info is not recommended and state is idle`() = runTest {
+    fun `Given no update type allowed by Play When check Then info is not recommended and state is idle`() = runTest {
         every { manager.appUpdateInfo } returns Tasks.forResult(
-            appUpdateInfo(immediateAllowed = false),
+            appUpdateInfo(immediateAllowed = false, flexibleAllowed = false),
         )
 
         val result = inAppUpdate.check()
 
         assertThat((result as Answer.Success).value?.isRecommended).isFalse()
         assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.Idle)
+    }
+
+    @Test
+    fun `Given only flexible allowed by Play When check Then info is recommended and state is available`() = runTest {
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(immediateAllowed = false),
+        )
+
+        val result = inAppUpdate.check()
+
+        assertThat((result as Answer.Success).value?.isRecommended).isTrue()
+        assertThat(inAppUpdate.state.value).isInstanceOf(InAppUpdateState.Available::class.java)
     }
 
     @Test
@@ -237,7 +255,7 @@ internal class InAppUpdateImplTest {
     }
 
     @Test
-    fun `Given developer triggered update in progress When launch Then returns already in progress`() = runTest {
+    fun `Given update in progress When launch flexible Then returns already in progress`() = runTest {
         attachActivity()
         lifecycleState = Lifecycle.State.RESUMED
         every { manager.appUpdateInfo } returns Tasks.forResult(
@@ -246,12 +264,49 @@ internal class InAppUpdateImplTest {
             ),
         )
 
-        val result = inAppUpdate.launch()
+        val result = inAppUpdate.launch(InAppUpdateType.FLEXIBLE)
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
         assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
-        verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
+        verify { tracker.launched(InAppUpdateType.FLEXIBLE, InAppUpdateLaunchResult.AlreadyInProgress) }
+        verify(exactly = 0) { manager.startUpdateFlowForResult(any(), any(), any()) }
+    }
+
+    @Test
+    fun `Given update in progress When launch immediate Then takes over and starts immediate flow`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        val info = appUpdateInfo(
+            availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
+        )
+        every { manager.appUpdateInfo } returns Tasks.forResult(info)
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+
+        val result = inAppUpdate.launch(InAppUpdateType.IMMEDIATE)
+
+        assertThat(result).isEqualTo(Answer.Success(InAppUpdateLaunchResult.Started))
+        verify {
+            manager.startUpdateFlowForResult(
+                info,
+                any(),
+                match { it.appUpdateType() == AppUpdateType.IMMEDIATE },
+            )
+        }
+    }
+
+    @Test
+    fun `Given update in progress and flow refused When launch immediate Then returns not allowed`() = runTest {
+        attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns Tasks.forResult(
+            appUpdateInfo(availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS),
+        )
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns false
+
+        val result = inAppUpdate.launch(InAppUpdateType.IMMEDIATE)
+
+        assertThat(result).isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAllowed))
     }
 
     @Test
@@ -266,7 +321,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAvailable))
-        verify { tracker.launched(InAppUpdateLaunchResult.NotAvailable) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.NotAvailable) }
     }
 
     @Test
@@ -281,7 +336,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAllowed))
-        verify { tracker.launched(InAppUpdateLaunchResult.NotAllowed) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.NotAllowed) }
     }
 
     @Test
@@ -295,7 +350,7 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.NotAllowed))
-        verify { tracker.launched(InAppUpdateLaunchResult.NotAllowed) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.NotAllowed) }
     }
 
     @Test
@@ -316,7 +371,7 @@ internal class InAppUpdateImplTest {
                 match { it.appUpdateType() == AppUpdateType.IMMEDIATE },
             )
         }
-        verify { tracker.launched(InAppUpdateLaunchResult.Started) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.Started) }
     }
 
     @Test
@@ -331,8 +386,8 @@ internal class InAppUpdateImplTest {
 
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
-        verify { tracker.launched(InAppUpdateLaunchResult.Started) }
-        verify { tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.Started) }
+        verify { tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.AlreadyInProgress) }
     }
 
     @Test
@@ -379,6 +434,8 @@ internal class InAppUpdateImplTest {
     fun `Given in-progress update When activity resumes Then update flow is restarted`() = runTest {
         val activity = attachActivity()
         lifecycleState = Lifecycle.State.RESUMED
+        launchImmediateAndFinishFlow()
+        launchImmediateAndFinishFlow()
         val info = appUpdateInfo(
             availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
         )
@@ -402,6 +459,7 @@ internal class InAppUpdateImplTest {
     fun `Given in-progress update When resume cannot restart the flow Then resumed is not tracked`() = runTest {
         val activity = attachActivity()
         lifecycleState = Lifecycle.State.RESUMED
+        launchImmediateAndFinishFlow()
         val info = appUpdateInfo(
             availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
         )
@@ -418,6 +476,7 @@ internal class InAppUpdateImplTest {
     fun `Given in-progress update restarted on resume When launch Then returns already in progress`() = runTest {
         val activity = attachActivity()
         lifecycleState = Lifecycle.State.RESUMED
+        launchImmediateAndFinishFlow()
         val info = appUpdateInfo(
             availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS,
         )
@@ -430,6 +489,47 @@ internal class InAppUpdateImplTest {
         assertThat(result)
             .isEqualTo(Answer.Success(InAppUpdateLaunchResult.AlreadyInProgress))
     }
+
+    private suspend fun launchImmediateAndFinishFlow() {
+        every { manager.appUpdateInfo } returns Tasks.forResult(appUpdateInfo())
+        every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+        inAppUpdate.launch(InAppUpdateType.IMMEDIATE)
+        resultCallback.captured.onActivityResult(ActivityResult(Activity.RESULT_OK, null))
+    }
+
+    @Test
+    fun `Given no prior launch and update in progress When activity resumes Then flow is not relaunched`() = runTest {
+        val activity = attachActivity()
+        lifecycleState = Lifecycle.State.RESUMED
+        every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+            appUpdateInfo(availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS),
+        )
+
+        inAppUpdate.onResume(activity)
+
+        assertThat(inAppUpdate.state.value).isEqualTo(InAppUpdateState.InProgress)
+        verify(exactly = 0) { manager.startUpdateFlowForResult(any(), any(), any()) }
+        verify(exactly = 0) { tracker.resumed() }
+    }
+
+    @Test
+    fun `Given immediate launch declined When activity resumes with update in progress Then flow is not relaunched`() =
+        runTest {
+            val activity = attachActivity()
+            lifecycleState = Lifecycle.State.RESUMED
+            every { manager.appUpdateInfo } returns Tasks.forResult(appUpdateInfo())
+            every { manager.startUpdateFlowForResult(any(), any(), any()) } returns true
+            inAppUpdate.launch(InAppUpdateType.IMMEDIATE)
+            resultCallback.captured.onActivityResult(ActivityResult(Activity.RESULT_CANCELED, null))
+            every { manager.appUpdateInfo } returns completedUpdateInfoTask(
+                appUpdateInfo(availability = UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS),
+            )
+
+            inAppUpdate.onResume(activity)
+
+            verify(exactly = 1) { manager.startUpdateFlowForResult(any(), any(), any()) }
+            verify(exactly = 0) { tracker.resumed() }
+        }
 
     @Test
     fun `Given in-progress update When owner is not resumed Then update flow is not restarted`() = runTest {
@@ -572,7 +672,15 @@ internal class InAppUpdateImplTest {
         priority: Int = 0,
         staleness: Int? = null,
         immediateAllowed: Boolean = true,
+        flexibleAllowed: Boolean = true,
+        installStatus: Int = InstallStatus.UNKNOWN,
+        bytesDownloaded: Long = 0L,
+        totalBytes: Long = 0L,
     ): AppUpdateInfo = mockk {
+        every { installStatus() } returns installStatus
+        every { bytesDownloaded() } returns bytesDownloaded
+        every { totalBytesToDownload() } returns totalBytes
+        every { isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) } returns flexibleAllowed
         every { updateAvailability() } returns availability
         every { availableVersionCode() } returns versionCode
         every { updatePriority() } returns priority

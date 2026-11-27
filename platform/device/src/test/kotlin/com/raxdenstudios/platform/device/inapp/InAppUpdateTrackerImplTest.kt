@@ -76,34 +76,34 @@ internal class InAppUpdateTrackerImplTest {
 
     @Test
     fun `Given Play accepted the request When launched Then logs launched with started result`() {
-        tracker.launched(InAppUpdateLaunchResult.Started)
+        tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.Started)
 
         verify { firebaseAnalytics.logEvent("in_app_update_launched", any()) }
-        assertThat(params).containsExactly("result", "started")
+        assertThat(params).containsExactly("type", "immediate", "result", "started")
     }
 
     @Test
     fun `Given no pending update When launched Then logs launched with not_available result`() {
-        tracker.launched(InAppUpdateLaunchResult.NotAvailable)
+        tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.NotAvailable)
 
         verify { firebaseAnalytics.logEvent("in_app_update_launched", any()) }
-        assertThat(params).containsExactly("result", "not_available")
+        assertThat(params).containsExactly("type", "immediate", "result", "not_available")
     }
 
     @Test
     fun `Given a flow already running When launched Then logs launched with already_in_progress result`() {
-        tracker.launched(InAppUpdateLaunchResult.AlreadyInProgress)
+        tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.AlreadyInProgress)
 
         verify { firebaseAnalytics.logEvent("in_app_update_launched", any()) }
-        assertThat(params).containsExactly("result", "already_in_progress")
+        assertThat(params).containsExactly("type", "immediate", "result", "already_in_progress")
     }
 
     @Test
     fun `Given Play refused the update When launched Then logs launched with not_allowed result`() {
-        tracker.launched(InAppUpdateLaunchResult.NotAllowed)
+        tracker.launched(InAppUpdateType.IMMEDIATE, InAppUpdateLaunchResult.NotAllowed)
 
         verify { firebaseAnalytics.logEvent("in_app_update_launched", any()) }
-        assertThat(params).containsExactly("result", "not_allowed")
+        assertThat(params).containsExactly("type", "immediate", "result", "not_allowed")
     }
 
     @Test
@@ -151,6 +151,38 @@ internal class InAppUpdateTrackerImplTest {
         tracker.resumed()
 
         verify { firebaseAnalytics.logEvent("in_app_update_resumed", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
+    fun `Given flexible type When launched Then logs launched with flexible type`() {
+        tracker.launched(InAppUpdateType.FLEXIBLE, InAppUpdateLaunchResult.Started)
+
+        verify { firebaseAnalytics.logEvent("in_app_update_launched", any()) }
+        assertThat(params).containsExactly("type", "flexible", "result", "started")
+    }
+
+    @Test
+    fun `Given a flexible update finished downloading When downloaded Then logs in_app_update_downloaded`() {
+        tracker.downloaded()
+
+        verify { firebaseAnalytics.logEvent("in_app_update_downloaded", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
+    fun `Given install handed to Play When completed Then logs in_app_update_completed`() {
+        tracker.completed()
+
+        verify { firebaseAnalytics.logEvent("in_app_update_completed", any()) }
+        assertThat(params).isEmpty()
+    }
+
+    @Test
+    fun `Given store listing opened When storeOpened Then logs in_app_update_store_opened`() {
+        tracker.storeOpened()
+
+        verify { firebaseAnalytics.logEvent("in_app_update_store_opened", any()) }
         assertThat(params).isEmpty()
     }
 }

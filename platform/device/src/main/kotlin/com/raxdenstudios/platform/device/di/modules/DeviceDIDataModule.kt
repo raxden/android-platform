@@ -3,6 +3,7 @@ package com.raxdenstudios.platform.device.di.modules
 import android.content.pm.ApplicationInfo
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.raxdenstudios.commons.permissions.PermissionsManager
 import com.raxdenstudios.commons.permissions.PermissionsManagerImpl
 import com.raxdenstudios.platform.core.di.DIModule
@@ -10,6 +11,10 @@ import com.raxdenstudios.platform.device.data.FirebaseMessagingProvider
 import com.raxdenstudios.platform.device.data.FirebaseMessagingProviderImpl
 import com.raxdenstudios.platform.device.data.datasource.AppAccessLocalDataSource
 import com.raxdenstudios.platform.device.data.datasource.AppAccessLocalDataSourceImpl
+import com.raxdenstudios.platform.device.data.datasource.AppUpdatePolicyRemoteDataSource
+import com.raxdenstudios.platform.device.data.datasource.AppUpdatePolicyRemoteDataSourceImpl
+import com.raxdenstudios.platform.device.data.datasource.AppVersionLocalDataSource
+import com.raxdenstudios.platform.device.data.datasource.AppVersionLocalDataSourceImpl
 import com.raxdenstudios.platform.device.data.datasource.FCMLocalDataSource
 import com.raxdenstudios.platform.device.data.datasource.FCMLocalDataSourceImpl
 import com.raxdenstudios.platform.device.data.datasource.LocationDataSource
@@ -22,6 +27,8 @@ import com.raxdenstudios.platform.device.data.mapper.LocationMapper
 import com.raxdenstudios.platform.device.data.mapper.LocationMapperImpl
 import com.raxdenstudios.platform.device.data.repository.AppRepository
 import com.raxdenstudios.platform.device.data.repository.AppRepositoryImpl
+import com.raxdenstudios.platform.device.data.repository.AppUpdateRepository
+import com.raxdenstudios.platform.device.data.repository.AppUpdateRepositoryImpl
 import com.raxdenstudios.platform.device.data.repository.FCMRepositoryImpl
 import com.raxdenstudios.platform.device.data.repository.LocationRepository
 import com.raxdenstudios.platform.device.data.repository.LocationRepositoryImpl
@@ -30,6 +37,8 @@ import com.raxdenstudios.platform.device.data.repository.PermissionRepository
 import com.raxdenstudios.platform.device.data.repository.PermissionRepositoryImpl
 import com.raxdenstudios.platform.device.domain.repository.FCMRepository
 import com.raxdenstudios.platform.device.domain.repository.NotificationRepository
+import com.raxdenstudios.platform.device.domain.usecase.GetAppUpdateRequirementUseCase
+import com.raxdenstudios.platform.device.domain.usecase.GetAppUpdateRequirementUseCaseImpl
 import com.raxdenstudios.platform.device.domain.usecase.GetAppVersionUseCase
 import com.raxdenstudios.platform.device.domain.usecase.GetAppVersionUseCaseImpl
 import com.raxdenstudios.platform.device.domain.usecase.GetFCMTokenUseCase
@@ -76,8 +85,11 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.scope.Scope
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 
 class DeviceDIDataModule : DIModule {
 
@@ -105,13 +117,11 @@ class DeviceDIDataModule : DIModule {
         factoryOf(::InAppReviewTrackerImpl) bind InAppReviewTracker::class
 
         single<InAppUpdate> {
-            val context = androidContext()
             when {
-                context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ->
-                    DebugInAppUpdate()
+                isDebuggable() -> DebugInAppUpdate()
 
                 else -> InAppUpdateImpl(
-                    manager = AppUpdateManagerFactory.create(context),
+                    manager = AppUpdateManagerFactory.create(androidContext()),
                     config = getOrNull() ?: InAppUpdateConfig(),
                     tracker = get(),
                 )
@@ -143,10 +153,28 @@ class DeviceDIDataModule : DIModule {
 
         factoryOf(::GetAppVersionUseCaseImpl) bind GetAppVersionUseCase::class
 
+        factory<AppVersionLocalDataSource> { AppVersionLocalDataSourceImpl(androidContext()) }
+        factory<AppUpdatePolicyRemoteDataSource> {
+            AppUpdatePolicyRemoteDataSourceImpl(
+                remoteConfig = FirebaseRemoteConfig.getInstance(),
+                fetchInterval = if (isDebuggable()) Duration.ZERO else APP_UPDATE_POLICY_FETCH_INTERVAL,
+            )
+        }
+        factoryOf(::AppUpdateRepositoryImpl) bind AppUpdateRepository::class
+        factoryOf(::GetAppUpdateRequirementUseCaseImpl) bind GetAppUpdateRequirementUseCase::class
+
         factoryOf(::PermissionRepositoryImpl) bind PermissionRepository::class
         factoryOf(::LocationRepositoryImpl) bind LocationRepository::class
         factoryOf(::GetLastLocationUseCaseImpl) bind GetLastLocationUseCase::class
         factoryOf(::HasPermissionUseCaseImpl) bind HasPermissionUseCase::class
         factoryOf(::RequestPermissionUseCaseImpl) bind RequestPermissionUseCase::class
+    }
+
+    // BuildConfig.DEBUG is baked into the library AAR; FLAG_DEBUGGABLE reflects the app's build type at runtime.
+    private fun Scope.isDebuggable(): Boolean =
+        androidContext().applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    private companion object {
+        val APP_UPDATE_POLICY_FETCH_INTERVAL = 1.hours
     }
 }

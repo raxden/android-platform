@@ -24,19 +24,22 @@ internal interface InAppUpdateTracker {
     )
 
     /**
-     * Fires `in_app_update_launched` whenever [InAppUpdate.launch] returns an outcome. The
-     * [result] is sent snake_case as the `result` param: `started`, `not_available`,
-     * `already_in_progress` or `not_allowed` — see [InAppUpdateLaunchResult]. The user's
-     * decision inside Play's UI is reported separately via [accepted], [declined] or
-     * [flowFailed].
+     * Fires `in_app_update_launched` when [InAppUpdate.launch] succeeds with any [result]. The
+     * [type] is sent lowercase as the `type` param (`immediate` or `flexible`) and the
+     * [result] snake_case as the `result` param: `started`, `not_available`,
+     * `already_in_progress` or `not_allowed` — see [InAppUpdateLaunchResult]. A launch that
+     * fails is reported by [failed] instead. The user's decision inside Play's UI is reported
+     * separately via [accepted], [declined] or [flowFailed].
      */
     fun launched(
+        type: InAppUpdateType,
         result: InAppUpdateLaunchResult,
     )
 
     /**
-     * Fires `in_app_update_failed` when [InAppUpdate.check] or [InAppUpdate.launch] returns a
-     * failure. The [reason] is sent lowercase as the `reason` param.
+     * Fires `in_app_update_failed` when [InAppUpdate.check], [InAppUpdate.launch] or
+     * [InAppUpdate.completeUpdate] returns a failure. The [reason] is sent lowercase as the
+     * `reason` param.
      */
     fun failed(
         reason: Reason,
@@ -49,8 +52,9 @@ internal interface InAppUpdateTracker {
     fun declined()
 
     /**
-     * Fires `in_app_update_flow_failed` when Play's update UI finishes with a result code other
-     * than OK or CANCELED, i.e. the flow ended in error.
+     * Fires `in_app_update_flow_failed` when the update ends in error: Play's update UI finishes
+     * with a result code other than OK or CANCELED, or a flexible download reports
+     * `InstallStatus.FAILED`.
      */
     fun flowFailed()
 
@@ -61,6 +65,15 @@ internal interface InAppUpdateTracker {
      */
     fun resumed()
 
+    /** Fires `in_app_update_downloaded` when a flexible update finishes downloading. */
+    fun downloaded()
+
+    /** Fires `in_app_update_completed` when [InAppUpdate.completeUpdate] hands the install to Play. */
+    fun completed()
+
+    /** Fires `in_app_update_store_opened` when [InAppUpdate.openStoreListing] opens the store listing. */
+    fun storeOpened()
+
     /**
      * Why a check or launch could not complete; fixed codes reported as the `reason` param of
      * `in_app_update_failed`.
@@ -70,7 +83,7 @@ internal interface InAppUpdateTracker {
         /** No activity is attached to [InAppUpdate]. */
         NO_ACTIVITY,
 
-        /** The Play request (check or launch) failed. */
+        /** The Play request (check, launch or completeUpdate) failed. */
         ERROR,
     }
 }
@@ -95,9 +108,11 @@ internal class InAppUpdateTrackerImpl(
     }
 
     override fun launched(
+        type: InAppUpdateType,
         result: InAppUpdateLaunchResult,
     ) {
         firebaseAnalytics.logEvent(IN_APP_UPDATE_LAUNCHED) {
+            param("type", type.name.lowercase())
             param("result", result.toTrackingName())
         }
     }
@@ -126,6 +141,18 @@ internal class InAppUpdateTrackerImpl(
         firebaseAnalytics.logEvent(IN_APP_UPDATE_RESUMED) {}
     }
 
+    override fun downloaded() {
+        firebaseAnalytics.logEvent(IN_APP_UPDATE_DOWNLOADED) {}
+    }
+
+    override fun completed() {
+        firebaseAnalytics.logEvent(IN_APP_UPDATE_COMPLETED) {}
+    }
+
+    override fun storeOpened() {
+        firebaseAnalytics.logEvent(IN_APP_UPDATE_STORE_OPENED) {}
+    }
+
     private fun InAppUpdateLaunchResult.toTrackingName(): String = when (this) {
         InAppUpdateLaunchResult.Started -> "started"
         InAppUpdateLaunchResult.NotAvailable -> "not_available"
@@ -141,5 +168,8 @@ internal class InAppUpdateTrackerImpl(
         const val IN_APP_UPDATE_DECLINED = "in_app_update_declined"
         const val IN_APP_UPDATE_FLOW_FAILED = "in_app_update_flow_failed"
         const val IN_APP_UPDATE_RESUMED = "in_app_update_resumed"
+        const val IN_APP_UPDATE_DOWNLOADED = "in_app_update_downloaded"
+        const val IN_APP_UPDATE_COMPLETED = "in_app_update_completed"
+        const val IN_APP_UPDATE_STORE_OPENED = "in_app_update_store_opened"
     }
 }
