@@ -222,6 +222,7 @@ compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref
 # -------------------------------------------------------------------
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-config = { module = "com.google.firebase:firebase-config" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 

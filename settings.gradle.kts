@@ -72,6 +72,7 @@ include(":bom")
 include(":platform:core")
 include(":platform:device")
 include(":platform:engagement")
+include(":platform:featureflag")
 include(":platform:network")
 include(":platform:ui")
 
