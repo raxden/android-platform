@@ -74,6 +74,7 @@ include(":platform:device")
 include(":platform:engagement")
 include(":platform:featureflag")
 include(":platform:network")
+include(":platform:notification")
 include(":platform:ui")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

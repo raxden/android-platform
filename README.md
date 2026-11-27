@@ -26,6 +26,7 @@ Android Platform is a multi-module library that provides a curated set of platfo
 | [`platform-engagement`](platform/engagement/README.md) | In-app review and share prompts driven by per-origin occurrence milestones | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-engagement.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-engagement) |
 | [`platform-featureflag`](platform/featureflag/README.md) | Remote feature flags backed by Firebase Remote Config, declared by the app | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-featureflag.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-featureflag) |
 | `platform-network` | Network layer with OkHttp/Retrofit, Chucker debug support | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-network.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-network) |
+| [`platform-notification`](platform/notification/README.md) | Notification permission (state and system dialog) and FCM topics per UTC offset, synced on time zone changes | [![Maven Central](https://img.shields.io/maven-central/v/com.raxdenstudios/platform-notification.svg?label=version)](https://central.sonatype.com/artifact/com.raxdenstudios/platform-notification) |
 
 ## 🚀 Getting Started
 
@@ -50,6 +51,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-engagement")
     implementation("com.raxdenstudios:platform-featureflag")
     implementation("com.raxdenstudios:platform-network")
+    implementation("com.raxdenstudios:platform-notification")
 }
 ```
 
@@ -63,6 +65,7 @@ dependencies {
     implementation("com.raxdenstudios:platform-engagement:<version>")
     implementation("com.raxdenstudios:platform-featureflag:<version>")
     implementation("com.raxdenstudios:platform-network:<version>")
+    implementation("com.raxdenstudios:platform-notification:<version>")
 }
 ```
 
