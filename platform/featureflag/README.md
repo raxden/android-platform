@@ -15,7 +15,7 @@ isFeatureFlagEnabledUseCase(IsFeatureFlagEnabledUseCase.Params(AppFeatureFlag.PO
 | Concept | What it is | Example |
 |---|---|---|
 | **Flag** (`FeatureFlag`) | A Remote Config boolean parameter: its `key` and the `defaultValue` used until a remote value is activated. Declared by the app, usually as an enum. | `PODCASTS(key = "podcasts_enabled", defaultValue = false)` |
-| **Fetch** (`FetchFeatureFlagsUseCase`) | Sets the in-app defaults, applies the fetch settings and fetches and activates the remote values. Once per process, at app start. | Called from an androidx.startup initializer |
+| **Fetch** (`FetchFeatureFlagsUseCase`) | Sets the in-app defaults, applies the fetch settings and fetches and activates the remote values. Once per process, at app start. | Called by `FeatureFlagInitializer` (androidx.startup) at app start |
 | **Read** (`IsFeatureFlagEnabledUseCase`) | Whether a flag is on. Always succeeds: on any error it answers the flag's default. | `Answer.Success(true)` |
 | **Minimum fetch interval** | How long fetched values stay cached before a new fetch reaches the backend. Passed by the app. | `0` in debug, `1 h` in release |
 
@@ -87,13 +87,28 @@ override fun provideLibs(): List<DILibrary> = listOf(
 
 A zero interval in debug makes a console change show up on the next launch. The interval must not be negative (the constructor throws `IllegalArgumentException`) and is truncated to whole seconds.
 
-**4. Fetch once at app start**, for example from an androidx.startup initializer that runs after Koin is started:
+**4. Fetch once at app start** by registering the platform `FeatureFlagInitializer` in the app's androidx.startup provider. The app does not write its own initializer:
 
-```kotlin
-scopeProvider.default.launch {
-    fetchFeatureFlagsUseCase(FetchFeatureFlagsUseCase.Params)
-}
+```xml
+<provider
+    android:name="androidx.startup.InitializationProvider"
+    android:authorities="${applicationId}.androidx-startup"
+    android:exported="false"
+    tools:node="merge">
+    <meta-data
+        android:name="com.raxdenstudios.platform.featureflag.initializer.FeatureFlagInitializer"
+        android:value="androidx.startup" />
+</provider>
 ```
+
+`com.raxdenstudios.platform.featureflag.initializer.FeatureFlagInitializer` launches `FetchFeatureFlagsUseCase` on `CoroutineScopeProvider.io` and only logs a failure (Timber warning, message only, no throwable).
+
+- `dependencies()` = `DIInitializer` (platform-core), so Koin is started first. The app's `Application` must implement `DIAppProvider` (see [Starting DI](../core/README.md#starting-di-diinitializer)).
+- It resolves `FetchFeatureFlagsUseCase` (this library) and `CoroutineScopeProvider` from Koin. `CoroutineScopeProvider` is bound by platform-core's `CoreDILibrary`; an app that does not load `CoreDILibrary` must bind it itself.
+- It does not depend on platform-device's `TimberInitializer`, because this module does not depend on platform-device. The warning is written after a network round trip, so the app's tree is planted by then in practice.
+- It is opt-in: the library manifest does not declare it.
+
+**Migrating from the app copy.** Delete the app's `FeatureFlagInitializer` (`com.raxdenstudios.app.initializer`) and its test, and point its `<meta-data>` entry to the platform class. Do not keep both entries: the flags would be fetched twice per process. Remove any reference to the app class from other initializers' `dependencies()`.
 
 **5. Read the flags** wherever they are needed:
 
@@ -119,5 +134,6 @@ No change is needed in this library.
 | `FetchFeatureFlagsUseCase` | Fetches and activates the remote values (`Answer<Unit, Failure>`) |
 | `IsFeatureFlagEnabledUseCase` | Reads a flag (`Answer<Boolean, Failure>`, always `Success`) |
 | `FeatureFlagDILibrary(flags, minimumFetchInterval)` | Koin library that binds both use cases |
+| `FeatureFlagInitializer` | androidx.startup initializer that runs `FetchFeatureFlagsUseCase` once per process |
 
 Firebase types never leave the library. `FirebaseRemoteConfig` is not bound in Koin, so it does not clash with an app binding of it.

@@ -50,13 +50,15 @@ import kotlin.time.Duration
  * )
  * ```
  *
- * 3. Fetch once per process at app start, e.g. from an androidx.startup initializer that runs after
- * Koin is started:
+ * 3. Fetch once per process at app start by registering
+ * [com.raxdenstudios.platform.featureflag.initializer.FeatureFlagInitializer] in the app's
+ * androidx.startup provider. It depends on platform-core's `DIInitializer`, so Koin is started
+ * first:
  *
- * ```kotlin
- * scopeProvider.default.launch {
- *     fetchFeatureFlagsUseCase(FetchFeatureFlagsUseCase.Params)
- * }
+ * ```xml
+ * <meta-data
+ *     android:name="com.raxdenstudios.platform.featureflag.initializer.FeatureFlagInitializer"
+ *     android:value="androidx.startup" />
  * ```
  *
  * ## Usage
