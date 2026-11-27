@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+
+        <!-- Moves the device to the topic of its new UTC offset. TIMEZONE_CHANGED is a protected system broadcast,
+             exempt from the implicit broadcast limits. It no-ops while the app binds no NotificationTopicPolicy. -->
+        <receiver
+            android:name="com.raxdenstudios.platform.notification.topic.NotificationTopicTimeZoneReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

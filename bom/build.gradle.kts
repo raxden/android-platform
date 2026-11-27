@@ -36,5 +36,6 @@ dependencies {
         api(projects.platform.engagement)
         api(projects.platform.featureflag)
         api(projects.platform.network)
+        api(projects.platform.notification)
     }
 }
